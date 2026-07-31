@@ -1,0 +1,36 @@
+* text=auto eol=lf
+
+# Windows-only files keep CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Must be LF — CI runs on Linux
+*.sh   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Explicit text types
+*.ts   text
+*.tsx  text
+*.js   text
+*.jsx  text
+*.json text
+*.md   text
+
+# Binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.jks   binary
+*.keystore binary
+
+# Generated — collapse in PR diffs
+package-lock.json  linguist-generated=true
+src/api/schema.d.ts linguist-generated=true
