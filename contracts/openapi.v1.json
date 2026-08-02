@@ -196,6 +196,201 @@
         ],
         "type": "object"
       },
+      "BusinessClosurePeriod": {
+        "properties": {
+          "endsOn": {
+            "description": "Inclusive.",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "description": "The closure.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Shown to staff.",
+            "type": "string"
+          },
+          "startsOn": {
+            "description": "Inclusive.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "startsOn",
+          "endsOn",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "BusinessHourInterval": {
+        "properties": {
+          "closesAt": {
+            "description": "Local time. Must be after OpensAt.",
+            "format": "time",
+            "type": "string"
+          },
+          "dayOfWeek": {
+            "$ref": "#/components/schemas/DayOfWeek",
+            "description": "Which day."
+          },
+          "isOpen": {
+            "description": "Whether the studio actually opens. False keeps the times for later.",
+            "type": "boolean"
+          },
+          "opensAt": {
+            "description": "Local time in the organization's zone.",
+            "format": "time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "opensAt",
+          "closesAt",
+          "isOpen"
+        ],
+        "type": "object"
+      },
+      "BusinessHoursBody": {
+        "properties": {
+          "intervals": {
+            "description": "The complete week. Anything omitted is deleted.",
+            "items": {
+              "$ref": "#/components/schemas/BusinessHourInterval"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "intervals"
+        ],
+        "type": "object"
+      },
+      "CatalogEntryUsage": {
+        "description": "What is pointing at a catalog entry, and therefore what deleting it would do.",
+        "properties": {
+          "canDelete": {
+            "description": "Whether an unqualified delete would succeed. False does <b>not</b> mean the studio is stuck —\r\ndeactivating always works for a non-system entry, and reassigning then deleting works too.",
+            "type": "boolean"
+          },
+          "entryId": {
+            "description": "The entry asked about.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "description": "Whether code resolves it. A system entry is never deletable.",
+            "type": "boolean"
+          },
+          "references": {
+            "description": "Per module and entity. Empty means nothing points at it.",
+            "items": {
+              "$ref": "#/components/schemas/CatalogReference"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entryId",
+          "isSystem",
+          "references",
+          "canDelete"
+        ],
+        "type": "object"
+      },
+      "CatalogReference": {
+        "description": "One module's answer to \"is anything of mine pointing at this catalog entry?\".",
+        "properties": {
+          "blocksDeletion": {
+            "description": "            Whether these rows would be orphaned by a delete.\r\n            Not every reference does. Historical rows — a stage transition, a delivered gift — record what\r\nwas true at the time and keep rendering from their own stored copy of the name, so deleting the\r\nentry loses nothing. Live references — a member's interest, a class's category — would be left\r\npointing at nothing.",
+            "type": "boolean"
+          },
+          "count": {
+            "description": "How many rows. Zero is a valid answer and means \"not mine\".",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "entity": {
+            "description": "The referencing entity, e.g. `Member`. A module may reference one catalog from several\r\nentities — leads reference a stage from both the lead and its transition history — and the\r\ncounts have to stay distinguishable, because one of them blocks deletion and one does not.",
+            "type": "string"
+          },
+          "module": {
+            "description": "The owning module, e.g. `Members`. Returned to the client so the conflict dialog can say\r\nwhich screen to go and look at.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module",
+          "entity",
+          "count",
+          "blocksDeletion"
+        ],
+        "type": "object"
+      },
+      "CatalogSnapshot": {
+        "description": "Every catalog, in one response.",
+        "properties": {
+          "classCategories": {
+            "description": "How classes are grouped.",
+            "items": {
+              "$ref": "#/components/schemas/LabelledEntry"
+            },
+            "type": "array"
+          },
+          "giftTemplates": {
+            "description": "What a studio gives away, with structured effects.",
+            "items": {
+              "$ref": "#/components/schemas/GiftTemplateEntry"
+            },
+            "type": "array"
+          },
+          "interests": {
+            "description": "What leads and members are interested in.",
+            "items": {
+              "$ref": "#/components/schemas/LabelledEntry"
+            },
+            "type": "array"
+          },
+          "leadSources": {
+            "description": "Where leads come from.",
+            "items": {
+              "$ref": "#/components/schemas/LeadSourceEntry"
+            },
+            "type": "array"
+          },
+          "leadStages": {
+            "description": "The pipeline board's columns, in board order.",
+            "items": {
+              "$ref": "#/components/schemas/LeadStageEntry"
+            },
+            "type": "array"
+          },
+          "packageTemplates": {
+            "description": "Sellable membership shapes. Prices omitted per permission.",
+            "items": {
+              "$ref": "#/components/schemas/PackageTemplateEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "leadStages",
+          "leadSources",
+          "interests",
+          "classCategories",
+          "packageTemplates",
+          "giftTemplates"
+        ],
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "currentPassword": {
@@ -210,6 +405,30 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ],
+        "type": "object"
+      },
+      "ClosureBody": {
+        "properties": {
+          "endsOn": {
+            "description": "Inclusive.",
+            "format": "date",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Shown to staff.",
+            "type": "string"
+          },
+          "startsOn": {
+            "description": "Inclusive.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startsOn",
+          "endsOn",
+          "reason"
         ],
         "type": "object"
       },
@@ -233,6 +452,116 @@
         },
         "required": [
           "email"
+        ],
+        "type": "object"
+      },
+      "GiftEffectType": {
+        "description": "What granting a gift actually does.",
+        "enum": [
+          "ExtendDays",
+          "AddSessions",
+          "FreeSession"
+        ]
+      },
+      "GiftTemplateBody": {
+        "properties": {
+          "description": {
+            "description": "Optional free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "effectAmount": {
+            "description": "Days or sessions.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "effectType": {
+            "$ref": "#/components/schemas/GiftEffectType",
+            "description": "What granting it does."
+          },
+          "name": {
+            "description": "Display text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "effectType",
+          "effectAmount",
+          "description"
+        ],
+        "type": "object"
+      },
+      "GiftTemplateEntry": {
+        "description": "Something a studio gives away.",
+        "properties": {
+          "description": {
+            "description": "Free text, now purely descriptive. Kept because a studio explains a gift to itself in its own\r\nwords, and losing that on migration would be a regression — but nothing reads it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "effectAmount": {
+            "description": "Days or sessions, per EffectType.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "effectType": {
+            "$ref": "#/components/schemas/GiftEffectType",
+            "description": "What granting it does. Replaces the panel's free-text description."
+          },
+          "id": {
+            "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "description": "Whether the entry is load-bearing. System entries can be renamed and reordered but never\r\ndeleted or deactivated, because code resolves them.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "            The stable, server-transliterated, <b>immutable</b> identifier.\r\n            Immutable because it is what a support engineer, a seed script and a bug report all name an\r\nentry by; a key that follows a rename is a key that means something different in yesterday's\r\nlogs. Renaming the label is free and changes no key.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Whether it is offered for new work."
+          }
+        },
+        "required": [
+          "name",
+          "effectType",
+          "effectAmount",
+          "description",
+          "id",
+          "key",
+          "sortOrder",
+          "isSystem",
+          "status"
         ],
         "type": "object"
       },
@@ -338,6 +667,265 @@
           "fullName",
           "email",
           "role"
+        ],
+        "type": "object"
+      },
+      "LabelBody": {
+        "properties": {
+          "label": {
+            "description": "Display text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "type": "object"
+      },
+      "LabelledEntry": {
+        "description": "An interest or a class category — a label and nothing else.",
+        "properties": {
+          "id": {
+            "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "description": "Whether the entry is load-bearing. System entries can be renamed and reordered but never\r\ndeleted or deactivated, because code resolves them.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "            The stable, server-transliterated, <b>immutable</b> identifier.\r\n            Immutable because it is what a support engineer, a seed script and a bug report all name an\r\nentry by; a key that follows a rename is a key that means something different in yesterday's\r\nlogs. Renaming the label is free and changes no key.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Whether it is offered for new work."
+          }
+        },
+        "required": [
+          "label",
+          "id",
+          "key",
+          "sortOrder",
+          "isSystem",
+          "status"
+        ],
+        "type": "object"
+      },
+      "LeadSourceBody": {
+        "properties": {
+          "icon": {
+            "description": "An Ionicons name.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "icon"
+        ],
+        "type": "object"
+      },
+      "LeadSourceEntry": {
+        "description": "Where a lead came from.",
+        "properties": {
+          "icon": {
+            "description": "An Ionicons name. Display-only.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "description": "Whether the entry is load-bearing. System entries can be renamed and reordered but never\r\ndeleted or deactivated, because code resolves them.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "            The stable, server-transliterated, <b>immutable</b> identifier.\r\n            Immutable because it is what a support engineer, a seed script and a bug report all name an\r\nentry by; a key that follows a rename is a key that means something different in yesterday's\r\nlogs. Renaming the label is free and changes no key.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Whether it is offered for new work."
+          }
+        },
+        "required": [
+          "label",
+          "icon",
+          "id",
+          "key",
+          "sortOrder",
+          "isSystem",
+          "status"
+        ],
+        "type": "object"
+      },
+      "LeadStageBody": {
+        "properties": {
+          "statusLabel": {
+            "description": "What a lead in this stage is called on its own row.",
+            "type": "string"
+          },
+          "title": {
+            "description": "The board column heading.",
+            "type": "string"
+          },
+          "tone": {
+            "description": "One of `mint`, `warning`, `info`, `dark`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "statusLabel",
+          "tone"
+        ],
+        "type": "object"
+      },
+      "LeadStageEntry": {
+        "description": "A column on the lead pipeline board.",
+        "properties": {
+          "id": {
+            "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "description": "Whether the entry is load-bearing. System entries can be renamed and reordered but never\r\ndeleted or deactivated, because code resolves them.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "            The stable, server-transliterated, <b>immutable</b> identifier.\r\n            Immutable because it is what a support engineer, a seed script and a bug report all name an\r\nentry by; a key that follows a rename is a key that means something different in yesterday's\r\nlogs. Renaming the label is free and changes no key.",
+            "type": "string"
+          },
+          "semanticRole": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LeadStageSemanticRole",
+                "description": "What this stage means to automation, or `null` for a studio's own stage."
+              }
+            ]
+          },
+          "sortOrder": {
+            "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Whether it is offered for new work."
+          },
+          "statusLabel": {
+            "description": "What a lead in this stage is called on its own row. The panel keeps the two separate — the\r\nboard says \"Yüzyüze Görüşme\", the lead says \"Görüşme Planlandı\" — so the model does too.",
+            "type": "string"
+          },
+          "title": {
+            "description": "The column heading on the pipeline board.",
+            "type": "string"
+          },
+          "tone": {
+            "description": "A display hint. Closed set, validated on write; carries no behaviour.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "statusLabel",
+          "tone",
+          "semanticRole",
+          "id",
+          "key",
+          "sortOrder",
+          "isSystem",
+          "status"
+        ],
+        "type": "object"
+      },
+      "LeadStageSemanticRole": {
+        "enum": [
+          "New",
+          "ToCall",
+          "Unreachable",
+          "CallBack",
+          "Interested",
+          "MeetingScheduled",
+          "TrialScheduled",
+          "OfferMade",
+          "Converted",
+          "Lost",
+          null
+        ]
+      },
+      "LifecycleStatus": {
+        "description": "Whether an entry is offered for new work. `Aktif` / `Pasif` in the panel.",
+        "enum": [
+          "Active",
+          "Inactive"
+        ]
+      },
+      "LocalizationBody": {
+        "properties": {
+          "currency": {
+            "description": "ISO 4217. Only TRY in v1.",
+            "type": "string"
+          },
+          "locale": {
+            "description": "BCP 47.",
+            "type": "string"
+          },
+          "timeZoneId": {
+            "description": "IANA.",
+            "type": "string"
+          },
+          "weekStartDay": {
+            "$ref": "#/components/schemas/DayOfWeek",
+            "description": "First calendar column."
+          }
+        },
+        "required": [
+          "timeZoneId",
+          "locale",
+          "currency",
+          "weekStartDay"
         ],
         "type": "object"
       },
@@ -518,6 +1106,437 @@
           "email",
           "fullName",
           "isEmailVerified"
+        ],
+        "type": "object"
+      },
+      "NotificationBody": {
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel",
+            "description": "How it is delivered."
+          },
+          "isEnabled": {
+            "description": "Whether the studio wants it.",
+            "type": "boolean"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/NotificationTopic",
+            "description": "What it is about."
+          }
+        },
+        "required": [
+          "topic",
+          "channel",
+          "isEnabled"
+        ],
+        "type": "object"
+      },
+      "NotificationChannel": {
+        "description": "How a notification is delivered.",
+        "enum": [
+          "Email",
+          "Sms",
+          "Push"
+        ]
+      },
+      "NotificationPreference": {
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel",
+            "description": "How it is delivered."
+          },
+          "isAvailable": {
+            "description": "Whether the product can deliver over this channel at all. `false` means the\r\npanel renders it as unavailable rather than as a switch — a toggle with no sender behind it is\r\na promise the product does not keep.",
+            "type": "boolean"
+          },
+          "isEnabled": {
+            "description": "Whether the studio wants it.",
+            "type": "boolean"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/NotificationTopic",
+            "description": "What it is about."
+          }
+        },
+        "required": [
+          "topic",
+          "channel",
+          "isEnabled",
+          "isAvailable"
+        ],
+        "type": "object"
+      },
+      "NotificationTopic": {
+        "description": "What a notification is about.",
+        "enum": [
+          "NewLead",
+          "PaymentReceived",
+          "AppointmentReminder",
+          "WeeklyDigest"
+        ]
+      },
+      "OrganizationLocalization": {
+        "description": "The organization-local settings every date and number derives from.",
+        "properties": {
+          "currency": {
+            "description": "ISO 4217. Only TRY is supported in v1; the column ships from day one.",
+            "type": "string"
+          },
+          "locale": {
+            "description": "BCP 47, for formatting the client cannot infer from the device.",
+            "type": "string"
+          },
+          "timeZoneId": {
+            "description": "IANA. <b>Load-bearing, not cosmetic</b> — \"today's sessions\", \"revenue this month\" and the\r\nprogram month are organization-local questions, and the panel currently answers them from the\r\ndevice clock, so two staff in different zones disagree about what day it is.",
+            "type": "string"
+          },
+          "weekStartDay": {
+            "$ref": "#/components/schemas/DayOfWeek",
+            "description": "First column of the calendar. Monday in Türkiye."
+          }
+        },
+        "required": [
+          "timeZoneId",
+          "locale",
+          "currency",
+          "weekStartDay"
+        ],
+        "type": "object"
+      },
+      "OrganizationProfile": {
+        "description": "The studio's own details. The single source of the name the panel duplicates today.",
+        "properties": {
+          "address": {
+            "description": "Free text. One field, not a structured address — Turkish addresses do not decompose cleanly.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contactPersonName": {
+            "description": "Who to ask for.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "logoObjectKey": {
+            "description": "Object-storage key, never a URL. Null until one is uploaded.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Trading name.",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "description": "Contact number, as typed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "phoneNumber",
+          "contactPersonName",
+          "logoObjectKey"
+        ],
+        "type": "object"
+      },
+      "OrganizationSettings": {
+        "description": "Everything the settings screen reads, in one response.",
+        "properties": {
+          "businessHours": {
+            "description": "Weekly opening intervals.",
+            "items": {
+              "$ref": "#/components/schemas/BusinessHourInterval"
+            },
+            "type": "array"
+          },
+          "closures": {
+            "description": "Upcoming and current closures. Past ones are omitted.",
+            "items": {
+              "$ref": "#/components/schemas/BusinessClosurePeriod"
+            },
+            "type": "array"
+          },
+          "localization": {
+            "$ref": "#/components/schemas/OrganizationLocalization",
+            "description": "Time zone, locale, currency, week start."
+          },
+          "notifications": {
+            "description": "The full matrix, including unavailable channels.",
+            "items": {
+              "$ref": "#/components/schemas/NotificationPreference"
+            },
+            "type": "array"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/OrganizationProfile",
+            "description": "The studio's details."
+          },
+          "tax": {
+            "$ref": "#/components/schemas/TaxProfileSummary",
+            "description": "Tax profile, identifier redacted."
+          }
+        },
+        "required": [
+          "profile",
+          "localization",
+          "tax",
+          "businessHours",
+          "closures",
+          "notifications"
+        ],
+        "type": "object"
+      },
+      "OrganizationSettingsSummary": {
+        "description": "The counters behind the settings screen's tiles, in one call.",
+        "properties": {
+          "activeStaffMembers": {
+            "description": "Replaces the panel's \"Sorumlular\" count.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "availableNotifications": {
+            "description": "Cells that could be enabled — the denominator the panel shows.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "classCategories": {
+            "description": "How classes are grouped.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "enabledNotifications": {
+            "description": "Enabled cells of the matrix.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "giftTemplates": {
+            "description": "Gifts with structured effects.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "interests": {
+            "description": "What leads and members want.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "leadSources": {
+            "description": "Where leads come from.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "leadStages": {
+            "description": "Pipeline board columns.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "openDays": {
+            "description": "How many weekdays the studio opens, of seven.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "packageTemplates": {
+            "description": "Sellable membership shapes.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "upcomingClosures": {
+            "description": "Closures that have not ended yet.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "packageTemplates",
+          "giftTemplates",
+          "leadStages",
+          "leadSources",
+          "interests",
+          "classCategories",
+          "activeStaffMembers",
+          "openDays",
+          "upcomingClosures",
+          "enabledNotifications",
+          "availableNotifications"
+        ],
+        "type": "object"
+      },
+      "PackageTemplateBody": {
+        "properties": {
+          "durationDays": {
+            "description": "How long the membership runs.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "price": {
+            "description": "A decimal, never a formatted string.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "sessionCount": {
+            "description": "Null means unlimited.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "price",
+          "sessionCount",
+          "durationDays"
+        ],
+        "type": "object"
+      },
+      "PackageTemplateEntry": {
+        "description": "A sellable membership shape.",
+        "properties": {
+          "currency": {
+            "description": "ISO 4217. Present whenever Price is.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "durationDays": {
+            "description": "How long the membership runs. Always set.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "description": "Whether the entry is load-bearing. System entries can be renamed and reordered but never\r\ndeleted or deactivated, because code resolves them.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "            The stable, server-transliterated, <b>immutable</b> identifier.\r\n            Immutable because it is what a support engineer, a seed script and a bug report all name an\r\nentry by; a key that follows a rename is a key that means something different in yesterday's\r\nlogs. Renaming the label is free and changes no key.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "price": {
+            "description": "<b>\r\n  `null` when the caller may not see money.</b>\r\n`catalogs.read` does not\r\n        imply `members.financial.read`, so a coach browsing packages to explain one to a member\r\n        gets the name, the session count and the term, and no price. Omitted at the query, not blanked\r\n        in the client.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "sessionCount": {
+            "description": "`null` means unlimited, which is a real package shape (\"Gold Paket\") and not\r\n        missing data.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "sortOrder": {
+            "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Whether it is offered for new work."
+          }
+        },
+        "required": [
+          "name",
+          "price",
+          "currency",
+          "sessionCount",
+          "durationDays",
+          "id",
+          "key",
+          "sortOrder",
+          "isSystem",
+          "status"
         ],
         "type": "object"
       },
@@ -743,6 +1762,42 @@
         },
         "type": "object"
       },
+      "ProfileBody": {
+        "properties": {
+          "address": {
+            "description": "Optional free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contactPersonName": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Trading name. Required.",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "phoneNumber",
+          "contactPersonName"
+        ],
+        "type": "object"
+      },
       "RefreshRequest": {
         "properties": {
           "refreshHandle": {
@@ -791,6 +1846,22 @@
           "email",
           "password",
           "acceptedKvkkNotice"
+        ],
+        "type": "object"
+      },
+      "ReorderBody": {
+        "properties": {
+          "orderedEntryIds": {
+            "description": "Every entry in the catalog, exactly once, in the new order.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "orderedEntryIds"
         ],
         "type": "object"
       },
@@ -847,6 +1918,18 @@
           "Inactive",
           "Invited"
         ]
+      },
+      "StatusBody": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Active or Inactive."
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
       },
       "SupportAuditEvent": {
         "description": "One break-glass event, with the studio it was opened against.",
@@ -974,6 +2057,98 @@
           "role",
           "status",
           "isOwner"
+        ],
+        "type": "object"
+      },
+      "TaxProfileBody": {
+        "properties": {
+          "billingAddress": {
+            "description": "Where invoices go.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "companyTitle": {
+            "description": "Registered company name.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxIdentifier": {
+            "description": "VKN or TCKN. <b>Null leaves the stored one alone</b>, so a form that never displays it can save\r\nthe other fields; an empty string clears it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxOffice": {
+            "description": "Administrative detail.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "companyTitle",
+          "taxOffice",
+          "taxIdentifier",
+          "billingAddress"
+        ],
+        "type": "object"
+      },
+      "TaxProfileSummary": {
+        "description": "The tax profile, <b>with the identifier redacted</b>.",
+        "properties": {
+          "billingAddress": {
+            "description": "Where invoices go.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "certificateObjectKey": {
+            "description": "Object-storage key of the uploaded certificate.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "companyTitle": {
+            "description": "Registered company name.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hasTaxIdentifier": {
+            "description": "Whether one is stored at all, which the digits alone cannot say.",
+            "type": "boolean"
+          },
+          "taxIdentifierLastDigits": {
+            "description": "The last two digits, so somebody can confirm the right number is stored. <b>The full identifier\r\nis never returned</b> — it is special-category data under KVKK and the screen does not need it\r\nto render.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxOffice": {
+            "description": "Administrative detail, not sensitive.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "companyTitle",
+          "taxOffice",
+          "taxIdentifierLastDigits",
+          "hasTaxIdentifier",
+          "billingAddress",
+          "certificateObjectKey"
         ],
         "type": "object"
       },
@@ -1707,6 +2882,1048 @@
         ]
       }
     },
+    "/api/v1/catalogs": {
+      "get": {
+        "operationId": "GetCatalogs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every catalog in one response. Package prices are omitted without members.financial.read.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/class-categories": {
+      "post": {
+        "operationId": "CreateClassCategory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelledEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a class category.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/class-categories/{entryId}": {
+      "put": {
+        "operationId": "UpdateClassCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelledEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Renames a class category.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/gift-templates": {
+      "post": {
+        "operationId": "CreateGiftTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GiftTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GiftTemplateEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a gift with a structured effect.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/gift-templates/{entryId}": {
+      "put": {
+        "operationId": "UpdateGiftTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GiftTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GiftTemplateEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edits a gift template.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/interests": {
+      "post": {
+        "operationId": "CreateInterest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelledEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds an interest.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/interests/{entryId}": {
+      "put": {
+        "operationId": "UpdateInterest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelledEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Renames an interest.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/lead-sources": {
+      "post": {
+        "operationId": "CreateLeadSource",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadSourceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadSourceEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a lead source.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/lead-sources/{entryId}": {
+      "put": {
+        "operationId": "UpdateLeadSource",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadSourceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadSourceEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Renames a lead source.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/lead-stages": {
+      "post": {
+        "operationId": "CreateLeadStage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadStageBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadStageEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a column to the pipeline board.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/lead-stages/{entryId}": {
+      "put": {
+        "operationId": "UpdateLeadStage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadStageBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadStageEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Renames or restyles a stage. The key and the semantic role never change.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/package-templates": {
+      "post": {
+        "operationId": "CreatePackageTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageTemplateEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a sellable membership shape. Price is a decimal, never a formatted string.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/package-templates/{entryId}": {
+      "put": {
+        "operationId": "UpdatePackageTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageTemplateEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edits a package template. Memberships already sold keep their own terms.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/{kind}/order": {
+      "post": {
+        "operationId": "ReorderCatalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Renumbers a catalog. The body must list every entry exactly once.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/{kind}/{entryId}": {
+      "delete": {
+        "operationId": "DeleteCatalogEntry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reassignTo",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Removes an entry. 409 catalogs.entry.in_use if anything still points at it.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/{kind}/{entryId}/status": {
+      "post": {
+        "operationId": "SetCatalogEntryStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Withdraws an entry from new work, or puts it back.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/{kind}/{entryId}/usage": {
+      "get": {
+        "operationId": "GetCatalogEntryUsage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogEntryUsage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "What is pointing at an entry. Asked before offering a delete.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "GetMe",
@@ -1812,6 +4029,470 @@
         "summary": "Requests an export of the organization's data (KVKK/GDPR).",
         "tags": [
           "Compliance"
+        ]
+      }
+    },
+    "/api/v1/organization/settings": {
+      "get": {
+        "operationId": "GetOrganizationSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSettings"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Profile, localization, tax (redacted), hours, closures and the notification matrix.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/business-hours": {
+      "put": {
+        "operationId": "ReplaceBusinessHours",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessHoursBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replaces the whole week. Intervals may not overlap within a day.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/closures": {
+      "post": {
+        "operationId": "AddBusinessClosure",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosureBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessClosurePeriod"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a date range the studio is closed.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/closures/{closureId}": {
+      "delete": {
+        "operationId": "RemoveBusinessClosure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "closureId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Removes a closure.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/localization": {
+      "put": {
+        "operationId": "UpdateOrganizationLocalization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalizationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationLocalization"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Time zone, locale, currency and week start. The panel has none of these today.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/notifications": {
+      "put": {
+        "operationId": "SetNotificationPreference",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Turns one cell of the matrix on or off. Unavailable channels are refused.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/profile": {
+      "put": {
+        "operationId": "UpdateOrganizationProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationProfile"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Renames the studio or changes its contact details. The slug never changes.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/summary": {
+      "get": {
+        "operationId": "GetOrganizationSettingsSummary",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSettingsSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every settings tile's counter, in one call.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/settings/tax": {
+      "put": {
+        "operationId": "UpdateOrganizationTaxProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxProfileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxProfileSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Tax and billing details. The identifier is encrypted and never read back.",
+        "tags": [
+          "Organization"
         ]
       }
     },
@@ -2035,6 +4716,12 @@
     },
     {
       "name": "Staff"
+    },
+    {
+      "name": "Catalogs"
+    },
+    {
+      "name": "Organization"
     },
     {
       "name": "Compliance"

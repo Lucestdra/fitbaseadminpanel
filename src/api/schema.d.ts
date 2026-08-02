@@ -849,6 +849,295 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every catalog in one response. Package prices are omitted without members.financial.read. */
+        get: operations["GetCatalogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/class-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a class category. */
+        post: operations["CreateClassCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/class-categories/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Renames a class category. */
+        put: operations["UpdateClassCategory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/gift-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a gift with a structured effect. */
+        post: operations["CreateGiftTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/gift-templates/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edits a gift template. */
+        put: operations["UpdateGiftTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/interests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds an interest. */
+        post: operations["CreateInterest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/interests/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Renames an interest. */
+        put: operations["UpdateInterest"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/lead-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a lead source. */
+        post: operations["CreateLeadSource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/lead-sources/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Renames a lead source. */
+        put: operations["UpdateLeadSource"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/lead-stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a column to the pipeline board. */
+        post: operations["CreateLeadStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/lead-stages/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Renames or restyles a stage. The key and the semantic role never change. */
+        put: operations["UpdateLeadStage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/package-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a sellable membership shape. Price is a decimal, never a formatted string. */
+        post: operations["CreatePackageTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/package-templates/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edits a package template. Memberships already sold keep their own terms. */
+        put: operations["UpdatePackageTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{kind}/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Renumbers a catalog. The body must list every entry exactly once. */
+        post: operations["ReorderCatalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{kind}/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Removes an entry. 409 catalogs.entry.in_use if anything still points at it. */
+        delete: operations["DeleteCatalogEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{kind}/{entryId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraws an entry from new work, or puts it back. */
+        post: operations["SetCatalogEntryStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{kind}/{entryId}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What is pointing at an entry. Asked before offering a delete. */
+        get: operations["GetCatalogEntryUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -894,6 +1183,159 @@ export interface paths {
         put?: never;
         /** Requests an export of the organization's data (KVKK/GDPR). */
         post: operations["RequestOrganizationExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile, localization, tax (redacted), hours, closures and the notification matrix. */
+        get: operations["GetOrganizationSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/business-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces the whole week. Intervals may not overlap within a day. */
+        put: operations["ReplaceBusinessHours"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/closures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a date range the studio is closed. */
+        post: operations["AddBusinessClosure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/closures/{closureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Removes a closure. */
+        delete: operations["RemoveBusinessClosure"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/localization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Time zone, locale, currency and week start. The panel has none of these today. */
+        put: operations["UpdateOrganizationLocalization"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Turns one cell of the matrix on or off. Unavailable channels are refused. */
+        put: operations["SetNotificationPreference"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Renames the studio or changes its contact details. The slug never changes. */
+        put: operations["UpdateOrganizationProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every settings tile's counter, in one call. */
+        get: operations["GetOrganizationSettingsSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/settings/tax": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Tax and billing details. The identifier is encrypted and never read back. */
+        put: operations["UpdateOrganizationTaxProfile"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1054,17 +1496,189 @@ export interface components {
              */
             reason: string;
         };
+        BusinessClosurePeriod: {
+            /**
+             * Format: date
+             * @description Inclusive.
+             */
+            endsOn: string;
+            /**
+             * Format: uuid
+             * @description The closure.
+             */
+            id: string;
+            /** @description Shown to staff. */
+            reason: string;
+            /**
+             * Format: date
+             * @description Inclusive.
+             */
+            startsOn: string;
+        };
+        BusinessHourInterval: {
+            /**
+             * Format: time
+             * @description Local time. Must be after OpensAt.
+             */
+            closesAt: string;
+            /** @description Which day. */
+            dayOfWeek: components["schemas"]["DayOfWeek"];
+            /** @description Whether the studio actually opens. False keeps the times for later. */
+            isOpen: boolean;
+            /**
+             * Format: time
+             * @description Local time in the organization's zone.
+             */
+            opensAt: string;
+        };
+        BusinessHoursBody: {
+            /** @description The complete week. Anything omitted is deleted. */
+            intervals: components["schemas"]["BusinessHourInterval"][];
+        };
+        /** @description What is pointing at a catalog entry, and therefore what deleting it would do. */
+        CatalogEntryUsage: {
+            /**
+             * @description Whether an unqualified delete would succeed. False does <b>not</b> mean the studio is stuck —
+             *     deactivating always works for a non-system entry, and reassigning then deleting works too.
+             */
+            canDelete: boolean;
+            /**
+             * Format: uuid
+             * @description The entry asked about.
+             */
+            entryId: string;
+            /** @description Whether code resolves it. A system entry is never deletable. */
+            isSystem: boolean;
+            /** @description Per module and entity. Empty means nothing points at it. */
+            references: components["schemas"]["CatalogReference"][];
+        };
+        /** @description One module's answer to "is anything of mine pointing at this catalog entry?". */
+        CatalogReference: {
+            /**
+             * @description Whether these rows would be orphaned by a delete.
+             *                 Not every reference does. Historical rows — a stage transition, a delivered gift — record what
+             *     was true at the time and keep rendering from their own stored copy of the name, so deleting the
+             *     entry loses nothing. Live references — a member's interest, a class's category — would be left
+             *     pointing at nothing.
+             */
+            blocksDeletion: boolean;
+            /**
+             * Format: int32
+             * @description How many rows. Zero is a valid answer and means "not mine".
+             */
+            count: number | string;
+            /**
+             * @description The referencing entity, e.g. `Member`. A module may reference one catalog from several
+             *     entities — leads reference a stage from both the lead and its transition history — and the
+             *     counts have to stay distinguishable, because one of them blocks deletion and one does not.
+             */
+            entity: string;
+            /**
+             * @description The owning module, e.g. `Members`. Returned to the client so the conflict dialog can say
+             *     which screen to go and look at.
+             */
+            module: string;
+        };
+        /** @description Every catalog, in one response. */
+        CatalogSnapshot: {
+            /** @description How classes are grouped. */
+            classCategories: components["schemas"]["LabelledEntry"][];
+            /** @description What a studio gives away, with structured effects. */
+            giftTemplates: components["schemas"]["GiftTemplateEntry"][];
+            /** @description What leads and members are interested in. */
+            interests: components["schemas"]["LabelledEntry"][];
+            /** @description Where leads come from. */
+            leadSources: components["schemas"]["LeadSourceEntry"][];
+            /** @description The pipeline board's columns, in board order. */
+            leadStages: components["schemas"]["LeadStageEntry"][];
+            /** @description Sellable membership shapes. Prices omitted per permission. */
+            packageTemplates: components["schemas"]["PackageTemplateEntry"][];
+        };
         ChangePasswordRequest: {
             /** @description Proof the caller is the account holder rather than a stolen access token. */
             currentPassword: string;
             /** @description The replacement. Checked against the policy. */
             newPassword: string;
         };
+        ClosureBody: {
+            /**
+             * Format: date
+             * @description Inclusive.
+             */
+            endsOn: string;
+            /** @description Shown to staff. */
+            reason: string;
+            /**
+             * Format: date
+             * @description Inclusive.
+             */
+            startsOn: string;
+        };
         /** @enum {unknown} */
         DayOfWeek: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         ForgotPasswordRequest: {
             /** @description The address to send a reset link to, if it has an account. */
             email: string;
+        };
+        /**
+         * @description What granting a gift actually does.
+         * @enum {unknown}
+         */
+        GiftEffectType: "ExtendDays" | "AddSessions" | "FreeSession";
+        GiftTemplateBody: {
+            /** @description Optional free text. */
+            description: null | string;
+            /**
+             * Format: int32
+             * @description Days or sessions.
+             */
+            effectAmount: number | string;
+            /** @description What granting it does. */
+            effectType: components["schemas"]["GiftEffectType"];
+            /** @description Display text. */
+            name: string;
+        };
+        /** @description Something a studio gives away. */
+        GiftTemplateEntry: {
+            /**
+             * @description Free text, now purely descriptive. Kept because a studio explains a gift to itself in its own
+             *     words, and losing that on migration would be a regression — but nothing reads it.
+             */
+            description: null | string;
+            /**
+             * Format: int32
+             * @description Days or sessions, per EffectType.
+             */
+            effectAmount: number | string;
+            /** @description What granting it does. Replaces the panel's free-text description. */
+            effectType: components["schemas"]["GiftEffectType"];
+            /**
+             * Format: uuid
+             * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
+             */
+            id: string;
+            /**
+             * @description Whether the entry is load-bearing. System entries can be renamed and reordered but never
+             *     deleted or deactivated, because code resolves them.
+             */
+            isSystem: boolean;
+            /**
+             * @description The stable, server-transliterated, <b>immutable</b> identifier.
+             *                 Immutable because it is what a support engineer, a seed script and a bug report all name an
+             *     entry by; a key that follows a rename is a key that means something different in yesterday's
+             *     logs. Renaming the label is free and changes no key.
+             */
+            key: string;
+            /** @description Display text. */
+            name: string;
+            /**
+             * Format: int32
+             * @description Explicit position. The panel derives order from array position and then resolves stages by
+             *     `indexOf`, so reordering the list changes behaviour — this replaces both.
+             */
+            sortOrder: number | string;
+            /** @description Whether it is offered for new work. */
+            status: components["schemas"]["LifecycleStatus"];
         };
         /**
          * @description How an acceptance ended.
@@ -1108,6 +1722,141 @@ export interface components {
             phoneNumber?: null | string;
             /** @description What they are being invited as. */
             role: components["schemas"]["StaffRole"];
+        };
+        LabelBody: {
+            /** @description Display text. */
+            label: string;
+        };
+        /** @description An interest or a class category — a label and nothing else. */
+        LabelledEntry: {
+            /**
+             * Format: uuid
+             * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
+             */
+            id: string;
+            /**
+             * @description Whether the entry is load-bearing. System entries can be renamed and reordered but never
+             *     deleted or deactivated, because code resolves them.
+             */
+            isSystem: boolean;
+            /**
+             * @description The stable, server-transliterated, <b>immutable</b> identifier.
+             *                 Immutable because it is what a support engineer, a seed script and a bug report all name an
+             *     entry by; a key that follows a rename is a key that means something different in yesterday's
+             *     logs. Renaming the label is free and changes no key.
+             */
+            key: string;
+            /** @description Display text. */
+            label: string;
+            /**
+             * Format: int32
+             * @description Explicit position. The panel derives order from array position and then resolves stages by
+             *     `indexOf`, so reordering the list changes behaviour — this replaces both.
+             */
+            sortOrder: number | string;
+            /** @description Whether it is offered for new work. */
+            status: components["schemas"]["LifecycleStatus"];
+        };
+        LeadSourceBody: {
+            /** @description An Ionicons name. */
+            icon: string;
+            /** @description Display text. */
+            label: string;
+        };
+        /** @description Where a lead came from. */
+        LeadSourceEntry: {
+            /** @description An Ionicons name. Display-only. */
+            icon: string;
+            /**
+             * Format: uuid
+             * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
+             */
+            id: string;
+            /**
+             * @description Whether the entry is load-bearing. System entries can be renamed and reordered but never
+             *     deleted or deactivated, because code resolves them.
+             */
+            isSystem: boolean;
+            /**
+             * @description The stable, server-transliterated, <b>immutable</b> identifier.
+             *                 Immutable because it is what a support engineer, a seed script and a bug report all name an
+             *     entry by; a key that follows a rename is a key that means something different in yesterday's
+             *     logs. Renaming the label is free and changes no key.
+             */
+            key: string;
+            /** @description Display text. */
+            label: string;
+            /**
+             * Format: int32
+             * @description Explicit position. The panel derives order from array position and then resolves stages by
+             *     `indexOf`, so reordering the list changes behaviour — this replaces both.
+             */
+            sortOrder: number | string;
+            /** @description Whether it is offered for new work. */
+            status: components["schemas"]["LifecycleStatus"];
+        };
+        LeadStageBody: {
+            /** @description What a lead in this stage is called on its own row. */
+            statusLabel: string;
+            /** @description The board column heading. */
+            title: string;
+            /** @description One of `mint`, `warning`, `info`, `dark`. */
+            tone: string;
+        };
+        /** @description A column on the lead pipeline board. */
+        LeadStageEntry: {
+            /**
+             * Format: uuid
+             * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
+             */
+            id: string;
+            /**
+             * @description Whether the entry is load-bearing. System entries can be renamed and reordered but never
+             *     deleted or deactivated, because code resolves them.
+             */
+            isSystem: boolean;
+            /**
+             * @description The stable, server-transliterated, <b>immutable</b> identifier.
+             *                 Immutable because it is what a support engineer, a seed script and a bug report all name an
+             *     entry by; a key that follows a rename is a key that means something different in yesterday's
+             *     logs. Renaming the label is free and changes no key.
+             */
+            key: string;
+            semanticRole: null | components["schemas"]["LeadStageSemanticRole"];
+            /**
+             * Format: int32
+             * @description Explicit position. The panel derives order from array position and then resolves stages by
+             *     `indexOf`, so reordering the list changes behaviour — this replaces both.
+             */
+            sortOrder: number | string;
+            /** @description Whether it is offered for new work. */
+            status: components["schemas"]["LifecycleStatus"];
+            /**
+             * @description What a lead in this stage is called on its own row. The panel keeps the two separate — the
+             *     board says "Yüzyüze Görüşme", the lead says "Görüşme Planlandı" — so the model does too.
+             */
+            statusLabel: string;
+            /** @description The column heading on the pipeline board. */
+            title: string;
+            /** @description A display hint. Closed set, validated on write; carries no behaviour. */
+            tone: string;
+        };
+        /** @enum {unknown} */
+        LeadStageSemanticRole: "New" | "ToCall" | "Unreachable" | "CallBack" | "Interested" | "MeetingScheduled" | "TrialScheduled" | "OfferMade" | "Converted" | "Lost" | null;
+        /**
+         * @description Whether an entry is offered for new work. `Aktif` / `Pasif` in the panel.
+         * @enum {unknown}
+         */
+        LifecycleStatus: "Active" | "Inactive";
+        LocalizationBody: {
+            /** @description ISO 4217. Only TRY in v1. */
+            currency: string;
+            /** @description BCP 47. */
+            locale: string;
+            /** @description IANA. */
+            timeZoneId: string;
+            /** @description First calendar column. */
+            weekStartDay: components["schemas"]["DayOfWeek"];
         };
         LoginRequest: {
             /** @description Web or native. */
@@ -1198,6 +1947,211 @@ export interface components {
              *     assumed, because that is a property of the account and not of this endpoint's expectations.
              */
             isEmailVerified: boolean;
+        };
+        NotificationBody: {
+            /** @description How it is delivered. */
+            channel: components["schemas"]["NotificationChannel"];
+            /** @description Whether the studio wants it. */
+            isEnabled: boolean;
+            /** @description What it is about. */
+            topic: components["schemas"]["NotificationTopic"];
+        };
+        /**
+         * @description How a notification is delivered.
+         * @enum {unknown}
+         */
+        NotificationChannel: "Email" | "Sms" | "Push";
+        NotificationPreference: {
+            /** @description How it is delivered. */
+            channel: components["schemas"]["NotificationChannel"];
+            /**
+             * @description Whether the product can deliver over this channel at all. `false` means the
+             *     panel renders it as unavailable rather than as a switch — a toggle with no sender behind it is
+             *     a promise the product does not keep.
+             */
+            isAvailable: boolean;
+            /** @description Whether the studio wants it. */
+            isEnabled: boolean;
+            /** @description What it is about. */
+            topic: components["schemas"]["NotificationTopic"];
+        };
+        /**
+         * @description What a notification is about.
+         * @enum {unknown}
+         */
+        NotificationTopic: "NewLead" | "PaymentReceived" | "AppointmentReminder" | "WeeklyDigest";
+        /** @description The organization-local settings every date and number derives from. */
+        OrganizationLocalization: {
+            /** @description ISO 4217. Only TRY is supported in v1; the column ships from day one. */
+            currency: string;
+            /** @description BCP 47, for formatting the client cannot infer from the device. */
+            locale: string;
+            /**
+             * @description IANA. <b>Load-bearing, not cosmetic</b> — "today's sessions", "revenue this month" and the
+             *     program month are organization-local questions, and the panel currently answers them from the
+             *     device clock, so two staff in different zones disagree about what day it is.
+             */
+            timeZoneId: string;
+            /** @description First column of the calendar. Monday in Türkiye. */
+            weekStartDay: components["schemas"]["DayOfWeek"];
+        };
+        /** @description The studio's own details. The single source of the name the panel duplicates today. */
+        OrganizationProfile: {
+            /** @description Free text. One field, not a structured address — Turkish addresses do not decompose cleanly. */
+            address: null | string;
+            /** @description Who to ask for. */
+            contactPersonName: null | string;
+            /** @description Object-storage key, never a URL. Null until one is uploaded. */
+            logoObjectKey: null | string;
+            /** @description Trading name. */
+            name: string;
+            /** @description Contact number, as typed. */
+            phoneNumber: null | string;
+        };
+        /** @description Everything the settings screen reads, in one response. */
+        OrganizationSettings: {
+            /** @description Weekly opening intervals. */
+            businessHours: components["schemas"]["BusinessHourInterval"][];
+            /** @description Upcoming and current closures. Past ones are omitted. */
+            closures: components["schemas"]["BusinessClosurePeriod"][];
+            /** @description Time zone, locale, currency, week start. */
+            localization: components["schemas"]["OrganizationLocalization"];
+            /** @description The full matrix, including unavailable channels. */
+            notifications: components["schemas"]["NotificationPreference"][];
+            /** @description The studio's details. */
+            profile: components["schemas"]["OrganizationProfile"];
+            /** @description Tax profile, identifier redacted. */
+            tax: components["schemas"]["TaxProfileSummary"];
+        };
+        /** @description The counters behind the settings screen's tiles, in one call. */
+        OrganizationSettingsSummary: {
+            /**
+             * Format: int32
+             * @description Replaces the panel's "Sorumlular" count.
+             */
+            activeStaffMembers: number | string;
+            /**
+             * Format: int32
+             * @description Cells that could be enabled — the denominator the panel shows.
+             */
+            availableNotifications: number | string;
+            /**
+             * Format: int32
+             * @description How classes are grouped.
+             */
+            classCategories: number | string;
+            /**
+             * Format: int32
+             * @description Enabled cells of the matrix.
+             */
+            enabledNotifications: number | string;
+            /**
+             * Format: int32
+             * @description Gifts with structured effects.
+             */
+            giftTemplates: number | string;
+            /**
+             * Format: int32
+             * @description What leads and members want.
+             */
+            interests: number | string;
+            /**
+             * Format: int32
+             * @description Where leads come from.
+             */
+            leadSources: number | string;
+            /**
+             * Format: int32
+             * @description Pipeline board columns.
+             */
+            leadStages: number | string;
+            /**
+             * Format: int32
+             * @description How many weekdays the studio opens, of seven.
+             */
+            openDays: number | string;
+            /**
+             * Format: int32
+             * @description Sellable membership shapes.
+             */
+            packageTemplates: number | string;
+            /**
+             * Format: int32
+             * @description Closures that have not ended yet.
+             */
+            upcomingClosures: number | string;
+        };
+        PackageTemplateBody: {
+            /**
+             * Format: int32
+             * @description How long the membership runs.
+             */
+            durationDays: number | string;
+            /** @description Display text. */
+            name: string;
+            /**
+             * Format: double
+             * @description A decimal, never a formatted string.
+             */
+            price: number | string;
+            /**
+             * Format: int32
+             * @description Null means unlimited.
+             */
+            sessionCount: null | number | string;
+        };
+        /** @description A sellable membership shape. */
+        PackageTemplateEntry: {
+            /** @description ISO 4217. Present whenever Price is. */
+            currency: null | string;
+            /**
+             * Format: int32
+             * @description How long the membership runs. Always set.
+             */
+            durationDays: number | string;
+            /**
+             * Format: uuid
+             * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
+             */
+            id: string;
+            /**
+             * @description Whether the entry is load-bearing. System entries can be renamed and reordered but never
+             *     deleted or deactivated, because code resolves them.
+             */
+            isSystem: boolean;
+            /**
+             * @description The stable, server-transliterated, <b>immutable</b> identifier.
+             *                 Immutable because it is what a support engineer, a seed script and a bug report all name an
+             *     entry by; a key that follows a rename is a key that means something different in yesterday's
+             *     logs. Renaming the label is free and changes no key.
+             */
+            key: string;
+            /** @description Display text. */
+            name: string;
+            /**
+             * Format: double
+             * @description <b>
+             *       `null` when the caller may not see money.</b>
+             *     `catalogs.read` does not
+             *             imply `members.financial.read`, so a coach browsing packages to explain one to a member
+             *             gets the name, the session count and the term, and no price. Omitted at the query, not blanked
+             *             in the client.
+             */
+            price: null | number | string;
+            /**
+             * Format: int32
+             * @description `null` means unlimited, which is a real package shape ("Gold Paket") and not
+             *             missing data.
+             */
+            sessionCount: null | number | string;
+            /**
+             * Format: int32
+             * @description Explicit position. The panel derives order from array position and then resolves stages by
+             *     `indexOf`, so reordering the list changes behaviour — this replaces both.
+             */
+            sortOrder: number | string;
+            /** @description Whether it is offered for new work. */
+            status: components["schemas"]["LifecycleStatus"];
         };
         /** @description An invitation that has neither been accepted nor withdrawn. */
         PendingInvitation: {
@@ -1304,6 +2258,16 @@ export interface components {
             title?: null | string;
             type?: null | string;
         };
+        ProfileBody: {
+            /** @description Optional free text. */
+            address: null | string;
+            /** @description Optional. */
+            contactPersonName: null | string;
+            /** @description Trading name. Required. */
+            name: string;
+            /** @description Optional. */
+            phoneNumber: null | string;
+        };
         RefreshRequest: {
             /** @description Native clients only; web clients send the cookie. */
             refreshHandle: null | string;
@@ -1321,6 +2285,10 @@ export interface components {
             organizationName: string;
             /** @description Checked against the policy before anything is written. */
             password: string;
+        };
+        ReorderBody: {
+            /** @description Every entry in the catalog, exactly once, in the new order. */
+            orderedEntryIds: string[];
         };
         ResendVerificationRequest: {
             /** @description The address to re-send to. */
@@ -1348,6 +2316,10 @@ export interface components {
          * @enum {unknown}
          */
         StaffStatus: "Active" | "OnLeave" | "Inactive" | "Invited";
+        StatusBody: {
+            /** @description Active or Inactive. */
+            status: components["schemas"]["LifecycleStatus"];
+        };
         /** @description One break-glass event, with the studio it was opened against. */
         SupportAuditEvent: {
             /** @description The audit row. */
@@ -1411,6 +2383,38 @@ export interface components {
              */
             userId: null | string;
         };
+        TaxProfileBody: {
+            /** @description Where invoices go. */
+            billingAddress: null | string;
+            /** @description Registered company name. */
+            companyTitle: null | string;
+            /**
+             * @description VKN or TCKN. <b>Null leaves the stored one alone</b>, so a form that never displays it can save
+             *     the other fields; an empty string clears it.
+             */
+            taxIdentifier: null | string;
+            /** @description Administrative detail. */
+            taxOffice: null | string;
+        };
+        /** @description The tax profile, <b>with the identifier redacted</b>. */
+        TaxProfileSummary: {
+            /** @description Where invoices go. */
+            billingAddress: null | string;
+            /** @description Object-storage key of the uploaded certificate. */
+            certificateObjectKey: null | string;
+            /** @description Registered company name. */
+            companyTitle: null | string;
+            /** @description Whether one is stored at all, which the digits alone cannot say. */
+            hasTaxIdentifier: boolean;
+            /**
+             * @description The last two digits, so somebody can confirm the right number is stored. <b>The full identifier
+             *     is never returned</b> — it is special-category data under KVKK and the screen does not need it
+             *     to render.
+             */
+            taxIdentifierLastDigits: null | string;
+            /** @description Administrative detail, not sensitive. */
+            taxOffice: null | string;
+        };
         VerifyEmailRequest: {
             /** @description The handle from the verification link. */
             token: string;
@@ -1424,6 +2428,727 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    GetCatalogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSnapshot"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateClassCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelledEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateClassCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelledEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateGiftTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiftTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GiftTemplateEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateGiftTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiftTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GiftTemplateEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateInterest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelledEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateInterest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelledEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateLeadSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadSourceBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadSourceEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateLeadSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadSourceBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadSourceEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateLeadStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadStageBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadStageEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateLeadStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadStageBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadStageEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreatePackageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageTemplateEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdatePackageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageTemplateEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReorderCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteCatalogEntry: {
+        parameters: {
+            query?: {
+                reassignTo?: string;
+            };
+            header?: never;
+            path: {
+                kind: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetCatalogEntryStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCatalogEntryUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetMe: {
         parameters: {
             query?: never;
@@ -1507,6 +3232,368 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetOrganizationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSettings"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReplaceBusinessHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessHoursBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddBusinessClosure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosureBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessClosurePeriod"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RemoveBusinessClosure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                closureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateOrganizationLocalization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocalizationBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationLocalization"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetNotificationPreference: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateOrganizationProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationProfile"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetOrganizationSettingsSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSettingsSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateOrganizationTaxProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxProfileBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxProfileSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
