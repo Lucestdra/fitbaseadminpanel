@@ -1,89 +1,171 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { teamMembers } from '@/mock/team';
-import { ROLE_LABEL, type AuthUser, type SignUpInput } from '@/types/auth';
-import type { TeamRole } from '@/types/team';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import * as api from '@/api/session';
+import { refreshSession, setSessionLostHandler } from '@/api/client';
+import { clearTokens } from '@/api/tokens';
+import { ROLE_LABEL, toTeamRole, type AuthUser } from '@/types/auth';
+
+/** Where the bootstrap got to. Rendering the tree before this settles is what causes a flash. */
+export type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
 interface AuthContextValue {
+  status: AuthStatus;
+
+  /** The signed-in person, shaped for the screens that already read it. Null when signed out. */
   user: AuthUser | null;
+
+  /** The studio's name. One source now — `me.organization.name` — rather than three copies. */
   studioName: string;
+
   roleLabel: string;
-  signInWithEmail: (email: string) => AuthUser | null;
-  signInAsRole: (role: TeamRole) => AuthUser | null;
-  signUp: (input: SignUpInput) => AuthUser;
-  signOut: () => void;
-  updateUser: (user: AuthUser) => void;
+
+  /** Nav ids the server says this caller reaches, in sidebar order. */
+  allowedNavIds: string[];
+
+  /** Where to go after signing in: the first screen the server listed. */
+  landingRoute: string;
+
+  /** Permission string → scope. Only what the caller holds; absence is how something is denied. */
+  permissions: Record<string, string>;
+
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+
+  /** Re-reads `/me`. Called after anything that can change a permission. */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function toAuthUser(member: (typeof teamMembers)[number]): AuthUser {
+const EMPTY_PERMISSIONS: Record<string, string> = {};
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [status, setStatus] = useState<AuthStatus>('loading');
+  const [me, setMe] = useState<api.MeResponse | null>(null);
+
+  const load = useCallback(async () => {
+    const session = await api.fetchMe();
+    setMe(session);
+    setStatus('signedIn');
+  }, []);
+
+  // A session can end underneath any request — revoked from another device, a password changed,
+  // a permission version the refresh could not catch up with. The client clears its tokens and
+  // calls this; without it every screen would have to notice a 401 for itself.
+  useEffect(() => {
+    setSessionLostHandler(() => {
+      setMe(null);
+      setStatus('signedOut');
+    });
+
+    return () => setSessionLostHandler(() => {});
+  }, []);
+
+  // Bootstrap. On web the refresh cookie may already hold a session from a previous visit, and on
+  // native SecureStore may hold a handle — so the app asks before deciding nobody is signed in.
+  // Until this settles the tree renders a splash rather than the sign-in screen, because showing
+  // sign-in to somebody who is already signed in is the flash this exists to prevent.
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        if (await refreshSession()) {
+          if (!cancelled) {
+            await load();
+          }
+          return;
+        }
+      } catch {
+        // Falls through to signed out. A bootstrap that threw would leave the app on its splash
+        // for ever, which is worse than asking somebody to sign in again.
+      }
+
+      if (!cancelled) {
+        setStatus('signedOut');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      await api.signIn(email, password);
+      await load();
+    },
+    [load],
+  );
+
+  const signOut = useCallback(async () => {
+    await api.signOut();
+    await clearTokens();
+    setMe(null);
+    setStatus('signedOut');
+  }, []);
+
+  const value = useMemo<AuthContextValue>(() => {
+    const navigation = me?.navigation ?? [];
+
+    return {
+      status,
+      user: me ? toAuthUser(me) : null,
+      studioName: me?.organization.name ?? '',
+      roleLabel: me ? ROLE_LABEL[toTeamRole(me.staffMember.role)] : '',
+      allowedNavIds: navigation.map((entry) => entry.id),
+
+      // The server's first entry, not a client-side role map. A caller whose permissions change
+      // lands somewhere different without this app being redeployed.
+      landingRoute: navigation[0]?.route ?? '/',
+      permissions: me?.permissions ?? EMPTY_PERMISSIONS,
+      signIn,
+      signOut,
+      refresh: load,
+    };
+  }, [me, status, signIn, signOut, load]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/**
+ * Adapts the wire shape to what the screens already read.
+ *
+ * ADR-0012: the wire carries English `PascalCase` and this app holds the Turkish labels. The
+ * adapter lives here so that exactly one place knows both vocabularies.
+ */
+function toAuthUser(me: api.MeResponse): AuthUser {
   return {
-    id: member.id,
-    name: member.name,
-    role: member.role,
-    avatarInitials: member.avatarInitials,
-    email: member.email,
-    phone: member.phone,
-    specialty: member.specialty,
+    id: me.staffMember.id,
+    name: me.staffMember.fullName,
+    role: toTeamRole(me.staffMember.role),
+    avatarInitials: initialsOf(me.staffMember.fullName),
+    email: me.user.email,
+
+    // Not on `/me` yet: the roster's phone number and specialty arrive with the settings surface
+    // in Phase 2.1. Empty rather than invented, so a blank field reads as "not loaded" rather than
+    // as "the studio never filled this in".
+    phone: '',
+    specialty: null,
   };
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [studioName, setStudioName] = useState('Fitbase Studio');
-
-  const value = useMemo<AuthContextValue>(() => {
-    const findByRole = (role: TeamRole) =>
-      teamMembers.find((member) => member.role === role && member.status === 'aktif') ??
-      teamMembers.find((member) => member.role === role) ??
-      null;
-
-    return {
-      user,
-      studioName,
-      roleLabel: user ? ROLE_LABEL[user.role] : '',
-      signInWithEmail: (email) => {
-        const normalized = email.trim().toLocaleLowerCase('tr');
-        const match = teamMembers.find((member) => member.email.toLocaleLowerCase('tr') === normalized);
-        if (!match) return null;
-        const authUser = toAuthUser(match);
-        setUser(authUser);
-        return authUser;
-      },
-      signInAsRole: (role) => {
-        const match = findByRole(role);
-        if (!match) return null;
-        const authUser = toAuthUser(match);
-        setUser(authUser);
-        return authUser;
-      },
-      signUp: (input) => {
-        const initials = input.name
-          .trim()
-          .split(' ')
-          .map((part) => part[0])
-          .join('')
-          .slice(0, 2)
-          .toLocaleUpperCase('tr');
-        const authUser: AuthUser = {
-          id: `user-${Date.now()}`,
-          name: input.name.trim(),
-          role: 'yonetici',
-          avatarInitials: initials,
-          email: input.email.trim(),
-          phone: input.phone.trim(),
-          specialty: null,
-        };
-        setStudioName(input.studioName.trim() || 'Fitbase Studio');
-        setUser(authUser);
-        return authUser;
-      },
-      signOut: () => setUser(null),
-      updateUser: (updated) => setUser(updated),
-    };
-  }, [user, studioName]);
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+function initialsOf(fullName: string): string {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toLocaleUpperCase('tr');
 }
 
 export function useAuth(): AuthContextValue {

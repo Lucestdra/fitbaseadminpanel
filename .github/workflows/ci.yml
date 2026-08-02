@@ -35,3 +35,18 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # The committed types must be what the committed contract generates. Catches two things a
+      # typecheck cannot: a hand-edit to src/api/schema.d.ts, and a contract synced from the
+      # backend without regenerating — which would leave the app compiling against an API shape
+      # that no longer exists.
+      #
+      # Deliberately not `api:sync`: syncing reaches into the backend and is a decision somebody
+      # makes with a diff in front of them, not something CI does on their behalf.
+      - name: Generated API types are current
+        run: |
+          npm run api:generate
+          if ! git diff --exit-code -- src/api/schema.d.ts; then
+            echo "::error::src/api/schema.d.ts is stale. Run 'npm run api:generate' and commit the result."
+            exit 1
+          fi

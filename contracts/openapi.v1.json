@@ -1,0 +1,2046 @@
+{
+  "components": {
+    "schemas": {
+      "AcceptInvitationRequest": {
+        "properties": {
+          "acceptedKvkkNotice": {
+            "description": "Required on the new-account path.",
+            "type": "boolean"
+          },
+          "clientKind": {
+            "$ref": "#/components/schemas/SessionClientKind",
+            "description": "Web or native, deciding where the refresh handle goes."
+          },
+          "fullName": {
+            "description": "Their name, as they want it shown.",
+            "type": "string"
+          },
+          "password": {
+            "description": "Used only when the invited address has no account yet.",
+            "type": "string"
+          },
+          "token": {
+            "description": "The handle from the invitation link.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "fullName",
+          "password",
+          "acceptedKvkkNotice"
+        ],
+        "type": "object"
+      },
+      "AcceptInvitationResponse": {
+        "properties": {
+          "authentication": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AuthenticationResponse",
+                "description": "Null when an existing account was linked — the client sends them to the sign-in screen.\r\nAccepting an invitation deliberately does not mint a session for an account whose password the\r\nholder of the link has not proven they know."
+              }
+            ]
+          },
+          "organizationName": {
+            "description": "The studio they joined.",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/InvitationAcceptance",
+            "description": "Whether a new account was created and signed in, or an existing one was linked to the roster."
+          }
+        },
+        "required": [
+          "outcome",
+          "organizationName",
+          "authentication"
+        ],
+        "type": "object"
+      },
+      "AuditAction": {
+        "description": "What kind of thing happened. Stored as a string, so adding one is a code change with no\r\nmigration and reading the table needs no lookup.",
+        "enum": [
+          "Created",
+          "Updated",
+          "Deleted",
+          "Invited",
+          "PermissionChanged",
+          "ConnectionChanged",
+          "ComplianceRequested",
+          "PlatformAction",
+          "BreakGlassOpened"
+        ]
+      },
+      "AuditEventSummary": {
+        "description": "One audit row, as another module or the API may read it.",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/AuditAction",
+            "description": "What kind of thing happened."
+          },
+          "actorStaffMemberId": {
+            "description": "Who. Null for a platform operator, who is on no roster — see ActorUserId.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorUserId": {
+            "description": "The account behind the actor. Present even when the staff member id is not, which is how a\r\nplatform operator's actions are attributable at all.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Scalars describing the change. Never content (ADR-0057's rule).",
+            "type": "object"
+          },
+          "occurredAt": {
+            "description": "When. Also the partition key, so it is never null and never updated.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "resourceId": {
+            "description": "Which row, when the action named one.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resourceKind": {
+            "description": "The table or aggregate, in `schema.table` form.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Short machine-readable description from a closed set.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurredAt",
+          "action",
+          "resourceKind",
+          "resourceId",
+          "summary",
+          "actorStaffMemberId",
+          "actorUserId",
+          "metadata"
+        ],
+        "type": "object"
+      },
+      "AuthenticationResponse": {
+        "properties": {
+          "accessToken": {
+            "description": "Bearer token for the API.",
+            "type": "string"
+          },
+          "accessTokenExpiresAt": {
+            "description": "When it stops working.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "The studio the session is acting in.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "refreshHandle": {
+            "description": "Null for web clients, whose handle went into a `HttpOnly` cookie the response body must\r\nnot duplicate — a handle in the body is a handle in script's reach, which is exactly what the\r\ncookie flag was for.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "staffMemberId": {
+            "description": "The caller's roster row.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshHandle",
+          "organizationId",
+          "staffMemberId"
+        ],
+        "type": "object"
+      },
+      "BreakGlassRequest": {
+        "description": "Opening break-glass access.",
+        "properties": {
+          "reason": {
+            "description": "Why, in the operator's own words. CLAUDE.md §6 requires a reason; it is stored in the audit\r\nrow's metadata rather than its summary, because the summary is a closed vocabulary the trail is\r\nqueried by and free text there would make \"how often is break-glass used\" unanswerable.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "currentPassword": {
+            "description": "Proof the caller is the account holder rather than a stolen access token.",
+            "type": "string"
+          },
+          "newPassword": {
+            "description": "The replacement. Checked against the policy.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object"
+      },
+      "DayOfWeek": {
+        "enum": [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday"
+        ]
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "description": "The address to send a reset link to, if it has an account.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "InvitationAcceptance": {
+        "description": "How an acceptance ended.",
+        "enum": [
+          "SignedIn",
+          "AccountLinked"
+        ]
+      },
+      "InvitationPreview": {
+        "description": "What the acceptance screen renders before anybody types anything.",
+        "properties": {
+          "email": {
+            "description": "The invited address. Fixed; accepting cannot change it.",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When the link stops working.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "What the inviter typed. Editable — it is the invitee's name.",
+            "type": "string"
+          },
+          "organizationName": {
+            "description": "The studio they are joining.",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole",
+            "description": "What they are being invited as."
+          }
+        },
+        "required": [
+          "organizationName",
+          "email",
+          "fullName",
+          "role",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "InvitationResponse": {
+        "description": "An invitation, <b>without</b> its token.",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "invitationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
+          },
+          "staffMemberId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invitationId",
+          "staffMemberId",
+          "fullName",
+          "email",
+          "role",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "InviteStaffMemberBody": {
+        "properties": {
+          "email": {
+            "description": "Where the invitation goes, and their future login identifier.",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "Their name, as the inviter types it. The invitee may correct it.",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole",
+            "description": "What they are being invited as."
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "role"
+        ],
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "clientKind": {
+            "$ref": "#/components/schemas/SessionClientKind",
+            "description": "Web or native."
+          },
+          "email": {
+            "description": "The account.",
+            "type": "string"
+          },
+          "password": {
+            "description": "Their password.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "MeNavigationEntry": {
+        "properties": {
+          "id": {
+            "description": "The nav id the panel already uses, kept identical so migrating is a data change.",
+            "type": "string"
+          },
+          "route": {
+            "description": "The Expo Router path.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "route"
+        ],
+        "type": "object"
+      },
+      "MeOrganization": {
+        "properties": {
+          "currency": {
+            "description": "ISO 4217.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The tenant boundary.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "locale": {
+            "description": "BCP 47, for formatting the client cannot infer from the device.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The single source of the studio name the panel duplicates across three files.",
+            "type": "string"
+          },
+          "timeZoneId": {
+            "description": "Load-bearing. \"Today's sessions\" and \"revenue this month\" are organization-local questions, and\r\nthe panel currently answers them from the device clock — so two staff members in different\r\nzones disagree about what day it is.",
+            "type": "string"
+          },
+          "weekStartDay": {
+            "$ref": "#/components/schemas/DayOfWeek",
+            "description": "First day of the week for calendar rendering."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "timeZoneId",
+          "locale",
+          "currency",
+          "weekStartDay"
+        ],
+        "type": "object"
+      },
+      "MeResponse": {
+        "properties": {
+          "navigation": {
+            "description": "The screens this caller reaches, in sidebar order. Server-owned, so the panel stops keeping its\r\nown copy of the role-to-screen map.",
+            "items": {
+              "$ref": "#/components/schemas/MeNavigationEntry"
+            },
+            "type": "array"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/MeOrganization",
+            "description": "The studio the session is acting in."
+          },
+          "permissionVersion": {
+            "description": "What the server currently holds. A client comparing this against its token's `pv` can\r\nrefresh before a request fails, rather than after.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "permissions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PermissionScope"
+            },
+            "description": "Permission string → scope, containing only what the caller holds. Absence is how something is\r\nnot granted; there are no `\"None\"` entries.",
+            "type": "object"
+          },
+          "staffMember": {
+            "$ref": "#/components/schemas/MeStaffMember",
+            "description": "The caller's roster row — the assignment key (ADR-0016)."
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeUser",
+            "description": "The account."
+          }
+        },
+        "required": [
+          "user",
+          "organization",
+          "staffMember",
+          "permissionVersion",
+          "permissions",
+          "navigation"
+        ],
+        "type": "object"
+      },
+      "MeStaffMember": {
+        "properties": {
+          "fullName": {
+            "description": "Display name on the roster.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The roster row — the assignment key (ADR-0016), not the account id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole",
+            "description": "Their role in this studio."
+          },
+          "status": {
+            "$ref": "#/components/schemas/StaffStatus",
+            "description": "Whether they may act."
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "role",
+          "status"
+        ],
+        "type": "object"
+      },
+      "MeUser": {
+        "properties": {
+          "email": {
+            "description": "As the person typed it.",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The account.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isEmailVerified": {
+            "description": "False is unreachable here — the sign-in path refuses first — but it is reported rather than\r\nassumed, because that is a property of the account and not of this endpoint's expectations.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "fullName",
+          "isEmailVerified"
+        ],
+        "type": "object"
+      },
+      "PendingInvitation": {
+        "description": "An invitation that has neither been accepted nor withdrawn.",
+        "properties": {
+          "createdAt": {
+            "description": "When it was sent.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "email": {
+            "description": "Where the invitation went.",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When the token stops working.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "The invitee's name, as the inviter typed it.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The invitation row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isExpired": {
+            "description": "Derived, never stored. A stored flag would be wrong from the moment it was written until\r\nsomething remembered to update it — the same mistake the panel makes with\r\n`renewalDaysLeft`.",
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole",
+            "description": "What they were invited as."
+          },
+          "staffMemberId": {
+            "description": "The roster row it will activate.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "staffMemberId",
+          "fullName",
+          "email",
+          "role",
+          "createdAt",
+          "expiresAt",
+          "isExpired"
+        ],
+        "type": "object"
+      },
+      "PermissionScope": {
+        "description": "How widely a granted permission reaches within the caller's organization.",
+        "enum": [
+          "None",
+          "Own",
+          "All"
+        ]
+      },
+      "PlatformEnrolment": {
+        "description": "A freshly generated TOTP secret, shown exactly once.",
+        "properties": {
+          "enrolmentUri": {
+            "description": "The `otpauth://` URI an authenticator app scans.",
+            "type": "string"
+          },
+          "secret": {
+            "description": "Base32, for an operator typing it in by hand.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "enrolmentUri"
+        ],
+        "type": "object"
+      },
+      "PlatformEnrolmentRequest": {
+        "description": "Starting TOTP enrolment. Password only — the code does not exist yet.",
+        "properties": {
+          "email": {
+            "description": "The operator's account address.",
+            "type": "string"
+          },
+          "password": {
+            "description": "Their account password.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "PlatformOperatorResponse": {
+        "description": "Who the caller is on the platform surface.",
+        "properties": {
+          "email": {
+            "description": "Their address.",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "Their name.",
+            "type": "string"
+          },
+          "operatorId": {
+            "description": "The grant this token acts under.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "permissions": {
+            "description": "What they may do. Advisory — every one is re-checked on the request that uses it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "operatorId",
+          "email",
+          "fullName",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "PlatformSignInRequest": {
+        "description": "Signing in, or confirming enrolment. Both need all three.",
+        "properties": {
+          "email": {
+            "description": "The operator's account address.",
+            "type": "string"
+          },
+          "password": {
+            "description": "Their account password.",
+            "type": "string"
+          },
+          "totpCode": {
+            "description": "Six digits from their authenticator.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "totpCode"
+        ],
+        "type": "object"
+      },
+      "PlatformTokens": {
+        "description": "What a successful platform sign-in hands back.",
+        "properties": {
+          "accessToken": {
+            "description": "Short-lived bearer token on the `fitbase-admin` audience.",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When it stops working. There is nothing to renew it with.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "operatorId": {
+            "description": "The grant this token acts under.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "permissions": {
+            "description": "The platform permissions the operator holds, for the client to shape its own navigation.\r\nAdvisory: every one is re-checked server-side on the request that uses it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt",
+          "operatorId",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "ProblemDetails": {
+        "properties": {
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "RefreshRequest": {
+        "properties": {
+          "refreshHandle": {
+            "description": "Native clients only; web clients send the cookie.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "refreshHandle"
+        ],
+        "type": "object"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "acceptedKvkkNotice": {
+            "description": "Whether the aydınlatma metni was acknowledged.",
+            "type": "boolean"
+          },
+          "clientKind": {
+            "$ref": "#/components/schemas/SessionClientKind",
+            "description": "Web or native, deciding where the refresh handle goes."
+          },
+          "email": {
+            "description": "Their address.",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "The owner's name.",
+            "type": "string"
+          },
+          "organizationName": {
+            "description": "The studio's name.",
+            "type": "string"
+          },
+          "password": {
+            "description": "Checked against the policy before anything is written.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organizationName",
+          "fullName",
+          "email",
+          "password",
+          "acceptedKvkkNotice"
+        ],
+        "type": "object"
+      },
+      "ResendVerificationRequest": {
+        "properties": {
+          "email": {
+            "description": "The address to re-send to.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "password": {
+            "description": "The new password. Checked against the policy.",
+            "type": "string"
+          },
+          "token": {
+            "description": "The handle from the reset link.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "type": "object"
+      },
+      "SessionClientKind": {
+        "default": "Web",
+        "description": "Where a session is being used from. Decides how the refresh handle is carried.",
+        "enum": [
+          "Web",
+          "Native"
+        ]
+      },
+      "StaffRole": {
+        "description": "A role held by a staff member <i>within an organization</i>.",
+        "enum": [
+          "OrganizationManager",
+          "SalesFinanceConsultant",
+          "Coach"
+        ]
+      },
+      "StaffStatus": {
+        "description": "A staff member's state on the roster.",
+        "enum": [
+          "Active",
+          "OnLeave",
+          "Inactive",
+          "Invited"
+        ]
+      },
+      "SupportAuditEvent": {
+        "description": "One break-glass event, with the studio it was opened against.",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/AuditEventSummary",
+            "description": "The audit row."
+          },
+          "organizationId": {
+            "description": "Which studio. Never null for this action.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "organizationId"
+        ],
+        "type": "object"
+      },
+      "SupportOrganizationSnapshot": {
+        "description": "What a break-glass session reads about one studio.",
+        "properties": {
+          "createdAt": {
+            "description": "When it registered.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletionRequestedAt": {
+            "description": "When deletion was requested, or null.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locale": {
+            "description": "Its BCP 47 locale.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Its name.",
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "The studio.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "slug": {
+            "description": "Its URL-safe identifier.",
+            "type": "string"
+          },
+          "staff": {
+            "description": "Its roster.",
+            "items": {
+              "$ref": "#/components/schemas/SupportStaffMember"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Its lifecycle state.",
+            "type": "string"
+          },
+          "timeZoneId": {
+            "description": "Its IANA time zone.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organizationId",
+          "name",
+          "slug",
+          "status",
+          "timeZoneId",
+          "locale",
+          "createdAt",
+          "deletionRequestedAt",
+          "staff"
+        ],
+        "type": "object"
+      },
+      "SupportStaffMember": {
+        "description": "One roster row, as a support session sees it.",
+        "properties": {
+          "email": {
+            "description": "Their address, which is how a support conversation identifies them.",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "Their name.",
+            "type": "string"
+          },
+          "isOwner": {
+            "description": "Whether they are the studio's owner.",
+            "type": "boolean"
+          },
+          "role": {
+            "description": "Their role, as a wire enum name.",
+            "type": "string"
+          },
+          "staffMemberId": {
+            "description": "The assignment key (ADR-0016).",
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "description": "Their roster state.",
+            "type": "string"
+          },
+          "userId": {
+            "description": "Their account, or null if they have not accepted an invitation yet.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "staffMemberId",
+          "userId",
+          "fullName",
+          "email",
+          "role",
+          "status",
+          "isOwner"
+        ],
+        "type": "object"
+      },
+      "VerifyEmailRequest": {
+        "properties": {
+          "token": {
+            "description": "The handle from the verification link.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "Access token on the `fitbase-app` audience. Short-lived; renewed through `POST /api/v1/auth/refresh`.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "platformBearer": {
+        "bearerFormat": "JWT",
+        "description": "Access token on the `fitbase-admin` audience (ADR-0022). Minted only by the admin sign-in flow, which requires a password and a TOTP code, and accepted only under `/api/v1/admin`. It carries no organization and does not refresh: when it expires the operator signs in again.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "FitBase.Api | v1",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.1",
+  "paths": {
+    "/api/v1/admin/auth/enrolment": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformEnrolmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformEnrolment"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Generates a TOTP secret and returns it once. Refused once one is confirmed.",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/enrolment/confirm": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformSignInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTokens"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Proves the secret reached an authenticator, and signs the operator in.",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/sign-in": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformSignInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTokens"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Signs in with a password and a code. No refresh handle is issued.",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/break-glass": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SupportAuditEvent"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "The break-glass trail across every studio. How operators are audited.",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/me": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformOperatorResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "The operator behind the token, and what they may do.",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/organizations/{organizationId}/break-glass": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organizationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreakGlassRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportOrganizationSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Records the access, then reads one studio's metadata read-only.",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Changes a password, sparing the calling session.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Starts a password reset. Answers 202 whether or not the address exists.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/invitations/accept": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInvitationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Accepts an invitation. Issues a session only for a new account.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/invitations/{token}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "What an invitation is for, before anybody types anything.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Signs in with a password.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Ends the current session and clears the refresh cookie.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RefreshRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Exchanges a refresh handle for a new pair.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Creates a studio and its owner. Answers 202 either way.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Re-sends a verification link. Answers 202 for an unknown address too.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Sets a new password from a reset link, revoking every session.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/verify-email": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Confirms an address, which is what unblocks first login.",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "GetMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The signed-in caller, their studio, and what they may do.",
+        "tags": [
+          "Me"
+        ]
+      }
+    },
+    "/api/v1/organization/deletion": {
+      "post": {
+        "operationId": "RequestOrganizationDeletion",
+        "responses": {
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Requests deletion of the organization, starting the recovery window.",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/organization/export": {
+      "post": {
+        "operationId": "RequestOrganizationExport",
+        "responses": {
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "summary": "Requests an export of the organization's data (KVKK/GDPR).",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/staff/invitations": {
+      "get": {
+        "operationId": "ListPendingInvitations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PendingInvitation"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Invitations that have neither been accepted nor withdrawn.",
+        "tags": [
+          "Staff"
+        ]
+      },
+      "post": {
+        "operationId": "InviteStaffMember",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteStaffMemberBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Invites somebody onto the roster and mails them a link.",
+        "tags": [
+          "Staff"
+        ]
+      }
+    },
+    "/api/v1/staff/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "RevokeInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Withdraws an invitation and removes the roster row it created.",
+        "tags": [
+          "Staff"
+        ]
+      }
+    },
+    "/api/v1/staff/invitations/{invitationId}/resend": {
+      "post": {
+        "operationId": "ResendInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Issues a fresh link, invalidating the previous one.",
+        "tags": [
+          "Staff"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Me"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "Staff"
+    },
+    {
+      "name": "Compliance"
+    },
+    {
+      "name": "Admin"
+    }
+  ]
+}

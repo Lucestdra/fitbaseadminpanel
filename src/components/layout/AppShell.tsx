@@ -7,7 +7,7 @@ import { MobileHeader } from './MobileHeader';
 import { colors, spacing } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useAuth } from '@/context/AuthContext';
-import { canAccess, getLandingRoute } from '@/utils/permissions';
+import { canAccess } from '@/utils/permissions';
 
 interface AppShellProps {
   activeId: string;
@@ -19,20 +19,28 @@ export function AppShell({ activeId, children }: AppShellProps) {
   const [tabletCollapsed, setTabletCollapsed] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
-  const allowed = user ? canAccess(user.role, activeId) : false;
+  const { status, allowedNavIds, landingRoute } = useAuth();
+  const allowed = canAccess(allowedNavIds, activeId);
 
   useEffect(() => {
-    if (!user) {
+    // 'loading' is neither signed in nor out: the bootstrap is still asking whether a stored
+    // session resumes. Redirecting here would bounce a signed-in person to /giris on every cold
+    // start, which is the flash the status exists to prevent.
+    if (status === 'loading') return;
+
+    if (status === 'signedOut') {
       router.replace('/giris' as never);
       return;
     }
-    if (!allowed) {
-      router.replace(getLandingRoute(user.role) as never);
-    }
-  }, [user, allowed, router]);
 
-  if (!user || !allowed) {
+    if (!allowed) {
+      // Hiding the nav item is presentation; this is the client half of not showing a screen
+      // somebody cannot use. The server half is the 403 its endpoints would return anyway.
+      router.replace(landingRoute as never);
+    }
+  }, [status, allowed, landingRoute, router]);
+
+  if (status !== 'signedIn' || !allowed) {
     return <View style={styles.blockedRoot} />;
   }
 

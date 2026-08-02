@@ -15,13 +15,16 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "openapi-fetch": "^0.17.0",
+    "expo-secure-store": "~15.0.7"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "openapi-typescript": "^7.13.0"
   },
   "scripts": {
     "start": "expo start",
@@ -29,7 +32,14 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "api:sync": "node scripts/sync-contract.mjs",
+    "api:generate": "openapi-typescript contracts/openapi.v1.json -o src/api/schema.d.ts"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
+  }
 }

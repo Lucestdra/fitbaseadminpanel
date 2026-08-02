@@ -8,7 +8,7 @@ import { Toast } from '@/components/ui/Toast';
 import { UserProfileModal } from '@/components/layout/UserProfileModal';
 import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/context/AuthContext';
-import { getAllowedNavIds } from '@/utils/permissions';
+import { canAccess } from '@/utils/permissions';
 import { colors, radii, spacing, typography } from '@/theme';
 import { navItems, currentStudio } from '@/mock/navigation';
 import type { NavItem } from '@/types/navigation';
@@ -62,13 +62,15 @@ function SidebarNavItem({
 export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggleCollapse }: StudioSidebarProps) {
   const router = useRouter();
   const { message, visible, show } = useToast();
-  const { user, studioName, roleLabel, updateUser, signOut } = useAuth();
+  const { user, studioName, roleLabel, allowedNavIds, signOut } = useAuth();
   const [profileModalVisible, setProfileModalVisible] = useState(false);
 
   if (!user) return null;
 
-  const allowedNavIds = getAllowedNavIds(user.role);
-  const visibleNavItems = navItems.filter((item) => allowedNavIds.includes(item.id));
+  // The server's list, in the server's order. The panel used to hold its own role-to-screen map,
+  // which could disagree with what the API would actually allow — and a disagreement in that
+  // direction is a screen that renders and then fails every call it makes.
+  const visibleNavItems = navItems.filter((item) => canAccess(allowedNavIds, item.id));
 
   const handleSignOut = () => {
     signOut();
@@ -159,10 +161,10 @@ export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggl
         user={user}
         roleLabel={roleLabel}
         onClose={() => setProfileModalVisible(false)}
-        onSave={(updated) => {
-          updateUser(updated);
-          show('Profil güncellendi.');
-        }}
+        // Read-only until the settings surface ships (Phase 2.1). There is no endpoint behind
+        // this yet, and a modal that said "Profil güncellendi" while changing nothing on the
+        // server — and losing the edit on the next reload — would be worse than not offering it.
+        onSave={() => show('Profil düzenleme yakında eklenecek.')}
       />
 
       <Toast message={message} visible={visible} />

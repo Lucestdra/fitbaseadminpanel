@@ -1,214 +1,184 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon } from '@/components/ui/AppIcon';
-import { LogoMark } from '@/components/ui/LogoMark';
-import { useAuth } from '@/context/AuthContext';
-import { getLandingRoute } from '@/utils/permissions';
-import { colors, radii, spacing, typography, cardShadow } from '@/theme';
+import {
+  AuthButton,
+  AuthCheckbox,
+  AuthField,
+  AuthFooterLink,
+  AuthNotice,
+  AuthScreen,
+} from '@/components/auth/AuthScreen';
+import { ApiError, describeProblem } from '@/api/problem';
+import * as api from '@/api/session';
 
+const KVKK_LABEL =
+  'KVKK aydınlatma metnini okudum ve kişisel verilerimin işlenmesini kabul ediyorum.';
+
+/**
+ * Register a studio.
+ *
+ * Three changes from the mock version, each of which the server requires. The form now collects a
+ * <b>password</b> — it previously collected a phone number and created an account with no
+ * credential at all. It collects a <b>confirmation</b>, because a mistyped password on the one
+ * form with no "current password" to fall back on means a reset before the account is ever used.
+ * And it collects the <b>KVKK acknowledgement</b>, unticked, because KVKK art. 10 requires the
+ * subject be informed before their data is processed and the server refuses registration without
+ * it.
+ *
+ * It no longer signs anybody in. Verification gates the first login (ADR-0020), so the honest end
+ * of this flow is "check your mail" rather than a session the server would refuse to renew.
+ */
 export default function SignUpScreen() {
   const router = useRouter();
-  const { signUp } = useAuth();
+
   const [studioName, setStudioName] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [acceptedKvkk, setAcceptedKvkk] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const canSubmit = studioName.trim().length > 0 && name.trim().length > 0 && email.trim().length > 0;
+  const mismatched = confirmation.length > 0 && confirmation !== password;
+
+  const canSubmit =
+    studioName.trim().length > 0 &&
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    confirmation === password &&
+    acceptedKvkk;
 
   const handleSubmit = () => {
-    if (!canSubmit) return;
-    const created = signUp({ studioName, name, email, phone });
-    router.replace(getLandingRoute(created.role) as never);
+    if (!canSubmit || busy) return;
+
+    setBusy(true);
+    setError(null);
+
+    void (async () => {
+      try {
+        await api.register({
+          organizationName: studioName.trim(),
+          fullName: name.trim(),
+          email: email.trim(),
+          password,
+          acceptedKvkkNotice: acceptedKvkk,
+        });
+
+        // The server answers 202 whether or not the address is already registered, so this screen
+        // says the same thing either way. Somebody who already has an account learns that from
+        // the mail they receive, not from this form — which is what stops it being a directory of
+        // who has signed up.
+        setSent(true);
+      } catch (thrown) {
+        setError(
+          thrown instanceof ApiError
+            ? describeProblem(thrown.problem)
+            : 'Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
+        );
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
+  if (sent) {
+    return (
+      <AuthScreen
+        title="E-postanı Doğrula"
+        subtitle={`${email.trim()} adresine bir doğrulama bağlantısı gönderdik.`}
+      >
+        <AuthNotice
+          tone="success"
+          message="Bağlantıya tıkladıktan sonra giriş yapabilirsin. Bağlantı 3 gün geçerlidir."
+        />
+
+        <AuthFooterLink
+          text="Bağlantıya tıkladın mı?"
+          linkLabel="Giriş yap"
+          onPress={() => router.replace('/giris' as never)}
+        />
+      </AuthScreen>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.centerWrap}>
-        <View style={styles.card}>
-          <View style={styles.brandRow}>
-            <LogoMark size={30} />
-            <Text style={styles.brand}>fitbase</Text>
-          </View>
+    <AuthScreen
+      title="Stüdyonu Kaydet"
+      subtitle="Hesabını oluştur, stüdyo yöneticisi olarak başla."
+    >
+      <AuthField
+        label="Stüdyo Adı"
+        value={studioName}
+        onChangeText={setStudioName}
+        placeholder="Ör. Fitbase Studio"
+        icon="business-outline"
+      />
 
-          <View style={styles.titleGroup}>
-            <Text style={styles.title}>Stüdyonu Kaydet</Text>
-            <Text style={styles.subtitle}>Hesabını oluştur, stüdyo yöneticisi olarak başla.</Text>
-          </View>
+      <AuthField
+        label="Ad Soyad"
+        value={name}
+        onChangeText={setName}
+        placeholder="Ör. Selin Yılmaz"
+        icon="person-outline"
+        autoComplete="name"
+      />
 
-          <Text style={styles.fieldLabel}>Stüdyo Adı</Text>
-          <TextInput
-            value={studioName}
-            onChangeText={setStudioName}
-            placeholder="Ör. Fitbase Studio"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-            accessibilityLabel="Stüdyo Adı"
-          />
+      <AuthField
+        label="E-posta"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="ornek@fitbase.studio"
+        icon="mail-outline"
+        keyboard="email-address"
+        autoComplete="email"
+      />
 
-          <Text style={styles.fieldLabel}>Ad Soyad</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Ör. Selin Yılmaz"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-            accessibilityLabel="Ad Soyad"
-          />
+      <AuthField
+        label="Şifre"
+        value={password}
+        onChangeText={setPassword}
+        placeholder="En az 12 karakter"
+        icon="lock-closed-outline"
+        secure
+        autoComplete="new-password"
+      />
 
-          <Text style={styles.fieldLabel}>E-posta</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="ornek@fitbase.studio"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-            accessibilityLabel="E-posta"
-          />
+      <AuthField
+        label="Şifre (tekrar)"
+        value={confirmation}
+        onChangeText={setConfirmation}
+        placeholder="••••••••"
+        icon="lock-closed-outline"
+        secure
+        autoComplete="new-password"
+        onSubmitEditing={handleSubmit}
+      />
 
-          <Text style={styles.fieldLabel}>Cep Telefonu</Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="+90 5xx xxx xx xx"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="phone-pad"
-            style={styles.input}
-            accessibilityLabel="Cep Telefonu"
-          />
+      <AuthCheckbox
+        checked={acceptedKvkk}
+        onToggle={() => setAcceptedKvkk((current) => !current)}
+        label={KVKK_LABEL}
+      />
 
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            accessibilityRole="button"
-            accessibilityLabel="Hesabı oluştur"
-            style={({ pressed }) => [
-              styles.primaryButton,
-              !canSubmit && styles.primaryButtonDisabled,
-              pressed && canSubmit && styles.primaryButtonPressed,
-            ]}
-          >
-            <AppIcon name="checkmark-circle-outline" size={17} color={colors.white} />
-            <Text style={styles.primaryLabel}>Hesabı Oluştur</Text>
-          </Pressable>
+      {mismatched ? <AuthNotice tone="error" message="Şifreler eşleşmiyor." /> : null}
+      {error ? <AuthNotice tone="error" message={error} /> : null}
 
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Zaten hesabın var mı?</Text>
-            <Pressable
-              onPress={() => router.replace('/giris' as never)}
-              accessibilityRole="button"
-              accessibilityLabel="Giriş yap"
-              hitSlop={8}
-            >
-              <Text style={styles.footerLink}>Giriş yap</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+      <AuthButton
+        label="Stüdyonu Kaydet"
+        icon="checkmark-outline"
+        onPress={handleSubmit}
+        disabled={!canSubmit}
+        busy={busy}
+      />
+
+      <AuthFooterLink
+        text="Zaten hesabın var mı?"
+        linkLabel="Giriş yap"
+        onPress={() => router.replace('/giris' as never)}
+      />
+    </AuthScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.pageBackground,
-  },
-  centerWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  card: {
-    width: 420,
-    maxWidth: '100%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xxl,
-    ...cardShadow,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  brand: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  titleGroup: {
-    gap: 4,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    ...typography.pageTitle,
-    fontSize: 24,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  fieldLabel: {
-    ...typography.captionStrong,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    ...typography.body,
-    color: colors.textPrimary,
-    height: 46,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.pageBackground,
-    outlineStyle: 'none' as never,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: 46,
-    marginTop: spacing.xl,
-    borderRadius: radii.md,
-    backgroundColor: colors.primary,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: colors.border,
-  },
-  primaryButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-  primaryLabel: {
-    ...typography.button,
-    color: colors.white,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.xl,
-  },
-  footerText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  footerLink: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.primaryDark,
-  },
-});
