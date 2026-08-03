@@ -1531,6 +1531,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who works here — names and roles, for assignment pickers. */
+        get: operations["ListStaffRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/invitations": {
         parameters: {
             query?: never;
@@ -2882,6 +2899,21 @@ export interface components {
             occurredAt: string;
             /** @description Why. */
             reason: components["schemas"]["SessionCreditReason"];
+        };
+        /** @description What other modules may know about a staff member. */
+        StaffMemberSummary: {
+            /** @description Display name. Personal data; declared in the register. */
+            fullName: string;
+            /**
+             * Format: uuid
+             * @description <b>The assignment key.</b> Every `*_staff_member_id` column in every module points here —
+             *             not at a user id, because a staff member can exist before their account does (ADR-0016).
+             */
+            id: string;
+            /** @description Their role in the organization. */
+            role: components["schemas"]["StaffRole"];
+            /** @description Whether they are currently working. */
+            status: components["schemas"]["StaffStatus"];
         };
         /**
          * @description A role held by a staff member <i>within an organization</i>.
@@ -4713,6 +4745,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaxProfileSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListStaffRoster: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberSummary"][];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

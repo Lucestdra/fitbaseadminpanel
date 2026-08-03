@@ -30,12 +30,19 @@ const EMPTY_COUNTS: MemberCounts = { total: 0, active: 0, frozen: 0, expiring: 0
  * A generation counter guards every response. Without it, a slow request for "ay" can land after a
  * fast one for "ayşe" and repopulate the list with results for a query nobody is looking at.
  */
-export function useMemberList(query: MemberQuery): MemberListState & { loadMore: () => void } {
+export function useMemberList(
+  query: MemberQuery,
+): MemberListState & { loadMore: () => void; reload: () => void } {
   const [items, setItems] = useState<MemberListItem[]>([]);
   const [counts, setCounts] = useState<MemberCounts>(EMPTY_COUNTS);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadingMore, setLoadingMore] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
+
+  // Bumped to re-run the effect without changing the filter. Adding a member has to move the
+  // counters as well as the rows, and both come from the same request — so the answer is to ask
+  // again rather than to splice the new member in and adjust a number by hand.
+  const [reloadToken, setReloadToken] = useState(0);
 
   const generation = useRef(0);
 
@@ -78,7 +85,9 @@ export function useMemberList(query: MemberQuery): MemberListState & { loadMore:
     return () => clearTimeout(timer);
     // `key` is the serialised filter; `query` itself changes identity every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, reloadToken]);
+
+  const reload = useCallback(() => setReloadToken((current) => current + 1), []);
 
   const loadMore = useCallback(() => {
     if (cursor === null || loadingMore) return;
@@ -105,5 +114,5 @@ export function useMemberList(query: MemberQuery): MemberListState & { loadMore:
     })();
   }, [cursor, loadingMore, query]);
 
-  return { items, counts, status, loadingMore, hasMore: cursor !== null, loadMore };
+  return { items, counts, status, loadingMore, hasMore: cursor !== null, loadMore, reload };
 }

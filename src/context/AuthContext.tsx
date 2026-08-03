@@ -24,6 +24,16 @@ interface AuthContextValue {
   /** The studio's name. One source now — `me.organization.name` — rather than three copies. */
   studioName: string;
 
+  /**
+   * The studio's IANA zone.
+   *
+   * <b>Not the device's.</b> "Today" is an organization-local question — a member joined today,
+   * a freeze starts today — and answering it from the device clock means a coach travelling puts
+   * yesterday's date on a new member. Empty until the session loads; callers fall back to the
+   * device, which is the same answer for everyone who is not travelling.
+   */
+  timeZoneId: string;
+
   roleLabel: string;
 
   /** Nav ids the server says this caller reaches, in sidebar order. */
@@ -120,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       user: me ? toAuthUser(me) : null,
       studioName: me?.organization.name ?? '',
+      timeZoneId: me?.organization.timeZoneId ?? '',
       roleLabel: me ? ROLE_LABEL[toTeamRole(me.staffMember.role)] : '',
       allowedNavIds: navigation.map((entry) => entry.id),
 

@@ -5,13 +5,18 @@ import { ListPageHeader } from '@/components/shared/ListPageHeader';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { MemberTable } from '@/components/members/MemberTable';
+import { MemberFormModal } from '@/components/members/MemberFormModal';
+import { MemberDetailDrawer } from '@/components/members/MemberDetailDrawer';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useMemberList } from '@/hooks/useMemberList';
+import { useAuth } from '@/context/AuthContext';
+import * as membersApi from '@/api/members';
+import { ApiError } from '@/api/problem';
 import { colors, spacing, typography, radii } from '@/theme';
 import { MEMBERSHIP_STATE_LABELS } from '@/api/enums';
-import type { MembershipState } from '@/api/members';
+import type { MemberBody, MembershipState } from '@/api/members';
 import type { IconName } from '@/types/dashboard';
 
 /**
@@ -85,9 +90,19 @@ const TILES: {
 export default function MembersScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const { message, visible, show } = useToast();
+  const { timeZoneId } = useAuth();
 
   const [search, setSearch] = useState('');
   const [tileId, setTileId] = useState<string>('all');
+
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // The id, not the member. The drawer re-reads the full detail anyway — the list row carries the
+  // six fields a row needs — and holding a stale copy would leave the drawer showing yesterday's
+  // package after somebody sold a new one.
+  const [openMemberId, setOpenMemberId] = useState<string | null>(null);
 
   const tile = TILES.find((candidate) => candidate.id === tileId) ?? TILES[0];
 
@@ -101,9 +116,31 @@ export default function MembersScreen() {
     [search, tile],
   );
 
-  const { items, counts, status, loadingMore, hasMore, loadMore } = useMemberList(query);
+  const { items, counts, status, loadingMore, hasMore, loadMore, reload } = useMemberList(query);
 
   const kpiBasis = isMobile ? '47%' : isTablet ? '31%' : '18.4%';
+
+  const createMember = async (body: MemberBody) => {
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const created = await membersApi.createMember(body);
+
+      setCreating(false);
+
+      // Re-read rather than splice. The new member has to land in the right place under the
+      // current sort and move the counters above the list, and only the server knows both.
+      reload();
+      show(`${created.fullName} eklendi.`);
+    } catch (error) {
+      // Kept in the form, not thrown at a toast. A duplicate phone number or a rejected field is
+      // something to fix in the box it came from, and a toast takes the typing away with it.
+      setSaveError(error instanceof ApiError ? error.message : 'Üye kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <AppShell activeId="members">
@@ -115,7 +152,10 @@ export default function MembersScreen() {
         onSearchChange={setSearch}
         primaryActionLabel="Yeni Üye"
         primaryActionIcon="add"
-        onPrimaryAction={() => show('Yeni üye formu bir sonraki adımda bağlanacak.')}
+        onPrimaryAction={() => {
+          setSaveError(null);
+          setCreating(true);
+        }}
       />
 
       <View style={styles.kpiGrid}>
@@ -187,12 +227,7 @@ export default function MembersScreen() {
 
       {status === 'ready' && items.length > 0 ? (
         <>
-          <MemberTable
-            members={items}
-            onMemberPress={(member) =>
-              show(`${member.fullName} detayı bir sonraki adımda açılacak.`)
-            }
-          />
+          <MemberTable members={items} onMemberPress={(member) => setOpenMemberId(member.id)} />
 
           {hasMore ? (
             <Pressable
@@ -212,6 +247,33 @@ export default function MembersScreen() {
             {items.length} / {counts.total} üye gösteriliyor
           </Text>
         </>
+      ) : null}
+
+      {/* Mounted only while open, so it seeds its fields at mount rather than through an effect
+          that would race whoever is typing into them. */}
+      {creating ? (
+        <MemberFormModal
+          visible
+          editing={null}
+          timeZoneId={timeZoneId}
+          onSubmit={createMember}
+          onClose={() => setCreating(false)}
+          busy={saving}
+          error={saveError}
+        />
+      ) : null}
+
+      {openMemberId ? (
+        <MemberDetailDrawer
+          // Keyed, so opening a different member remounts rather than carrying the previous
+          // member's tab and half-typed dialog across.
+          key={openMemberId}
+          memberId={openMemberId}
+          timeZoneId={timeZoneId}
+          onChanged={reload}
+          onClose={() => setOpenMemberId(null)}
+          onNotify={show}
+        />
       ) : null}
 
       <Toast message={message} visible={visible} />
