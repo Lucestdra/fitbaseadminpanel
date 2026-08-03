@@ -15,6 +15,8 @@ import {
 } from '@/components/settings/CatalogUsageConflictDialog';
 import { InvoiceHistoryModal } from '@/components/settings/InvoiceHistoryModal';
 import { WorkingHoursCard } from '@/components/settings/WorkingHoursCard';
+import { ClosuresCard } from '@/components/settings/ClosuresCard';
+import { LocalizationCard } from '@/components/settings/LocalizationCard';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 import { SettingsTile } from '@/components/settings/SettingsTile';
 import { SettingsSectionModal } from '@/components/settings/SettingsSectionModal';
@@ -33,6 +35,8 @@ type SectionId =
   | 'studio'
   | 'tax'
   | 'hours'
+  | 'closures'
+  | 'localization'
   | 'subscription'
   | 'packages'
   | 'gifts'
@@ -268,6 +272,18 @@ export default function SettingsScreen() {
           icon: 'time-outline',
         },
         {
+          id: 'closures',
+          title: 'Kapalı Günler',
+          summary: `${count(summary?.upcomingClosures)} yaklaşan kapanış`,
+          icon: 'calendar-outline',
+        },
+        {
+          id: 'localization',
+          title: 'Bölge ve Dil',
+          summary: `${settings.localization.timeZoneId} · ${settings.localization.currency}`,
+          icon: 'globe-outline',
+        },
+        {
           id: 'subscription',
           title: 'Abonelik',
           summary: `${subscriptionInfo.planName} · ${subscriptionInfo.price}`,
@@ -466,6 +482,46 @@ export default function SettingsScreen() {
               run(async () => {
                 await settingsApi.replaceBusinessHours(intervals);
               }, 'Çalışma saatleri kaydedildi.')
+            }
+          />
+        ) : null}
+      </SettingsSectionModal>
+
+      <SettingsSectionModal
+        visible={openSection === 'closures'}
+        onClose={() => setOpenSection(null)}
+      >
+        {openSection === 'closures' ? (
+          <ClosuresCard
+            closures={settings.closures}
+            timeZoneId={settings.localization.timeZoneId}
+            busy={busy}
+            onAdd={(draft) =>
+              run(async () => {
+                await settingsApi.addClosure(draft);
+              }, `${draft.reason} eklendi.`)
+            }
+            onRemove={(closure) =>
+              void run(async () => {
+                await settingsApi.removeClosure(closure.id);
+              }, `${closure.reason} kaldırıldı.`)
+            }
+          />
+        ) : null}
+      </SettingsSectionModal>
+
+      <SettingsSectionModal
+        visible={openSection === 'localization'}
+        onClose={() => setOpenSection(null)}
+      >
+        {openSection === 'localization' ? (
+          <LocalizationCard
+            localization={settings.localization}
+            busy={busy}
+            onSave={(localization) =>
+              run(async () => {
+                await settingsApi.updateLocalization(localization);
+              }, 'Bölge ayarları kaydedildi.')
             }
           />
         ) : null}
