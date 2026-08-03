@@ -4,16 +4,21 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Badge } from '@/components/ui/Badge';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { PackageTemplate } from '@/types/settings';
+import type { PackageTemplateEntry } from '@/api/catalogs';
 
 interface PackagesCardProps {
-  packages: PackageTemplate[];
+  packages: PackageTemplateEntry[];
   onCreatePackage: () => void;
-  onEditPackage: (pkg: PackageTemplate) => void;
-  onDeletePackage: (pkg: PackageTemplate) => void;
+  onEditPackage: (pkg: PackageTemplateEntry) => void;
+  onDeletePackage: (pkg: PackageTemplateEntry) => void;
 }
 
-export function PackagesCard({ packages, onCreatePackage, onEditPackage, onDeletePackage }: PackagesCardProps) {
+export function PackagesCard({
+  packages,
+  onCreatePackage,
+  onEditPackage,
+  onDeletePackage,
+}: PackagesCardProps) {
   return (
     <Card style={styles.card}>
       <SectionHeader title="Paketler" icon="pricetag-outline" />
@@ -22,13 +27,29 @@ export function PackagesCard({ packages, onCreatePackage, onEditPackage, onDelet
         {packages.map((pkg, index) => (
           <View key={pkg.id} style={[styles.row, index === packages.length - 1 && styles.rowLast]}>
             <View style={styles.infoGroup}>
-              <Text style={styles.name} numberOfLines={1}>{pkg.name}</Text>
+              <Text style={styles.name} numberOfLines={1}>
+                {pkg.name}
+              </Text>
               <Text style={styles.meta}>
-                {pkg.sessionCount === null ? 'Sınırsız' : `${pkg.sessionCount} seans`} · {pkg.durationDays} gün geçerli
+                {pkg.sessionCount === null ? 'Sınırsız' : `${pkg.sessionCount} seans`} ·{' '}
+                {pkg.durationDays} gün geçerli
               </Text>
             </View>
-            <Text style={styles.price}>{pkg.price}</Text>
-            <Badge label={pkg.status === 'aktif' ? 'Aktif' : 'Pasif'} tone={pkg.status === 'aktif' ? 'mint' : 'neutral'} />
+            {/*
+              Formatted here, from a number. The value crossing the wire is a decimal — the panel
+              used to store '₺2.400' and parse it back with a non-digit strip, which read
+              ₺2.400,50 as 240050. `price` is null when the caller lacks members.financial.read,
+              and the server omits it at the query rather than blanking it in the response.
+            */}
+            <Text style={styles.price}>
+              {pkg.price === null
+                ? '—'
+                : `₺${pkg.price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`}
+            </Text>
+            <Badge
+              label={pkg.status === 'Active' ? 'Aktif' : 'Pasif'}
+              tone={pkg.status === 'Active' ? 'mint' : 'neutral'}
+            />
             <View style={styles.rowActions}>
               <Pressable
                 onPress={() => onEditPackage(pkg)}

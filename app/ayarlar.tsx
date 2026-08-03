@@ -1,13 +1,18 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppShell } from '@/components/layout/AppShell';
 import { StudioProfileCard } from '@/components/settings/StudioProfileCard';
 import { TaxBillingCard } from '@/components/settings/TaxBillingCard';
 import { SubscriptionCard } from '@/components/settings/SubscriptionCard';
 import { PackagesCard } from '@/components/settings/PackagesCard';
-import { NewPackageModal, type NewPackageInput } from '@/components/settings/NewPackageModal';
+import { PackageFormModal, type PackageDraft } from '@/components/settings/PackageFormModal';
 import { GiftsCard } from '@/components/settings/GiftsCard';
+import { GiftFormModal, type GiftDraft } from '@/components/settings/GiftFormModal';
 import { CatalogListCard } from '@/components/settings/CatalogListCard';
+import {
+  CatalogUsageConflictDialog,
+  type CatalogReplacement,
+} from '@/components/settings/CatalogUsageConflictDialog';
 import { InvoiceHistoryModal } from '@/components/settings/InvoiceHistoryModal';
 import { WorkingHoursCard } from '@/components/settings/WorkingHoursCard';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
@@ -18,15 +23,10 @@ import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useCatalogs } from '@/context/CatalogsContext';
 import { colors, spacing, typography } from '@/theme';
-import {
-  subscriptionInfo,
-  packageTemplates as initialPackages,
-  giftTemplates as initialGifts,
-  invoices,
-  workingHours as initialWorkingHours,
-  notificationPreferences as initialNotificationPreferences,
-} from '@/mock/settings';
-import type { PackageTemplate, GiftTemplate } from '@/types/settings';
+import { subscriptionInfo, invoices } from '@/mock/settings';
+import * as catalogsApi from '@/api/catalogs';
+import * as settingsApi from '@/api/settings';
+import { ApiError, describeProblem } from '@/api/problem';
 import type { IconName } from '@/types/dashboard';
 
 type SectionId =
@@ -39,93 +39,281 @@ type SectionId =
   | 'stages'
   | 'sources'
   | 'interests'
-  | 'responsibles'
   | 'categories'
   | 'notifications';
 
+/** The settings screen's two reads, which always arrive and fail together. */
+interface LoadedSettings {
+  settings: settingsApi.OrganizationSettings;
+  summary: settingsApi.OrganizationSettingsSummary;
+}
+
+/**
+ * Reads both, reporting failure as a value.
+ *
+ * One request rather than two round trips: the summary is the tile counters and the settings are
+ * what the sections render, and a screen showing counts it cannot open is worse than one that says
+ * it could not load.
+ */
+async function fetchSettings(): Promise<LoadedSettings | null> {
+  try {
+    const [settings, summary] = await Promise.all([
+      settingsApi.getSettings(),
+      settingsApi.getSettingsSummary(),
+    ]);
+
+    return { settings, summary };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What a catalog list needs to talk to the API.
+ *
+ * Keyed by the section so the generic list card stays generic — it renders `{id, label}` and calls
+ * back, and everything kind-specific is here rather than branched inside the card.
+ */
+interface CatalogBinding {
+  kind: catalogsApi.CatalogKindSegment;
+  create: (label: string) => Promise<unknown>;
+  noun: string;
+}
+
+/**
+ * Everything the studio configures about itself.
+ *
+ * <b>The Sorumlular tile is gone.</b> It listed free-text names duplicated from the Team screen;
+ * assignments key on `staff_member.id` (backend ADR-0016) and the vocabulary register bans the
+ * concept outright, so the roster is where those people are managed. Its counter is replaced by
+ * the active staff count in the summary.
+ */
 export default function SettingsScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
-  const [packages, setPackages] = useState<PackageTemplate[]>(initialPackages);
-  const [gifts, setGifts] = useState<GiftTemplate[]>(initialGifts);
-  const [workingHours, setWorkingHours] = useState(initialWorkingHours);
-  const [notificationPreferences, setNotificationPreferences] = useState(initialNotificationPreferences);
-  const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
-  const [newPackageModalVisible, setNewPackageModalVisible] = useState(false);
-  const [openSection, setOpenSection] = useState<SectionId | null>(null);
-  const {
-    leadSources,
-    interests,
-    responsibles,
-    stages,
-    classCategories,
-    addLeadSource,
-    removeLeadSource,
-    addInterest,
-    removeInterest,
-    addResponsible,
-    removeResponsible,
-    addStage,
-    removeStage,
-    addClassCategory,
-    removeClassCategory,
-  } = useCatalogs();
+  const { stages, leadSources, interests, classCategories, packages, gifts, status, refresh } =
+    useCatalogs();
   const { message, visible, show } = useToast();
 
-  const handleToggleDay = (dayId: string, isOpen: boolean) => {
-    setWorkingHours((current) => current.map((day) => (day.id === dayId ? { ...day, isOpen } : day)));
+  const [settings, setSettings] = useState<settingsApi.OrganizationSettings | null>(null);
+  const [summary, setSummary] = useState<settingsApi.OrganizationSettingsSummary | null>(null);
+  const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
+  const [packageForm, setPackageForm] = useState<{
+    open: boolean;
+    editing: catalogsApi.PackageTemplateEntry | null;
+  }>({ open: false, editing: null });
+  const [giftForm, setGiftForm] = useState<{
+    open: boolean;
+    editing: catalogsApi.GiftTemplateEntry | null;
+  }>({ open: false, editing: null });
+  const [conflict, setConflict] = useState<{
+    kind: catalogsApi.CatalogKindSegment;
+    entryId: string;
+    entryLabel: string;
+    references: catalogsApi.CatalogReference[];
+    replacements: CatalogReplacement[];
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const applySettings = useCallback((loaded: LoadedSettings | null) => {
+    if (loaded === null) {
+      setSettingsStatus('error');
+      return;
+    }
+
+    setSettings(loaded.settings);
+    setSummary(loaded.summary);
+    setSettingsStatus('ready');
+  }, []);
+
+  const loadSettings = useCallback(async () => {
+    applySettings(await fetchSettings());
+  }, [applySettings]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // An inline async body rather than a call to `loadSettings`: state must not be set
+    // synchronously inside an effect, and the `await` here is what makes it not.
+    void (async () => {
+      const loaded = await fetchSettings();
+      if (!cancelled) applySettings(loaded);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applySettings]);
+
+  /**
+   * Runs a mutation, refreshes, and reports.
+   *
+   * Every write on this screen goes through here so that none of them can forget the refresh — a
+   * create that does not reload leaves the studio looking at a list missing the thing they just
+   * made, and they add it again.
+   */
+  const run = async (operation: () => Promise<void>, success: string) => {
+    setBusy(true);
+
+    try {
+      await operation();
+      await Promise.all([refresh(), loadSettings()]);
+      show(success);
+    } catch (thrown) {
+      show(
+        thrown instanceof ApiError
+          ? describeProblem(thrown.problem)
+          : 'Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleChangeStart = (dayId: string, value: string) => {
-    setWorkingHours((current) => current.map((day) => (day.id === dayId ? { ...day, start: value } : day)));
+  /**
+   * Deletes a catalog entry, or opens the conflict dialog when something still uses it.
+   *
+   * The usage probe runs first so the studio sees the choice instead of an error. The server
+   * refuses either way — this is the courteous version of the same answer, not the check.
+   */
+  const deleteEntry = async (
+    kind: catalogsApi.CatalogKindSegment,
+    entryId: string,
+    entryLabel: string,
+    siblings: { id: string; label: string }[],
+    noun: string,
+  ) => {
+    setBusy(true);
+
+    try {
+      const usage = await catalogsApi.getCatalogEntryUsage(kind, entryId);
+
+      if (!usage.canDelete) {
+        setConflict({
+          kind,
+          entryId,
+          entryLabel,
+          references: usage.references.filter((reference) => reference.blocksDeletion),
+          replacements: siblings.filter((sibling) => sibling.id !== entryId),
+        });
+        return;
+      }
+
+      await catalogsApi.deleteCatalogEntry(kind, entryId);
+      await Promise.all([refresh(), loadSettings()]);
+      show(`${entryLabel} ${noun} silindi.`);
+    } catch (thrown) {
+      show(
+        thrown instanceof ApiError
+          ? describeProblem(thrown.problem)
+          : 'Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleChangeEnd = (dayId: string, value: string) => {
-    setWorkingHours((current) => current.map((day) => (day.id === dayId ? { ...day, end: value } : day)));
-  };
+  const tileBasis = isMobile ? '100%' : isTablet ? '48%' : '23.5%';
 
-  const handleToggleNotification = (id: string, value: boolean) => {
-    setNotificationPreferences((current) => current.map((pref) => (pref.id === id ? { ...pref, enabled: value } : pref)));
-  };
+  if (status === 'loading' || settingsStatus === 'loading') {
+    return (
+      <AppShell activeId="settings">
+        <View style={styles.centered}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      </AppShell>
+    );
+  }
 
-  const handleDeletePackage = (pkg: PackageTemplate) => {
-    setPackages((current) => current.filter((item) => item.id !== pkg.id));
-    show(`${pkg.name} silindi.`);
-  };
+  if (status === 'error' || settingsStatus === 'error' || settings === null) {
+    // Distinguished from "nothing configured yet" on purpose. An empty settings screen and one
+    // that failed to load look identical, and only one of them is worth telling somebody about.
+    return (
+      <AppShell activeId="settings">
+        <View style={styles.centered}>
+          <Text style={styles.errorTitle}>Ayarlar yüklenemedi</Text>
+          <Text style={styles.errorBody}>Bağlantını kontrol edip sayfayı yenile.</Text>
+        </View>
+      </AppShell>
+    );
+  }
 
-  const handleCreatePackage = (input: NewPackageInput) => {
-    const newPackage: PackageTemplate = { id: `pkg-${Date.now()}`, ...input };
-    setPackages((current) => [...current, newPackage]);
-    show(`${newPackage.name} oluşturuldu.`);
-  };
+  const count = (value: number | undefined) => value ?? 0;
 
-  const handleDeleteGift = (gift: GiftTemplate) => {
-    setGifts((current) => current.filter((item) => item.id !== gift.id));
-    show(`${gift.name} silindi.`);
-  };
-
-  const openDayCount = workingHours.filter((day) => day.isOpen).length;
-  const enabledNotifications = notificationPreferences.filter((pref) => pref.enabled).length;
-
-  const groups: { title: string; tiles: { id: SectionId; title: string; summary: string; icon: IconName }[] }[] = [
+  const groups: {
+    title: string;
+    tiles: { id: SectionId; title: string; summary: string; icon: IconName }[];
+  }[] = [
     {
       title: 'Stüdyo',
       tiles: [
-        { id: 'studio', title: 'Stüdyo Bilgileri', summary: 'Ad, logo, adres ve iletişim', icon: 'business-outline' },
-        { id: 'tax', title: 'Vergi ve Fatura', summary: 'Vergi dairesi, VKN ve fatura adresi', icon: 'document-text-outline' },
-        { id: 'hours', title: 'Çalışma Saatleri', summary: `${openDayCount} gün açık`, icon: 'time-outline' },
-        { id: 'subscription', title: 'Abonelik', summary: `${subscriptionInfo.planName} · ${subscriptionInfo.price}`, icon: 'sparkles-outline' },
+        {
+          id: 'studio',
+          title: 'Stüdyo Bilgileri',
+          summary: 'Ad, logo, adres ve iletişim',
+          icon: 'business-outline',
+        },
+        {
+          id: 'tax',
+          title: 'Vergi ve Fatura',
+          summary: 'Vergi dairesi, VKN ve fatura adresi',
+          icon: 'document-text-outline',
+        },
+        {
+          id: 'hours',
+          title: 'Çalışma Saatleri',
+          summary: `${count(summary?.openDays)} gün açık`,
+          icon: 'time-outline',
+        },
+        {
+          id: 'subscription',
+          title: 'Abonelik',
+          summary: `${subscriptionInfo.planName} · ${subscriptionInfo.price}`,
+          icon: 'sparkles-outline',
+        },
       ],
     },
     {
       title: 'Satış ve Katalog',
       tiles: [
-        { id: 'packages', title: 'Paketler', summary: `${packages.length} paket tanımlı`, icon: 'pricetag-outline' },
-        { id: 'gifts', title: 'Hediyeler', summary: `${gifts.length} hediye tanımlı`, icon: 'gift-outline' },
-        { id: 'stages', title: 'Müşteri Adayı Aşamaları', summary: `${stages.length} aşama`, icon: 'git-branch-outline' },
-        { id: 'sources', title: 'Müşteri Adayı Kaynakları', summary: `${leadSources.length} kaynak`, icon: 'funnel-outline' },
-        { id: 'interests', title: 'İlgi Alanları', summary: `${interests.length} ilgi alanı`, icon: 'heart-outline' },
-        { id: 'responsibles', title: 'Sorumlular', summary: `${responsibles.length} kişi`, icon: 'people-outline' },
-        { id: 'categories', title: 'Ders Kategorileri', summary: `${classCategories.length} kategori`, icon: 'albums-outline' },
+        {
+          id: 'packages',
+          title: 'Paketler',
+          summary: `${count(summary?.packageTemplates)} paket tanımlı`,
+          icon: 'pricetag-outline',
+        },
+        {
+          id: 'gifts',
+          title: 'Hediyeler',
+          summary: `${count(summary?.giftTemplates)} hediye tanımlı`,
+          icon: 'gift-outline',
+        },
+        {
+          id: 'stages',
+          title: 'Müşteri Adayı Aşamaları',
+          summary: `${count(summary?.leadStages)} aşama`,
+          icon: 'git-branch-outline',
+        },
+        {
+          id: 'sources',
+          title: 'Müşteri Adayı Kaynakları',
+          summary: `${count(summary?.leadSources)} kaynak`,
+          icon: 'funnel-outline',
+        },
+        {
+          id: 'interests',
+          title: 'İlgi Alanları',
+          summary: `${count(summary?.interests)} ilgi alanı`,
+          icon: 'heart-outline',
+        },
+        {
+          id: 'categories',
+          title: 'Ders Kategorileri',
+          summary: `${count(summary?.classCategories)} kategori`,
+          icon: 'albums-outline',
+        },
       ],
     },
     {
@@ -134,14 +322,89 @@ export default function SettingsScreen() {
         {
           id: 'notifications',
           title: 'Bildirim Ayarları',
-          summary: `${enabledNotifications}/${notificationPreferences.length} bildirim açık`,
+          summary: `${count(summary?.enabledNotifications)}/${count(summary?.availableNotifications)} bildirim açık`,
           icon: 'notifications-outline',
         },
       ],
     },
   ];
 
-  const tileBasis = isMobile ? '100%' : isTablet ? '48%' : '23.5%';
+  const stageItems = stages.map((stage) => ({
+    id: stage.id,
+    label: stage.title,
+  }));
+  const sourceItems = leadSources.map((source) => ({
+    id: source.id,
+    label: source.label,
+  }));
+  const interestItems = interests.map((interest) => ({
+    id: interest.id,
+    label: interest.label,
+  }));
+  const categoryItems = classCategories.map((category) => ({
+    id: category.id,
+    label: category.label,
+  }));
+
+  const CATALOGS: Record<'stages' | 'sources' | 'interests' | 'categories', CatalogBinding> = {
+    stages: {
+      kind: 'lead-stages',
+      noun: 'aşaması',
+      create: (label) =>
+        catalogsApi.createLeadStage({
+          title: label,
+          statusLabel: label,
+          tone: 'mint',
+        }),
+    },
+    sources: {
+      kind: 'lead-sources',
+      noun: 'kaynağı',
+      create: (label) => catalogsApi.createLeadSource({ label, icon: 'pricetag-outline' }),
+    },
+    interests: {
+      kind: 'interests',
+      noun: 'ilgi alanı',
+      create: (label) => catalogsApi.createInterest(label),
+    },
+    categories: {
+      kind: 'class-categories',
+      noun: 'kategorisi',
+      create: (label) => catalogsApi.createClassCategory(label),
+    },
+  };
+
+  const renderCatalog = (
+    section: 'stages' | 'sources' | 'interests' | 'categories',
+    title: string,
+    icon: IconName,
+    subtitle: string,
+    items: { id: string; label: string }[],
+    addPlaceholder: string,
+  ) => {
+    const binding = CATALOGS[section];
+
+    return (
+      <SettingsSectionModal visible={openSection === section} onClose={() => setOpenSection(null)}>
+        <CatalogListCard
+          title={title}
+          icon={icon}
+          subtitle={subtitle}
+          items={items}
+          onAdd={(label) =>
+            void run(async () => {
+              await binding.create(label);
+            }, `${label} ${binding.noun} eklendi.`)
+          }
+          onRemove={(id) => {
+            const entry = items.find((item) => item.id === id);
+            void deleteEntry(binding.kind, id, entry?.label ?? '', items, binding.noun);
+          }}
+          addPlaceholder={addPlaceholder}
+        />
+      </SettingsSectionModal>
+    );
+  };
 
   return (
     <AppShell activeId="settings">
@@ -169,26 +432,49 @@ export default function SettingsScreen() {
       ))}
 
       <SettingsSectionModal visible={openSection === 'studio'} onClose={() => setOpenSection(null)}>
-        <StudioProfileCard onSave={() => show('Stüdyo bilgileri kaydedildi.')} />
+        <StudioProfileCard
+          profile={settings.profile}
+          busy={busy}
+          onUploadLogo={() => show('Logo yükleme yakında açılacak.')}
+          onSave={(draft) =>
+            run(async () => {
+              await settingsApi.updateProfile(draft);
+            }, 'Stüdyo bilgileri kaydedildi.')
+          }
+        />
       </SettingsSectionModal>
 
       <SettingsSectionModal visible={openSection === 'tax'} onClose={() => setOpenSection(null)}>
         <TaxBillingCard
-          onSave={() => show('Fatura bilgileri kaydedildi.')}
-          onUploadDocument={() => show('Vergi levhası yükleme işlemi yakında açılacak.')}
+          tax={settings.tax}
+          busy={busy}
+          onUploadDocument={() => show('Vergi levhası yükleme yakında açılacak.')}
+          onSave={(draft) =>
+            run(async () => {
+              await settingsApi.updateTaxProfile(draft);
+            }, 'Fatura bilgileri kaydedildi.')
+          }
         />
       </SettingsSectionModal>
 
       <SettingsSectionModal visible={openSection === 'hours'} onClose={() => setOpenSection(null)}>
-        <WorkingHoursCard
-          days={workingHours}
-          onToggleDay={handleToggleDay}
-          onChangeStart={handleChangeStart}
-          onChangeEnd={handleChangeEnd}
-        />
+        {openSection === 'hours' ? (
+          <WorkingHoursCard
+            intervals={settings.businessHours}
+            busy={busy}
+            onSave={(intervals) =>
+              run(async () => {
+                await settingsApi.replaceBusinessHours(intervals);
+              }, 'Çalışma saatleri kaydedildi.')
+            }
+          />
+        ) : null}
       </SettingsSectionModal>
 
-      <SettingsSectionModal visible={openSection === 'subscription'} onClose={() => setOpenSection(null)}>
+      <SettingsSectionModal
+        visible={openSection === 'subscription'}
+        onClose={() => setOpenSection(null)}
+      >
         <SubscriptionCard
           subscription={subscriptionInfo}
           onUpgrade={() => show('Plan yükseltme işlemi yakında açılacak.')}
@@ -196,123 +482,179 @@ export default function SettingsScreen() {
         />
       </SettingsSectionModal>
 
-      <SettingsSectionModal visible={openSection === 'packages'} onClose={() => setOpenSection(null)}>
+      <SettingsSectionModal
+        visible={openSection === 'packages'}
+        onClose={() => setOpenSection(null)}
+      >
         <PackagesCard
           packages={packages}
-          onCreatePackage={() => setNewPackageModalVisible(true)}
-          onEditPackage={(pkg) => show(`${pkg.name} düzenleme işlemi yakında açılacak.`)}
-          onDeletePackage={handleDeletePackage}
+          onCreatePackage={() => setPackageForm({ open: true, editing: null })}
+          onEditPackage={(pkg) => setPackageForm({ open: true, editing: pkg })}
+          onDeletePackage={(pkg) =>
+            void deleteEntry(
+              'package-templates',
+              pkg.id,
+              pkg.name,
+              packages.map((entry) => ({ id: entry.id, label: entry.name })),
+              'paketi',
+            )
+          }
         />
       </SettingsSectionModal>
 
       <SettingsSectionModal visible={openSection === 'gifts'} onClose={() => setOpenSection(null)}>
         <GiftsCard
           gifts={gifts}
-          onCreateGift={() => show('Yeni hediye ekleme işlemi yakında açılacak.')}
-          onDeleteGift={handleDeleteGift}
+          onCreateGift={() => setGiftForm({ open: true, editing: null })}
+          onDeleteGift={(gift) =>
+            void deleteEntry(
+              'gift-templates',
+              gift.id,
+              gift.name,
+              gifts.map((entry) => ({ id: entry.id, label: entry.name })),
+              'hediyesi',
+            )
+          }
         />
       </SettingsSectionModal>
 
-      <SettingsSectionModal visible={openSection === 'stages'} onClose={() => setOpenSection(null)}>
-        <CatalogListCard
-          title="Müşteri Adayı Aşamaları"
-          icon="git-branch-outline"
-          subtitle="Müşteri adayları kanban ve listesinde kullanılan aşamaları yönet."
-          items={stages.map((stage) => ({ id: stage.id, label: stage.title }))}
-          onAdd={(label) => {
-            addStage(label);
-            show(`${label} aşaması eklendi.`);
-          }}
-          onRemove={(id) => {
-            const stage = stages.find((item) => item.id === id);
-            removeStage(id);
-            if (stage) show(`${stage.title} aşaması silindi.`);
-          }}
-          addPlaceholder="Yeni aşama adı"
+      {renderCatalog(
+        'stages',
+        'Müşteri Adayı Aşamaları',
+        'git-branch-outline',
+        'Müşteri adayları kanban ve listesinde kullanılan aşamaları yönet.',
+        stageItems,
+        'Yeni aşama adı',
+      )}
+
+      {renderCatalog(
+        'sources',
+        'Müşteri Adayı Kaynakları',
+        'funnel-outline',
+        'Yeni müşteri adayı eklerken seçilebilecek kaynakları yönet.',
+        sourceItems,
+        'Yeni kaynak adı',
+      )}
+
+      {renderCatalog(
+        'interests',
+        'İlgi Alanları',
+        'heart-outline',
+        'Müşteri adaylarının ilgilendiği ders/hizmet türlerini yönet.',
+        interestItems,
+        'Yeni ilgi alanı',
+      )}
+
+      {renderCatalog(
+        'categories',
+        'Ders Kategorileri',
+        'albums-outline',
+        'Yeni ders oluştururken seçilebilecek kategorileri yönet.',
+        categoryItems,
+        'Yeni kategori adı',
+      )}
+
+      <SettingsSectionModal
+        visible={openSection === 'notifications'}
+        onClose={() => setOpenSection(null)}
+      >
+        <NotificationPreferencesCard
+          preferences={settings.notifications}
+          busy={busy}
+          onToggle={(topic, channel, isEnabled) =>
+            void run(async () => {
+              await settingsApi.setNotificationPreference({
+                topic,
+                channel,
+                isEnabled,
+              });
+            }, 'Bildirim tercihi güncellendi.')
+          }
         />
       </SettingsSectionModal>
 
-      <SettingsSectionModal visible={openSection === 'sources'} onClose={() => setOpenSection(null)}>
-        <CatalogListCard
-          title="Müşteri Adayı Kaynakları"
-          icon="funnel-outline"
-          subtitle="Yeni müşteri adayı eklerken seçilebilecek kaynakları yönet."
-          items={leadSources.map((source) => ({ id: source.id, label: source.label }))}
-          onAdd={(label) => {
-            addLeadSource(label);
-            show(`${label} kaynağı eklendi.`);
+      {/*
+        Mounted only while open and keyed by the entry. That is what lets the modal seed its fields
+        from props at mount instead of watching them in an effect — React's own answer to resetting
+        state on a prop change, and one render cheaper.
+      */}
+      {packageForm.open ? (
+        <PackageFormModal
+          key={packageForm.editing?.id ?? 'new'}
+          visible
+          editing={packageForm.editing}
+          busy={busy}
+          onClose={() => setPackageForm({ open: false, editing: null })}
+          onSubmit={async (draft: PackageDraft) => {
+            const editing = packageForm.editing;
+
+            await run(
+              async () => {
+                if (editing) {
+                  await catalogsApi.updatePackageTemplate(editing.id, draft);
+                } else {
+                  await catalogsApi.createPackageTemplate(draft);
+                }
+              },
+              editing ? `${draft.name} güncellendi.` : `${draft.name} oluşturuldu.`,
+            );
+
+            setPackageForm({ open: false, editing: null });
           }}
-          onRemove={(id) => {
-            const source = leadSources.find((item) => item.id === id);
-            removeLeadSource(id);
-            if (source) show(`${source.label} kaynağı silindi.`);
-          }}
-          addPlaceholder="Yeni kaynak adı"
         />
-      </SettingsSectionModal>
+      ) : null}
 
-      <SettingsSectionModal visible={openSection === 'interests'} onClose={() => setOpenSection(null)}>
-        <CatalogListCard
-          title="İlgi Alanları"
-          icon="heart-outline"
-          subtitle="Müşteri adaylarının ilgilendiği ders/hizmet türlerini yönet."
-          items={interests.map((interest) => ({ id: interest, label: interest }))}
-          onAdd={(label) => {
-            addInterest(label);
-            show(`${label} ilgi alanı eklendi.`);
+      {giftForm.open ? (
+        <GiftFormModal
+          key={giftForm.editing?.id ?? 'new'}
+          visible
+          editing={giftForm.editing}
+          busy={busy}
+          onClose={() => setGiftForm({ open: false, editing: null })}
+          onSubmit={async (draft: GiftDraft) => {
+            const editing = giftForm.editing;
+
+            await run(
+              async () => {
+                if (editing) {
+                  await catalogsApi.updateGiftTemplate(editing.id, draft);
+                } else {
+                  await catalogsApi.createGiftTemplate(draft);
+                }
+              },
+              editing ? `${draft.name} güncellendi.` : `${draft.name} oluşturuldu.`,
+            );
+
+            setGiftForm({ open: false, editing: null });
           }}
-          onRemove={(id) => {
-            removeInterest(id);
-            show(`${id} ilgi alanı silindi.`);
-          }}
-          addPlaceholder="Yeni ilgi alanı"
         />
-      </SettingsSectionModal>
+      ) : null}
 
-      <SettingsSectionModal visible={openSection === 'responsibles'} onClose={() => setOpenSection(null)}>
-        <CatalogListCard
-          title="Sorumlular"
-          icon="people-outline"
-          subtitle="Müşteri adaylarına atanabilecek ekip üyelerini yönet."
-          items={responsibles.map((responsible) => ({ id: responsible, label: responsible }))}
-          onAdd={(label) => {
-            addResponsible(label);
-            show(`${label} sorumlu listesine eklendi.`);
-          }}
-          onRemove={(id) => {
-            removeResponsible(id);
-            show(`${id} sorumlu listesinden çıkarıldı.`);
-          }}
-          addPlaceholder="Yeni sorumlu adı"
-        />
-      </SettingsSectionModal>
+      <CatalogUsageConflictDialog
+        visible={conflict !== null}
+        entryLabel={conflict?.entryLabel ?? ''}
+        references={conflict?.references ?? []}
+        replacements={conflict?.replacements ?? []}
+        busy={busy}
+        onClose={() => setConflict(null)}
+        onDeactivate={() => {
+          const target = conflict;
+          if (!target) return;
 
-      <SettingsSectionModal visible={openSection === 'categories'} onClose={() => setOpenSection(null)}>
-        <CatalogListCard
-          title="Ders Kategorileri"
-          icon="albums-outline"
-          subtitle="Yeni ders oluştururken seçilebilecek kategorileri yönet."
-          items={classCategories.map((category) => ({ id: category, label: category }))}
-          onAdd={(label) => {
-            addClassCategory(label);
-            show(`${label} kategorisi eklendi.`);
-          }}
-          onRemove={(id) => {
-            removeClassCategory(id);
-            show(`${id} kategorisi silindi.`);
-          }}
-          addPlaceholder="Yeni kategori adı"
-        />
-      </SettingsSectionModal>
+          setConflict(null);
+          void run(async () => {
+            await catalogsApi.setCatalogEntryStatus(target.kind, target.entryId, 'Inactive');
+          }, `${target.entryLabel} pasife alındı.`);
+        }}
+        onReassign={(replacementId) => {
+          const target = conflict;
+          if (!target) return;
 
-      <SettingsSectionModal visible={openSection === 'notifications'} onClose={() => setOpenSection(null)}>
-        <NotificationPreferencesCard preferences={notificationPreferences} onToggle={handleToggleNotification} />
-      </SettingsSectionModal>
-
-      <NewPackageModal
-        visible={newPackageModalVisible}
-        onClose={() => setNewPackageModalVisible(false)}
-        onCreate={handleCreatePackage}
+          setConflict(null);
+          void run(async () => {
+            await catalogsApi.deleteCatalogEntry(target.kind, target.entryId, replacementId);
+          }, `${target.entryLabel} taşındı ve silindi.`);
+        }}
       />
 
       <InvoiceHistoryModal
@@ -354,5 +696,20 @@ const styles = StyleSheet.create({
   gridItem: {
     flexGrow: 0,
     minWidth: 220,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+  },
+  errorTitle: {
+    ...typography.bodyStrong,
+    color: colors.textPrimary,
+  },
+  errorBody: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 });

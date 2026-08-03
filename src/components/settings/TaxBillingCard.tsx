@@ -5,18 +5,51 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { FormField } from '@/components/ui/FormField';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
-import { taxInfo } from '@/mock/settings';
+import type { TaxProfileSummary } from '@/api/settings';
 
 interface TaxBillingCardProps {
-  onSave: () => void;
+  tax: TaxProfileSummary;
+
+  onSave: (draft: {
+    companyTitle: string | null;
+    taxOffice: string | null;
+    taxIdentifier: string | null;
+    billingAddress: string | null;
+  }) => Promise<void>;
+
   onUploadDocument: () => void;
+  busy: boolean;
 }
 
-export function TaxBillingCard({ onSave, onUploadDocument }: TaxBillingCardProps) {
-  const [companyTitle, setCompanyTitle] = useState(taxInfo.companyTitle);
-  const [taxOffice, setTaxOffice] = useState(taxInfo.taxOffice);
-  const [taxNumber, setTaxNumber] = useState(taxInfo.taxNumber);
-  const [billingAddress, setBillingAddress] = useState(taxInfo.billingAddress);
+/**
+ * Tax and billing details.
+ *
+ * <b>The tax number is never loaded.</b> A VKN — or, for a sole trader, an 11-digit TCKN — is
+ * special-category data under KVKK, so the server stores it encrypted and answers with its last
+ * two digits and a flag. This field therefore starts empty even when one is stored, and the
+ * placeholder shows what is on file.
+ *
+ * That makes it three-valued on save: left blank it sends `null`, meaning "leave the stored one
+ * alone", which is what lets somebody correct the company title without erasing a number they were
+ * never shown.
+ */
+export function TaxBillingCard({ tax, onSave, onUploadDocument, busy }: TaxBillingCardProps) {
+  const [companyTitle, setCompanyTitle] = useState(tax.companyTitle ?? '');
+  const [taxOffice, setTaxOffice] = useState(tax.taxOffice ?? '');
+  const [taxNumber, setTaxNumber] = useState('');
+  const [billingAddress, setBillingAddress] = useState(tax.billingAddress ?? '');
+
+  const storedHint = tax.hasTaxIdentifier
+    ? `Kayıtlı: •••••••• ${tax.taxIdentifierLastDigits}`
+    : 'Henüz girilmedi';
+
+  const submit = () =>
+    void onSave({
+      companyTitle: companyTitle.trim() || null,
+      taxOffice: taxOffice.trim() || null,
+      taxIdentifier: taxNumber.trim() || null,
+      billingAddress: billingAddress.trim() || null,
+    });
 
   return (
     <Card style={styles.card}>
@@ -25,7 +58,13 @@ export function TaxBillingCard({ onSave, onUploadDocument }: TaxBillingCardProps
       <View style={styles.fieldsRow}>
         <FormField label="Şirket Unvanı" value={companyTitle} onChangeText={setCompanyTitle} />
         <FormField label="Vergi Dairesi" value={taxOffice} onChangeText={setTaxOffice} />
-        <FormField label="Vergi Numarası" value={taxNumber} onChangeText={setTaxNumber} keyboardType="numeric" />
+        <FormField
+          label="Vergi Numarası"
+          value={taxNumber}
+          onChangeText={setTaxNumber}
+          placeholder={storedHint}
+          keyboardType="numeric"
+        />
         <FormField label="Fatura Adresi" value={billingAddress} onChangeText={setBillingAddress} />
       </View>
 
@@ -36,7 +75,7 @@ export function TaxBillingCard({ onSave, onUploadDocument }: TaxBillingCardProps
         <View style={styles.documentTextGroup}>
           <Text style={styles.documentTitle}>Vergi Levhası</Text>
           <Text style={styles.documentCaption}>
-            {taxInfo.documentName ? taxInfo.documentName : 'Henüz dosya yüklenmedi'}
+            {tax.certificateObjectKey ? 'Yüklendi' : 'Henüz dosya yüklenmedi'}
           </Text>
         </View>
         <Pressable
@@ -46,17 +85,18 @@ export function TaxBillingCard({ onSave, onUploadDocument }: TaxBillingCardProps
           style={({ pressed }) => [styles.uploadButton, pressed && styles.uploadButtonPressed]}
         >
           <AppIcon name="cloud-upload-outline" size={15} color={colors.textPrimary} />
-          <Text style={styles.uploadLabel}>{taxInfo.documentName ? 'Değiştir' : 'Yükle'}</Text>
+          <Text style={styles.uploadLabel}>{tax.certificateObjectKey ? 'Değiştir' : 'Yükle'}</Text>
         </Pressable>
       </View>
 
       <Pressable
-        onPress={onSave}
+        onPress={submit}
+        disabled={busy}
         accessibilityRole="button"
         accessibilityLabel="Fatura bilgilerini kaydet"
         style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
       >
-        <Text style={styles.saveLabel}>Kaydet</Text>
+        <Text style={styles.saveLabel}>{busy ? 'Kaydediliyor…' : 'Kaydet'}</Text>
       </Pressable>
     </Card>
   );

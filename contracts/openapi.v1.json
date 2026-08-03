@@ -312,11 +312,7 @@
           "count": {
             "description": "How many rows. Zero is a valid answer and means \"not mine\".",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "entity": {
             "description": "The referencing entity, e.g. `Member`. A module may reference one catalog from several\r\nentities — leads reference a stage from both the lead and its transition history — and the\r\ncounts have to stay distinguishable, because one of them blocks deletion and one does not.",
@@ -475,11 +471,7 @@
           "effectAmount": {
             "description": "Days or sessions.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "effectType": {
             "$ref": "#/components/schemas/GiftEffectType",
@@ -511,11 +503,7 @@
           "effectAmount": {
             "description": "Days or sessions, per EffectType.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "effectType": {
             "$ref": "#/components/schemas/GiftEffectType",
@@ -541,11 +529,7 @@
           "sortOrder": {
             "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/LifecycleStatus",
@@ -705,11 +689,7 @@
           "sortOrder": {
             "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/LifecycleStatus",
@@ -770,11 +750,7 @@
           "sortOrder": {
             "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/LifecycleStatus",
@@ -844,11 +820,7 @@
           "sortOrder": {
             "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/LifecycleStatus",
@@ -1021,11 +993,7 @@
           "permissionVersion": {
             "description": "What the server currently holds. A client comparing this against its token's `pv` can\r\nrefresh before a request fails, rather than after.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "permissions": {
             "additionalProperties": {
@@ -1301,101 +1269,57 @@
           "activeStaffMembers": {
             "description": "Replaces the panel's \"Sorumlular\" count.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "availableNotifications": {
             "description": "Cells that could be enabled — the denominator the panel shows.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "classCategories": {
             "description": "How classes are grouped.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "enabledNotifications": {
             "description": "Enabled cells of the matrix.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "giftTemplates": {
             "description": "Gifts with structured effects.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "interests": {
             "description": "What leads and members want.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "leadSources": {
             "description": "Where leads come from.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "leadStages": {
             "description": "Pipeline board columns.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "openDays": {
             "description": "How many weekdays the studio opens, of seven.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "packageTemplates": {
             "description": "Sellable membership shapes.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "upcomingClosures": {
             "description": "Closures that have not ended yet.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           }
         },
         "required": [
@@ -1418,11 +1342,7 @@
           "durationDays": {
             "description": "How long the membership runs.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "name": {
             "description": "Display text.",
@@ -1431,20 +1351,14 @@
           "price": {
             "description": "A decimal, never a formatted string.",
             "format": "double",
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ]
+            "type": "number"
           },
           "sessionCount": {
             "description": "Null means unlimited.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ]
           }
         },
@@ -1469,11 +1383,7 @@
           "durationDays": {
             "description": "How long the membership runs. Always set.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "id": {
             "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
@@ -1495,31 +1405,23 @@
           "price": {
             "description": "<b>\r\n  `null` when the caller may not see money.</b>\r\n`catalogs.read` does not\r\n        imply `members.financial.read`, so a coach browsing packages to explain one to a member\r\n        gets the name, the session count and the term, and no price. Omitted at the query, not blanked\r\n        in the client.",
             "format": "double",
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "null",
-              "number",
-              "string"
+              "number"
             ]
           },
           "sessionCount": {
             "description": "`null` means unlimited, which is a real package shape (\"Gold Paket\") and not\r\n        missing data.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ]
           },
           "sortOrder": {
             "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ]
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/LifecycleStatus",
@@ -1740,11 +1642,9 @@
           },
           "status": {
             "format": "int32",
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ]
           },
           "title": {
@@ -2315,11 +2215,7 @@
             "schema": {
               "default": 50,
               "format": "int32",
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ]
+              "type": "integer"
             }
           }
         ],

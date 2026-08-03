@@ -5,17 +5,45 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { FormField } from '@/components/ui/FormField';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
-import { studioProfile } from '@/mock/settings';
+import type { OrganizationProfile } from '@/api/settings';
 
 interface StudioProfileCardProps {
-  onSave: () => void;
+  profile: OrganizationProfile;
+
+  /** Rejects with an `ApiError` the caller renders. */
+  onSave: (draft: {
+    name: string;
+    address: string | null;
+    phoneNumber: string | null;
+    contactPersonName: string | null;
+  }) => Promise<void>;
+
+  onUploadLogo: () => void;
+  busy: boolean;
 }
 
-export function StudioProfileCard({ onSave }: StudioProfileCardProps) {
-  const [name, setName] = useState(studioProfile.name);
-  const [address, setAddress] = useState(studioProfile.address);
-  const [phone, setPhone] = useState(studioProfile.phone);
-  const [contactPerson, setContactPerson] = useState(studioProfile.contactPerson);
+/**
+ * The studio's own details.
+ *
+ * The name here is <b>the</b> studio name. The panel used to keep three copies — this card,
+ * `AuthContext` and the nav mock — so renaming the studio changed one of them.
+ */
+export function StudioProfileCard({ profile, onSave, onUploadLogo, busy }: StudioProfileCardProps) {
+  const [name, setName] = useState(profile.name);
+  const [address, setAddress] = useState(profile.address ?? '');
+  const [phone, setPhone] = useState(profile.phoneNumber ?? '');
+  const [contactPerson, setContactPerson] = useState(profile.contactPersonName ?? '');
+
+  const submit = () =>
+    void onSave({
+      name: name.trim(),
+
+      // Empty means "not set", not "set to an empty string". Sending '' would store a blank
+      // address that renders as a present-but-empty line rather than as absent.
+      address: address.trim() || null,
+      phoneNumber: phone.trim() || null,
+      contactPersonName: contactPerson.trim() || null,
+    });
 
   return (
     <Card style={styles.card}>
@@ -30,7 +58,7 @@ export function StudioProfileCard({ onSave }: StudioProfileCardProps) {
           <Text style={styles.logoCaption}>PNG veya JPG, en az 256x256px</Text>
         </View>
         <Pressable
-          onPress={onSave}
+          onPress={onUploadLogo}
           accessibilityRole="button"
           accessibilityLabel="Logo yükle"
           style={({ pressed }) => [styles.uploadButton, pressed && styles.uploadButtonPressed]}
@@ -41,19 +69,41 @@ export function StudioProfileCard({ onSave }: StudioProfileCardProps) {
       </View>
 
       <View style={styles.fieldsRow}>
-        <FormField label="Stüdyo Adı" value={name} onChangeText={setName} placeholder="Stüdyo adı" />
-        <FormField label="İlgili Kişi" value={contactPerson} onChangeText={setContactPerson} placeholder="İlgili kişi" />
-        <FormField label="İletişim Numarası" value={phone} onChangeText={setPhone} placeholder="+90 5xx xxx xx xx" keyboardType="phone-pad" />
-        <FormField label="Adres" value={address} onChangeText={setAddress} placeholder="Stüdyo adresi" />
+        <FormField
+          label="Stüdyo Adı"
+          value={name}
+          onChangeText={setName}
+          placeholder="Stüdyo adı"
+        />
+        <FormField
+          label="İlgili Kişi"
+          value={contactPerson}
+          onChangeText={setContactPerson}
+          placeholder="İlgili kişi"
+        />
+        <FormField
+          label="İletişim Numarası"
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="+90 5xx xxx xx xx"
+          keyboardType="phone-pad"
+        />
+        <FormField
+          label="Adres"
+          value={address}
+          onChangeText={setAddress}
+          placeholder="Stüdyo adresi"
+        />
       </View>
 
       <Pressable
-        onPress={onSave}
+        onPress={submit}
+        disabled={busy || name.trim().length === 0}
         accessibilityRole="button"
         accessibilityLabel="Stüdyo bilgilerini kaydet"
         style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
       >
-        <Text style={styles.saveLabel}>Kaydet</Text>
+        <Text style={styles.saveLabel}>{busy ? 'Kaydediliyor…' : 'Kaydet'}</Text>
       </Pressable>
     </Card>
   );

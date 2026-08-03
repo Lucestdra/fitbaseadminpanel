@@ -3,6 +3,7 @@ import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
 import { colors, spacing, typography, radii } from '@/theme';
+import { responsibleOptions } from '@/mock/settings';
 import { useCatalogs } from '@/context/CatalogsContext';
 import type { Lead, LeadSource } from '@/types/leads';
 
@@ -15,14 +16,14 @@ interface NewLeadModalProps {
 type DropdownField = 'source' | 'interest' | 'trainer' | null;
 
 export function NewLeadModal({ visible, onClose, onCreate }: NewLeadModalProps) {
-  const { leadSources, interests, responsibles } = useCatalogs();
+  const { leadSources, interests } = useCatalogs();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [source, setSource] = useState<LeadSource>(leadSources[0]?.id ?? '');
-  const [interest, setInterest] = useState(interests[0] ?? '');
-  const [trainer, setTrainer] = useState(responsibles[0] ?? '');
+  const [interest, setInterest] = useState(interests[0]?.label ?? '');
+  const [trainer, setTrainer] = useState(responsibleOptions[0] ?? '');
   const [openDropdown, setOpenDropdown] = useState<DropdownField>(null);
 
   const canSubmit = name.trim().length > 0;
@@ -33,8 +34,8 @@ export function NewLeadModal({ visible, onClose, onCreate }: NewLeadModalProps) 
     setEmail('');
     setNote('');
     setSource(leadSources[0]?.id ?? '');
-    setInterest(interests[0] ?? '');
-    setTrainer(responsibles[0] ?? '');
+    setInterest(interests[0]?.label ?? '');
+    setTrainer(responsibleOptions[0] ?? '');
     setOpenDropdown(null);
     onClose();
   };
@@ -121,7 +122,7 @@ export function NewLeadModal({ visible, onClose, onCreate }: NewLeadModalProps) 
             <Text style={styles.fieldLabel}>İlgi</Text>
             <DropdownSelect
               placeholder="İlgi alanı seç"
-              options={interests.map((option) => ({ id: option, label: option }))}
+              options={interests.map((option) => ({ id: option.label, label: option.label }))}
               selectedId={interest || null}
               onSelect={(id) => {
                 setInterest(id ?? '');
@@ -134,7 +135,7 @@ export function NewLeadModal({ visible, onClose, onCreate }: NewLeadModalProps) 
             <Text style={styles.fieldLabel}>Sorumlu</Text>
             <DropdownSelect
               placeholder="Sorumlu seç"
-              options={responsibles.map((option) => ({ id: option, label: option }))}
+              options={responsibleOptions.map((option) => ({ id: option, label: option }))}
               selectedId={trainer || null}
               onSelect={(id) => {
                 setTrainer(id ?? '');

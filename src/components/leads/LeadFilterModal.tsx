@@ -1,6 +1,8 @@
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
+import { responsibleOptions } from '@/mock/settings';
+import { toIconName } from '@/types/settings';
 import { useCatalogs } from '@/context/CatalogsContext';
 import type { LeadColumnDef, LeadSource, LeadStage } from '@/types/leads';
 
@@ -23,7 +25,8 @@ function toggleValue<T>(list: T[], value: T): T[] {
 }
 
 export function LeadFilterModal({ visible, onClose, filters, onChange, columns }: LeadFilterModalProps) {
-  const { leadSources, responsibles } = useCatalogs();
+  const { leadSources } = useCatalogs();
+  const responsibles = responsibleOptions;
   const activeCount = filters.sources.length + filters.stages.length + filters.trainers.length;
 
   return (
@@ -57,7 +60,7 @@ export function LeadFilterModal({ visible, onClose, filters, onChange, columns }
                     accessibilityLabel={option.label}
                     style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.chipPressed]}
                   >
-                    <AppIcon name={option.icon} size={13} color={active ? colors.primaryDark : colors.textSecondary} />
+                    <AppIcon name={toIconName(option.icon)} size={13} color={active ? colors.primaryDark : colors.textSecondary} />
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{option.label}</Text>
                   </Pressable>
                 );

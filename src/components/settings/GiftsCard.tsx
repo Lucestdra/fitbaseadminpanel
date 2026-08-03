@@ -3,12 +3,26 @@ import { Card } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { GiftTemplate } from '@/types/settings';
+import type { GiftTemplateEntry } from '@/api/catalogs';
 
 interface GiftsCardProps {
-  gifts: GiftTemplate[];
+  gifts: GiftTemplateEntry[];
   onCreateGift: () => void;
-  onDeleteGift: (gift: GiftTemplate) => void;
+  onDeleteGift: (gift: GiftTemplateEntry) => void;
+}
+
+/** What a gift actually does, in words, from its structured effect. */
+function describeEffect(gift: GiftTemplateEntry): string {
+  switch (gift.effectType) {
+    case 'ExtendDays':
+      return `${gift.effectAmount} gün süre ekler`;
+    case 'AddSessions':
+      return `${gift.effectAmount} seans ekler`;
+    case 'FreeSession':
+      return `${gift.effectAmount} ücretsiz seans`;
+    default:
+      return gift.description ?? '';
+  }
 }
 
 export function GiftsCard({ gifts, onCreateGift, onDeleteGift }: GiftsCardProps) {
@@ -23,8 +37,17 @@ export function GiftsCard({ gifts, onCreateGift, onDeleteGift }: GiftsCardProps)
         {gifts.map((gift, index) => (
           <View key={gift.id} style={[styles.row, index === gifts.length - 1 && styles.rowLast]}>
             <View style={styles.infoGroup}>
-              <Text style={styles.name} numberOfLines={1}>{gift.name}</Text>
-              <Text style={styles.meta} numberOfLines={1}>{gift.description}</Text>
+              <Text style={styles.name} numberOfLines={1}>
+                {gift.name}
+              </Text>
+              {/*
+                The effect, not the description. A gift's description is a note the studio writes
+                for itself and nothing reads it — the panel used to show it as though it were the
+                behaviour, which is how "3 Seans Hediye" that granted nothing looked correct.
+              */}
+              <Text style={styles.meta} numberOfLines={1}>
+                {describeEffect(gift)}
+              </Text>
             </View>
             <Pressable
               onPress={() => onDeleteGift(gift)}

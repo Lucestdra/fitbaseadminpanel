@@ -1,29 +1,22 @@
-import type {
-  TaxInfo,
-  SubscriptionInfo,
-  PackageTemplate,
-  GiftTemplate,
-  LeadSourceOption,
-  LeadStageOption,
-  Invoice,
-  WorkingHoursDay,
-  NotificationPreference,
-} from '@/types/settings';
+import type { SubscriptionInfo, PackageTemplate, GiftTemplate, Invoice } from '@/types/settings';
 
-export const studioProfile = {
-  name: 'Fitbase Studio',
-  address: 'Caferağa Mah. Moda Cad. No: 42, Kadıköy, İstanbul',
-  phone: '+90 532 000 00 00',
-  contactPerson: 'Selin Yılmaz',
-};
-
-export const taxInfo: TaxInfo = {
-  taxOffice: 'Kadıköy Vergi Dairesi',
-  taxNumber: '1234567890',
-  companyTitle: 'Fitbase Spor Hizmetleri Ltd. Şti.',
-  billingAddress: 'Caferağa Mah. Moda Cad. No: 42, Kadıköy, İstanbul',
-  documentName: 'vergi_levhasi_2025.pdf',
-};
+/**
+ * What is left of the settings mocks after Phase 2.1.
+ *
+ * The catalogs, working hours, notification matrix, studio profile and tax details are server-
+ * backed now, and their arrays are gone — `CatalogsContext` and the settings screen read them from
+ * the API. Anything still here is data whose own phase has not arrived:
+ *
+ * - `subscriptionInfo` and `invoices` belong to `platform_billing`, which is Phase 2.5.
+ * - `packageTemplates` and `giftTemplates` are still read by the members and payments screens,
+ *   which are Phase 2.2 and 2.5. The settings screen no longer uses them; it shows the real ones.
+ *   Two shapes for "a package" exist for exactly as long as those two screens are mocks.
+ * - `responsibleOptions` never becomes a server concept at all: assignments key on
+ *   `staff_member.id` rather than on a name (backend ADR-0016), and the vocabulary register bans
+ *   the word. The four screens that use it import it from here directly rather than through
+ *   `CatalogsContext`, which now talks only to the server — deliberately uglier at the call site
+ *   than a hidden fallback would be.
+ */
 
 export const subscriptionInfo: SubscriptionInfo = {
   planName: 'Fitbase Pro',
@@ -50,31 +43,7 @@ export const packageTemplates: PackageTemplate[] = [
   { id: 'pkg-6', name: 'Deneme Paketi', price: '₺250', sessionCount: 1, durationDays: 7, status: 'pasif' },
 ];
 
-export const leadSourceOptions: LeadSourceOption[] = [
-  { id: 'instagram', label: 'Instagram', icon: 'logo-instagram' },
-  { id: 'whatsapp', label: 'WhatsApp', icon: 'logo-whatsapp' },
-  { id: 'telefon', label: 'Telefon', icon: 'call-outline' },
-  { id: 'web-formu', label: 'Web Formu', icon: 'globe-outline' },
-  { id: 'walk-in', label: 'Walk-in', icon: 'walk-outline' },
-];
-
-export const interestOptions: string[] = ['Pilates', 'Reformer', 'Yoga', 'PT'];
-
-export const classCategoryOptions: string[] = ['Pilates', 'Yoga', 'Fonksiyonel', 'PT'];
-
 export const responsibleOptions: string[] = ['Ece Yıldız', 'Can Demir', 'Melis Kara', 'Ayşe Kaya', 'Berkay Tuncel'];
-
-export const leadStageOptions: LeadStageOption[] = [
-  { id: 'yeni', title: 'Yeni', statusLabel: 'Yeni', tone: 'mint' },
-  { id: 'aranacak', title: 'Aranacak', statusLabel: 'Aranacak', tone: 'mint' },
-  { id: 'ulasilamadi', title: 'Ulaşılamadı', statusLabel: 'Ulaşılamadı', tone: 'warning' },
-  { id: 'tekrar-ara', title: 'Tekrar Ara', statusLabel: 'Tekrar Aranacak', tone: 'warning' },
-  { id: 'ilgileniyor', title: 'İlgileniyor', statusLabel: 'İlgileniyor', tone: 'mint' },
-  { id: 'yuzyuze-gorusme', title: 'Yüzyüze Görüşme', statusLabel: 'Görüşme Planlandı', tone: 'info' },
-  { id: 'deneme-planlandi', title: 'Deneme Planlandı', statusLabel: 'Planlandı', tone: 'mint' },
-  { id: 'teklif-verildi', title: 'Teklif Verildi', statusLabel: 'Teklif Gönderildi', tone: 'mint' },
-  { id: 'uye-oldu', title: 'Üye Oldu', statusLabel: 'Üye Oldu', tone: 'dark' },
-];
 
 export const giftTemplates: GiftTemplate[] = [
   { id: 'gift-1', name: '1 Ay Hediye Üyelik', description: 'Üyeliğin bitiş tarihine 1 ay ekler' },
@@ -83,19 +52,3 @@ export const giftTemplates: GiftTemplate[] = [
   { id: 'gift-4', name: 'Doğum Günü Hediyesi', description: 'Doğum günü ayında 1 ücretsiz PT seansı' },
 ];
 
-export const workingHours: WorkingHoursDay[] = [
-  { id: 'pzt', label: 'Pazartesi', isOpen: true, start: '08:00', end: '21:00' },
-  { id: 'sal', label: 'Salı', isOpen: true, start: '08:00', end: '21:00' },
-  { id: 'car', label: 'Çarşamba', isOpen: true, start: '08:00', end: '21:00' },
-  { id: 'per', label: 'Perşembe', isOpen: true, start: '08:00', end: '21:00' },
-  { id: 'cum', label: 'Cuma', isOpen: true, start: '08:00', end: '21:00' },
-  { id: 'cmt', label: 'Cumartesi', isOpen: true, start: '09:00', end: '18:00' },
-  { id: 'paz', label: 'Pazar', isOpen: false, start: '10:00', end: '16:00' },
-];
-
-export const notificationPreferences: NotificationPreference[] = [
-  { id: 'notif-email', label: 'E-posta Bildirimleri', description: 'Yeni müşteri adayı ve ödeme bildirimleri', enabled: true },
-  { id: 'notif-sms', label: 'SMS Bildirimleri', description: 'Randevu hatırlatmaları ve iptaller', enabled: true },
-  { id: 'notif-push', label: 'Anlık Bildirimler', description: 'Uygulama içi push bildirimleri', enabled: false },
-  { id: 'notif-weekly', label: 'Haftalık Özet Raporu', description: 'Her pazartesi performans özeti e-postası', enabled: true },
-];

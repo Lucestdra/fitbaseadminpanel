@@ -3,7 +3,7 @@ import { Modal, View, Text, TextInput, Pressable, StyleSheet } from 'react-nativ
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
 import { colors, spacing, typography, radii } from '@/theme';
-import { useCatalogs } from '@/context/CatalogsContext';
+import { responsibleOptions } from '@/mock/settings';
 import { WEEKDAYS, generateTimeOptions } from '@/utils/date';
 import type { CalendarSessionType } from '@/types/calendar';
 
@@ -33,7 +33,7 @@ const TIME_OPTIONS = generateTimeOptions();
 type DropdownField = 'trainer' | 'time' | 'type' | null;
 
 export function NewAppointmentModal({ visible, onClose, onCreate }: NewAppointmentModalProps) {
-  const { responsibles } = useCatalogs();
+  const responsibles = responsibleOptions;
   const [title, setTitle] = useState('');
   const [trainer, setTrainer] = useState(responsibles[0] ?? '');
   const [day, setDay] = useState<string | null>(null);

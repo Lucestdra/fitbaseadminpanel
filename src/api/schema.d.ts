@@ -162,7 +162,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    limit?: number | string;
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1566,7 +1566,7 @@ export interface components {
              * Format: int32
              * @description How many rows. Zero is a valid answer and means "not mine".
              */
-            count: number | string;
+            count: number;
             /**
              * @description The referencing entity, e.g. `Member`. A module may reference one catalog from several
              *     entities — leads reference a stage from both the lead and its transition history — and the
@@ -1632,7 +1632,7 @@ export interface components {
              * Format: int32
              * @description Days or sessions.
              */
-            effectAmount: number | string;
+            effectAmount: number;
             /** @description What granting it does. */
             effectType: components["schemas"]["GiftEffectType"];
             /** @description Display text. */
@@ -1649,7 +1649,7 @@ export interface components {
              * Format: int32
              * @description Days or sessions, per EffectType.
              */
-            effectAmount: number | string;
+            effectAmount: number;
             /** @description What granting it does. Replaces the panel's free-text description. */
             effectType: components["schemas"]["GiftEffectType"];
             /**
@@ -1676,7 +1676,7 @@ export interface components {
              * @description Explicit position. The panel derives order from array position and then resolves stages by
              *     `indexOf`, so reordering the list changes behaviour — this replaces both.
              */
-            sortOrder: number | string;
+            sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
         };
@@ -1753,7 +1753,7 @@ export interface components {
              * @description Explicit position. The panel derives order from array position and then resolves stages by
              *     `indexOf`, so reordering the list changes behaviour — this replaces both.
              */
-            sortOrder: number | string;
+            sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
         };
@@ -1791,7 +1791,7 @@ export interface components {
              * @description Explicit position. The panel derives order from array position and then resolves stages by
              *     `indexOf`, so reordering the list changes behaviour — this replaces both.
              */
-            sortOrder: number | string;
+            sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
         };
@@ -1828,7 +1828,7 @@ export interface components {
              * @description Explicit position. The panel derives order from array position and then resolves stages by
              *     `indexOf`, so reordering the list changes behaviour — this replaces both.
              */
-            sortOrder: number | string;
+            sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
             /**
@@ -1906,7 +1906,7 @@ export interface components {
              * @description What the server currently holds. A client comparing this against its token's `pv` can
              *     refresh before a request fails, rather than after.
              */
-            permissionVersion: number | string;
+            permissionVersion: number;
             /**
              * @description Permission string → scope, containing only what the caller holds. Absence is how something is
              *     not granted; there are no `"None"` entries.
@@ -2029,76 +2029,76 @@ export interface components {
              * Format: int32
              * @description Replaces the panel's "Sorumlular" count.
              */
-            activeStaffMembers: number | string;
+            activeStaffMembers: number;
             /**
              * Format: int32
              * @description Cells that could be enabled — the denominator the panel shows.
              */
-            availableNotifications: number | string;
+            availableNotifications: number;
             /**
              * Format: int32
              * @description How classes are grouped.
              */
-            classCategories: number | string;
+            classCategories: number;
             /**
              * Format: int32
              * @description Enabled cells of the matrix.
              */
-            enabledNotifications: number | string;
+            enabledNotifications: number;
             /**
              * Format: int32
              * @description Gifts with structured effects.
              */
-            giftTemplates: number | string;
+            giftTemplates: number;
             /**
              * Format: int32
              * @description What leads and members want.
              */
-            interests: number | string;
+            interests: number;
             /**
              * Format: int32
              * @description Where leads come from.
              */
-            leadSources: number | string;
+            leadSources: number;
             /**
              * Format: int32
              * @description Pipeline board columns.
              */
-            leadStages: number | string;
+            leadStages: number;
             /**
              * Format: int32
              * @description How many weekdays the studio opens, of seven.
              */
-            openDays: number | string;
+            openDays: number;
             /**
              * Format: int32
              * @description Sellable membership shapes.
              */
-            packageTemplates: number | string;
+            packageTemplates: number;
             /**
              * Format: int32
              * @description Closures that have not ended yet.
              */
-            upcomingClosures: number | string;
+            upcomingClosures: number;
         };
         PackageTemplateBody: {
             /**
              * Format: int32
              * @description How long the membership runs.
              */
-            durationDays: number | string;
+            durationDays: number;
             /** @description Display text. */
             name: string;
             /**
              * Format: double
              * @description A decimal, never a formatted string.
              */
-            price: number | string;
+            price: number;
             /**
              * Format: int32
              * @description Null means unlimited.
              */
-            sessionCount: null | number | string;
+            sessionCount: null | number;
         };
         /** @description A sellable membership shape. */
         PackageTemplateEntry: {
@@ -2108,7 +2108,7 @@ export interface components {
              * Format: int32
              * @description How long the membership runs. Always set.
              */
-            durationDays: number | string;
+            durationDays: number;
             /**
              * Format: uuid
              * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
@@ -2137,19 +2137,19 @@ export interface components {
              *             gets the name, the session count and the term, and no price. Omitted at the query, not blanked
              *             in the client.
              */
-            price: null | number | string;
+            price: null | number;
             /**
              * Format: int32
              * @description `null` means unlimited, which is a real package shape ("Gold Paket") and not
              *             missing data.
              */
-            sessionCount: null | number | string;
+            sessionCount: null | number;
             /**
              * Format: int32
              * @description Explicit position. The panel derives order from array position and then resolves stages by
              *     `indexOf`, so reordering the list changes behaviour — this replaces both.
              */
-            sortOrder: number | string;
+            sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
         };
@@ -2254,7 +2254,7 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
             /** Format: int32 */
-            status?: null | number | string;
+            status?: null | number;
             title?: null | string;
             type?: null | string;
         };

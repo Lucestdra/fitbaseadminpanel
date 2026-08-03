@@ -63,7 +63,10 @@ export async function updateLeadStage(
   body: { title: string; statusLabel: string; tone: string },
 ): Promise<LeadStageEntry> {
   return withAuth(() =>
-    client.PUT('/api/v1/catalogs/lead-stages/{entryId}', { params: { path: { entryId } }, body }),
+    client.PUT('/api/v1/catalogs/lead-stages/{entryId}', {
+      params: { path: { entryId } },
+      body,
+    }),
   );
 }
 
@@ -79,7 +82,10 @@ export async function updateLeadSource(
   body: { label: string; icon: string },
 ): Promise<LeadSourceEntry> {
   return withAuth(() =>
-    client.PUT('/api/v1/catalogs/lead-sources/{entryId}', { params: { path: { entryId } }, body }),
+    client.PUT('/api/v1/catalogs/lead-sources/{entryId}', {
+      params: { path: { entryId } },
+      body,
+    }),
   );
 }
 
@@ -127,7 +133,12 @@ export async function createPackageTemplate(body: {
 
 export async function updatePackageTemplate(
   entryId: string,
-  body: { name: string; price: number; sessionCount: number | null; durationDays: number },
+  body: {
+    name: string;
+    price: number;
+    sessionCount: number | null;
+    durationDays: number;
+  },
 ): Promise<PackageTemplateEntry> {
   return withAuth(() =>
     client.PUT('/api/v1/catalogs/package-templates/{entryId}', {
@@ -216,7 +227,10 @@ export async function deleteCatalogEntry(
 ): Promise<void> {
   await withAuth(() =>
     client.DELETE('/api/v1/catalogs/{kind}/{entryId}', {
-      params: { path: { kind, entryId }, query: reassignTo ? { reassignTo } : undefined },
+      params: {
+        path: { kind, entryId },
+        query: reassignTo ? { reassignTo } : undefined,
+      },
     }),
   );
 }

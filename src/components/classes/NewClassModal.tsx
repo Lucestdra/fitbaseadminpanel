@@ -3,6 +3,7 @@ import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
 import { colors, spacing, typography, radii } from '@/theme';
+import { responsibleOptions } from '@/mock/settings';
 import { useCatalogs } from '@/context/CatalogsContext';
 import { WEEKDAYS, generateTimeOptions } from '@/utils/date';
 import type { ClassDefinition, ClassScheduleSlot } from '@/types/classes';
@@ -69,11 +70,13 @@ function deriveScheduleState(editingClass: ClassDefinition | null | undefined): 
 }
 
 export function NewClassModal({ visible, editingClass = null, onClose, onSubmit }: NewClassModalProps) {
-  const { classCategories, responsibles } = useCatalogs();
+  const { classCategories } = useCatalogs();
   const initialSchedule = deriveScheduleState(editingClass);
   const [name, setName] = useState(editingClass?.name ?? '');
-  const [category, setCategory] = useState(editingClass?.category ?? classCategories[0] ?? '');
-  const [trainer, setTrainer] = useState(editingClass?.trainer ?? responsibles[0] ?? '');
+  const [category, setCategory] = useState(
+    editingClass?.category ?? classCategories[0]?.label ?? '',
+  );
+  const [trainer, setTrainer] = useState(editingClass?.trainer ?? responsibleOptions[0] ?? '');
   const [selectedDays, setSelectedDays] = useState<string[]>(initialSchedule.days);
   const [startTime, setStartTime] = useState(initialSchedule.startTime);
   const [endTime, setEndTime] = useState(initialSchedule.endTime);
@@ -85,8 +88,8 @@ export function NewClassModal({ visible, editingClass = null, onClose, onSubmit 
   const resetState = () => {
     const reset = deriveScheduleState(editingClass);
     setName(editingClass?.name ?? '');
-    setCategory(editingClass?.category ?? classCategories[0] ?? '');
-    setTrainer(editingClass?.trainer ?? responsibles[0] ?? '');
+    setCategory(editingClass?.category ?? classCategories[0]?.label ?? '');
+    setTrainer(editingClass?.trainer ?? responsibleOptions[0] ?? '');
     setSelectedDays(reset.days);
     setStartTime(reset.startTime);
     setEndTime(reset.endTime);
@@ -146,7 +149,7 @@ export function NewClassModal({ visible, editingClass = null, onClose, onSubmit 
             <Text style={styles.fieldLabel}>Kategori</Text>
             <DropdownSelect
               placeholder="Kategori seç"
-              options={classCategories.map((option) => ({ id: option, label: option }))}
+              options={classCategories.map((option) => ({ id: option.label, label: option.label }))}
               selectedId={category || null}
               onSelect={(id) => {
                 setCategory(id ?? '');
@@ -159,7 +162,7 @@ export function NewClassModal({ visible, editingClass = null, onClose, onSubmit 
             <Text style={styles.fieldLabel}>Eğitmen</Text>
             <DropdownSelect
               placeholder="Eğitmen seç"
-              options={responsibles.map((option) => ({ id: option, label: option }))}
+              options={responsibleOptions.map((option) => ({ id: option, label: option }))}
               selectedId={trainer || null}
               onSelect={(id) => {
                 setTrainer(id ?? '');
