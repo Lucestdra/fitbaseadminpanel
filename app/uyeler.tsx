@@ -1,119 +1,107 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppShell } from '@/components/layout/AppShell';
 import { ListPageHeader } from '@/components/shared/ListPageHeader';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { MemberTable } from '@/components/members/MemberTable';
-import { MemberStatusSummary } from '@/components/members/MemberStatusSummary';
-import { NewMemberModal, type NewMemberInput } from '@/components/members/NewMemberModal';
-import { MemberDetailModal } from '@/components/members/MemberDetailModal';
-import { MemberFilterModal, type MemberFilters } from '@/components/members/MemberFilterModal';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useMemberList } from '@/hooks/useMemberList';
 import { colors, spacing, typography, radii } from '@/theme';
-import { members as initialMembers, memberKpis, memberStatusCounts } from '@/mock/members';
-import { packageTemplates, giftTemplates } from '@/mock/settings';
-import { teamMembers } from '@/mock/team';
-import { parseDateLabel } from '@/utils/date';
-import { isMemberOverdue, isMemberRenewalSoon } from '@/utils/members';
-import type { Member, MemberStatus } from '@/types/members';
+import { MEMBERSHIP_STATE_LABELS } from '@/api/enums';
+import type { MembershipState } from '@/api/members';
+import type { IconName } from '@/types/dashboard';
 
-const trainers = teamMembers.filter((member) => member.role === 'egitmen');
-const trainerOptions = trainers.map((trainer) => trainer.name);
+/**
+ * The counter tiles, and the filter each one applies.
+ *
+ * <b>Every tile is derived from the same query as the list.</b> The panel's five KPIs are hardcoded
+ * constants — `'342'`, `'18'`, `'24'` — sitting above a list they have no relationship to, so
+ * filtering the list leaves them saying something about a different set of people.
+ *
+ * "Bu Ay Yeni Üyeler" is not here. It needs a joined-on range filter the server does not take yet,
+ * and a tile that silently filtered by something else would be worse than one that is absent.
+ */
+const TILES: {
+  id: string;
+  title: string;
+  icon: IconName;
+  states: MembershipState[] | null;
+  count: (counts: {
+    total: number;
+    active: number;
+    frozen: number;
+    expiring: number;
+    lapsed: number;
+  }) => number;
+}[] = [
+  {
+    id: 'all',
+    title: 'Toplam Üye',
+    icon: 'people-outline',
+    states: null,
+    count: (counts) => counts.total,
+  },
+  {
+    id: 'active',
+    title: 'Aktif Üyeler',
+    icon: 'checkmark-circle-outline',
+    states: ['Active'],
+    count: (counts) => counts.active,
+  },
+  {
+    id: 'expiring',
+    title: 'Paket Bitiyor',
+    icon: 'calendar-outline',
+    states: ['Active'],
+    count: (counts) => counts.expiring,
+  },
+  {
+    id: 'frozen',
+    title: 'Dondurulmuş',
+    icon: 'pause-circle-outline',
+    states: ['Frozen'],
+    count: (counts) => counts.frozen,
+  },
+  {
+    id: 'lapsed',
+    title: 'Üyeliği Bitenler',
+    icon: 'person-remove-outline',
+    states: ['Expired', 'Cancelled', 'NoMembership'],
+    count: (counts) => counts.lapsed,
+  },
+];
 
-const EMPTY_FILTERS: MemberFilters = { packages: [], trainers: [], statuses: [] };
-
-type KpiFilter = MemberStatus | 'new-this-month' | 'renewal-soon' | 'overdue' | null;
-
-const KPI_FILTER_MAP: Record<string, KpiFilter> = {
-  'active-members': 'aktif',
-  'new-members-month': 'new-this-month',
-  'package-ending': 'renewal-soon',
-  'overdue-payment': 'overdue',
-  'frozen-members': 'donduruldu',
-};
-
-const KPI_FILTER_LABELS: Record<Exclude<KpiFilter, null>, string> = {
-  aktif: 'Aktif Üyeler',
-  'renewal-soon': 'Paket Bitiyor',
-  overdue: 'Geciken Ödeme',
-  donduruldu: 'Dondurulmuş Üyeler',
-  pasif: 'Pasif Üyeler',
-  'new-this-month': 'Bu Ay Yeni Üyeler',
-};
-
+/**
+ * The members screen.
+ *
+ * <b>Search, filter and paging all happen on the server.</b> The panel loads every member into
+ * memory and filters with `Array.filter`, which is fine for eight mock rows and is not fine for a
+ * studio with four hundred — the first page would be four hundred rows over the wire before
+ * anything rendered.
+ */
 export default function MembersScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
-  const [search, setSearch] = useState('');
-  const [members, setMembers] = useState<Member[]>(initialMembers);
-  const [newMemberModalVisible, setNewMemberModalVisible] = useState(false);
-  const [detailMemberId, setDetailMemberId] = useState<string | null>(null);
-  const [kpiFilter, setKpiFilter] = useState<KpiFilter>(null);
-  const [filters, setFilters] = useState<MemberFilters>(EMPTY_FILTERS);
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const { message, visible, show } = useToast();
 
-  const detailMember = members.find((member) => member.id === detailMemberId) ?? null;
-  const packageOptions = useMemo(() => Array.from(new Set(members.map((member) => member.packageName))), [members]);
-  const filterCount = filters.packages.length + filters.trainers.length + filters.statuses.length;
+  const [search, setSearch] = useState('');
+  const [tileId, setTileId] = useState<string>('all');
 
-  const filteredMembers = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('tr');
-    const now = new Date();
-    return members.filter((member) => {
-      const matchesQuery =
-        !query ||
-        member.name.toLocaleLowerCase('tr').includes(query) ||
-        member.packageName.toLocaleLowerCase('tr').includes(query);
-      if (!matchesQuery) return false;
-      if (filters.packages.length > 0 && !filters.packages.includes(member.packageName)) return false;
-      if (filters.trainers.length > 0 && !filters.trainers.includes(member.assignedTrainer ?? '')) return false;
-      if (filters.statuses.length > 0 && !filters.statuses.includes(member.status)) return false;
-      if (!kpiFilter) return true;
-      if (kpiFilter === 'new-this-month') {
-        const startDate = member.membershipStartDate ? parseDateLabel(member.membershipStartDate) : null;
-        return !!startDate && startDate.getMonth() === now.getMonth() && startDate.getFullYear() === now.getFullYear();
-      }
-      if (kpiFilter === 'renewal-soon') return isMemberRenewalSoon(member);
-      if (kpiFilter === 'overdue') return isMemberOverdue(member);
-      return member.status === kpiFilter;
-    });
-  }, [members, search, kpiFilter, filters]);
+  const tile = TILES.find((candidate) => candidate.id === tileId) ?? TILES[0];
 
-  const handleKpiPress = (kpiId: string) => {
-    const filter = KPI_FILTER_MAP[kpiId] ?? null;
-    setKpiFilter((current) => (current === filter ? null : filter));
-  };
+  const query = useMemo(
+    () => ({
+      search: search.trim() || undefined,
+      state: tile.states ?? undefined,
+      sort: 'RecentlyJoined' as const,
+      limit: 25,
+    }),
+    [search, tile],
+  );
 
-  const handleCreateMember = (input: NewMemberInput) => {
-    const newMember: Member = {
-      id: `mem-${Date.now()}`,
-      name: input.name,
-      avatarInitials: input.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
-      packageName: input.packageName ?? 'Paket Seçilmedi',
-      sessionsRemaining: input.sessionsTotal,
-      sessionsTotal: input.sessionsTotal,
-      lastVisit: '—',
-      renewalDate: input.membershipEndDate,
-      renewalDaysLeft: 30,
-      status: 'aktif',
-      phone: input.phone,
-      email: input.email,
-      birthDate: input.birthDate,
-      membershipStartDate: input.membershipStartDate,
-      membershipEndDate: input.membershipEndDate,
-      gifts: input.giftLabel ? [{ id: `gift-${Date.now()}`, label: input.giftLabel, dateLabel: input.membershipStartDate }] : [],
-    };
-    setMembers((current) => [newMember, ...current]);
-    show(`${newMember.name} üye olarak eklendi.`);
-  };
-
-  const handleSaveMember = (updated: Member) => {
-    setMembers((current) => current.map((member) => (member.id === updated.id ? updated : member)));
-    show(`${updated.name} bilgileri güncellendi.`);
-  };
+  const { items, counts, status, loadingMore, hasMore, loadMore } = useMemberList(query);
 
   const kpiBasis = isMobile ? '47%' : isTablet ? '31%' : '18.4%';
 
@@ -122,30 +110,43 @@ export default function MembersScreen() {
       <ListPageHeader
         title="Üyeler"
         subtitle="Aktif üyeleri, paket durumlarını ve yenilemeleri sade bir ekrandan yönet."
-        searchPlaceholder="Ara (isim, telefon, e-posta...)"
+        searchPlaceholder="Ara (isim veya telefon)"
         searchValue={search}
         onSearchChange={setSearch}
-        onFilterPress={() => setFilterModalVisible(true)}
-        filterCount={filterCount}
         primaryActionLabel="Yeni Üye"
         primaryActionIcon="add"
-        onPrimaryAction={() => setNewMemberModalVisible(true)}
+        onPrimaryAction={() => show('Yeni üye formu bir sonraki adımda bağlanacak.')}
       />
 
       <View style={styles.kpiGrid}>
-        {memberKpis.map((item) => (
-          <View key={item.id} style={[styles.kpiItem, { flexBasis: kpiBasis }]}>
-            <KpiCard item={item} onPress={() => handleKpiPress(item.id)} />
+        {TILES.map((candidate) => (
+          <View key={candidate.id} style={[styles.kpiItem, { flexBasis: kpiBasis }]}>
+            <KpiCard
+              item={{
+                id: candidate.id,
+                title: candidate.title,
+                value: String(candidate.count(counts)),
+                icon: candidate.icon,
+              }}
+              onPress={() =>
+                setTileId((current) => (current === candidate.id ? 'all' : candidate.id))
+              }
+            />
           </View>
         ))}
       </View>
 
-      {kpiFilter ? (
+      {tileId !== 'all' ? (
         <View style={styles.filterChipRow}>
           <View style={styles.filterChip}>
-            <Text style={styles.filterChipLabel}>Filtre: {KPI_FILTER_LABELS[kpiFilter]}</Text>
+            <Text style={styles.filterChipLabel}>
+              Filtre: {tile.title}
+              {tile.states
+                ? ` (${tile.states.map((s) => MEMBERSHIP_STATE_LABELS[s]).join(', ')})`
+                : ''}
+            </Text>
             <Pressable
-              onPress={() => setKpiFilter(null)}
+              onPress={() => setTileId('all')}
               accessibilityRole="button"
               accessibilityLabel="Filtreyi temizle"
               hitSlop={8}
@@ -156,36 +157,62 @@ export default function MembersScreen() {
         </View>
       ) : null}
 
-      <MemberTable members={filteredMembers} onMemberPress={(member) => setDetailMemberId(member.id)} />
+      {status === 'loading' ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      ) : null}
 
-      <MemberStatusSummary items={memberStatusCounts} />
+      {status === 'error' ? (
+        // Told apart from "no members yet" on purpose. An empty studio and a failed request look
+        // identical, and only one of them is worth telling somebody about.
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>Üyeler yüklenemedi</Text>
+          <Text style={styles.emptyBody}>Bağlantını kontrol edip sayfayı yenile.</Text>
+        </View>
+      ) : null}
 
-      <MemberFilterModal
-        visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
-        filters={filters}
-        onChange={setFilters}
-        packageOptions={packageOptions}
-        trainerOptions={trainerOptions}
-      />
+      {status === 'ready' && items.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>
+            {search.trim() || tileId !== 'all' ? 'Bu filtreye uyan üye yok' : 'Henüz üye yok'}
+          </Text>
+          <Text style={styles.emptyBody}>
+            {search.trim() || tileId !== 'all'
+              ? 'Aramayı veya filtreyi değiştirmeyi dene.'
+              : 'İlk üyeni ekleyerek başla.'}
+          </Text>
+        </View>
+      ) : null}
 
-      <NewMemberModal
-        visible={newMemberModalVisible}
-        onClose={() => setNewMemberModalVisible(false)}
-        onCreate={handleCreateMember}
-        packages={packageTemplates}
-        gifts={giftTemplates}
-      />
+      {status === 'ready' && items.length > 0 ? (
+        <>
+          <MemberTable
+            members={items}
+            onMemberPress={(member) =>
+              show(`${member.fullName} detayı bir sonraki adımda açılacak.`)
+            }
+          />
 
-      <MemberDetailModal
-        key={detailMember?.id ?? 'none'}
-        visible={detailMemberId !== null}
-        member={detailMember}
-        packages={packageTemplates}
-        trainers={trainers}
-        onClose={() => setDetailMemberId(null)}
-        onSave={handleSaveMember}
-      />
+          {hasMore ? (
+            <Pressable
+              onPress={loadMore}
+              disabled={loadingMore}
+              accessibilityRole="button"
+              accessibilityLabel="Daha fazla üye yükle"
+              style={({ pressed }) => [styles.loadMore, pressed && styles.loadMorePressed]}
+            >
+              <Text style={styles.loadMoreLabel}>
+                {loadingMore ? 'Yükleniyor…' : 'Daha fazla göster'}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <Text style={styles.tally}>
+            {items.length} / {counts.total} üye gösteriliyor
+          </Text>
+        </>
+      ) : null}
 
       <Toast message={message} visible={visible} />
     </AppShell>
@@ -219,5 +246,41 @@ const styles = StyleSheet.create({
   filterChipLabel: {
     ...typography.captionStrong,
     color: colors.primaryDark,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+  },
+  emptyTitle: {
+    ...typography.bodyStrong,
+    color: colors.textPrimary,
+  },
+  emptyBody: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  loadMore: {
+    alignSelf: 'center',
+    height: 40,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadMorePressed: {
+    backgroundColor: colors.pageBackground,
+  },
+  loadMoreLabel: {
+    ...typography.captionStrong,
+    color: colors.textPrimary,
+  },
+  tally: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    alignSelf: 'center',
   },
 });

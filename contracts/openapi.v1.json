@@ -61,6 +61,24 @@
         ],
         "type": "object"
       },
+      "AdjustCreditsBody": {
+        "properties": {
+          "delta": {
+            "description": "Signed, never zero.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "note": {
+            "description": "Required. An unexplained adjustment is the one nobody can defend.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "note"
+        ],
+        "type": "object"
+      },
       "AuditAction": {
         "description": "What kind of thing happened. Stored as a string, so adding one is a code change with no\r\nmigration and reading the table needs no lookup.",
         "enum": [
@@ -270,6 +288,21 @@
         ],
         "type": "object"
       },
+      "CancelBody": {
+        "properties": {
+          "reason": {
+            "description": "Why the membership was ended early.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "CatalogEntryUsage": {
         "description": "What is pointing at a catalog entry, and therefore what deleting it would do.",
         "properties": {
@@ -451,6 +484,87 @@
         ],
         "type": "object"
       },
+      "FreezeBody": {
+        "properties": {
+          "endsOn": {
+            "description": "When the studio expects to release it. A request, not a commitment.",
+            "format": "date",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startsOn": {
+            "description": "First frozen day. Defaults to today.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "startsOn",
+          "endsOn",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "FreezeSummary": {
+        "properties": {
+          "endsOn": {
+            "description": "What the studio asked for. A request, not a fact.",
+            "format": "date",
+            "type": "string"
+          },
+          "extendedByDays": {
+            "description": "Days added to the term at release (ADR-0027). Null while running.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "id": {
+            "description": "The freeze.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "releasedOn": {
+            "description": "When it actually ended, or null while running.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startsOn": {
+            "description": "First frozen day.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "startsOn",
+          "endsOn",
+          "releasedOn",
+          "extendedByDays",
+          "reason"
+        ],
+        "type": "object"
+      },
       "GiftEffectType": {
         "description": "What granting a gift actually does.",
         "enum": [
@@ -458,6 +572,58 @@
           "AddSessions",
           "FreeSession"
         ]
+      },
+      "GiftSummary": {
+        "properties": {
+          "effectAmount": {
+            "description": "How much.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "effectType": {
+            "$ref": "#/components/schemas/GiftEffectType",
+            "description": "What it did."
+          },
+          "giftName": {
+            "description": "Snapshotted at grant.",
+            "type": "string"
+          },
+          "grantedOn": {
+            "description": "When.",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "description": "The grant.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remainingUses": {
+            "description": "Free sessions left, or null for the effects applied once.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "giftName",
+          "effectType",
+          "effectAmount",
+          "remainingUses",
+          "grantedOn",
+          "note"
+        ],
+        "type": "object"
       },
       "GiftTemplateBody": {
         "properties": {
@@ -546,6 +712,27 @@
           "sortOrder",
           "isSystem",
           "status"
+        ],
+        "type": "object"
+      },
+      "GrantGiftBody": {
+        "properties": {
+          "giftTemplateId": {
+            "description": "What to give.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "giftTemplateId",
+          "note"
         ],
         "type": "object"
       },
@@ -1077,6 +1264,482 @@
         ],
         "type": "object"
       },
+      "MemberBadge": {
+        "description": "What a member's row shows at a glance. <b>Derived, never stored.</b>",
+        "enum": [
+          "Active",
+          "RenewalSoon",
+          "Overdue",
+          "Frozen",
+          "Inactive"
+        ]
+      },
+      "MemberBody": {
+        "properties": {
+          "birthDate": {
+            "description": "Optional.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "description": "Required.",
+            "type": "string"
+          },
+          "interestIds": {
+            "description": "Catalog entry ids.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "joinedOn": {
+            "description": "Defaults to the studio's today.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneNumber": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "primaryCoachStaffMemberId": {
+            "description": "Roster id, never a name (ADR-0016).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "fullName",
+          "phoneNumber",
+          "email",
+          "birthDate",
+          "primaryCoachStaffMemberId",
+          "joinedOn",
+          "notes",
+          "interestIds"
+        ],
+        "type": "object"
+      },
+      "MemberCounts": {
+        "description": "The counters above the members list.",
+        "properties": {
+          "active": {
+            "description": "With a running membership.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "expiring": {
+            "description": "Active and ending within the renewal window.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "frozen": {
+            "description": "Paused.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "lapsed": {
+            "description": "Expired, cancelled, or never had one.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Members matching the filter.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "frozen",
+          "expiring",
+          "lapsed"
+        ],
+        "type": "object"
+      },
+      "MemberDetail": {
+        "description": "Everything the member detail drawer shows, in one response.",
+        "properties": {
+          "birthDate": {
+            "description": "Optional.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "current": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MembershipSummary",
+                "description": "The running membership, or null."
+              }
+            ]
+          },
+          "email": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "freezes": {
+            "description": "Every freeze on the current membership.",
+            "items": {
+              "$ref": "#/components/schemas/FreezeSummary"
+            },
+            "type": "array"
+          },
+          "fullName": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "gifts": {
+            "description": "What has been given.",
+            "items": {
+              "$ref": "#/components/schemas/GiftSummary"
+            },
+            "type": "array"
+          },
+          "history": {
+            "description": "Everything else, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/MembershipSummary"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "The member.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "interestIds": {
+            "description": "Catalog entry ids. Resolved client-side against the catalog snapshot.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "isArchived": {
+            "description": "Whether they are off the working roster.",
+            "type": "boolean"
+          },
+          "joinedOn": {
+            "description": "When they first joined.",
+            "format": "date",
+            "type": "string"
+          },
+          "notes": {
+            "description": "The studio's own notes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneNumber": {
+            "description": "As typed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "primaryCoachStaffMemberId": {
+            "description": "Roster id.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "recentSessions": {
+            "description": "The last page of ledger rows.",
+            "items": {
+              "$ref": "#/components/schemas/SessionLedgerEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "phoneNumber",
+          "email",
+          "birthDate",
+          "primaryCoachStaffMemberId",
+          "joinedOn",
+          "notes",
+          "isArchived",
+          "interestIds",
+          "current",
+          "history",
+          "freezes",
+          "gifts",
+          "recentSessions"
+        ],
+        "type": "object"
+      },
+      "MemberList": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/MemberCounts",
+            "description": "The counters, under the same filter."
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageOfMemberListItem",
+            "description": "The rows."
+          }
+        },
+        "required": [
+          "page",
+          "counts"
+        ],
+        "type": "object"
+      },
+      "MemberListItem": {
+        "description": "One row of the members list.",
+        "properties": {
+          "badge": {
+            "$ref": "#/components/schemas/MemberBadge",
+            "description": "The at-a-glance status, derived from the two fields above it."
+          },
+          "email": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "description": "Display name. Initials are derived by the client; storing them was one more thing to keep in sync.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The member.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isArchived": {
+            "description": "Whether they are off the working roster.",
+            "type": "boolean"
+          },
+          "joinedOn": {
+            "description": "When they first joined.",
+            "format": "date",
+            "type": "string"
+          },
+          "membershipEndsOn": {
+            "description": "Inclusive last day, or null.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "membershipState": {
+            "$ref": "#/components/schemas/MembershipState",
+            "description": "The current membership's state, or MembershipState.NoMembership. Never null."
+          },
+          "packageName": {
+            "description": "What they are on, snapshotted at sale (ADR-0035). Null with no membership.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneNumber": {
+            "description": "As typed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "primaryCoachStaffMemberId": {
+            "description": "Roster id, never a name (ADR-0016).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "renewalDaysLeft": {
+            "description": "Days until the term ends, in the organization's zone. <b>Computed, never stored</b> — the panel\r\nstores it and hardcodes 30 at creation, so a March member still reports 30 days left in August.\r\nNegative when the term has passed.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sessionsRemaining": {
+            "description": "Credits left, or null for an unlimited package — where a number would be a lie rather than a\r\nlarge value.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sessionsTotal": {
+            "description": "Everything ever credited, so \"8 of 10\" renders without the ledger.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "phoneNumber",
+          "email",
+          "primaryCoachStaffMemberId",
+          "joinedOn",
+          "isArchived",
+          "membershipState",
+          "packageName",
+          "membershipEndsOn",
+          "renewalDaysLeft",
+          "sessionsRemaining",
+          "sessionsTotal",
+          "badge"
+        ],
+        "type": "object"
+      },
+      "MemberSort": {
+        "enum": [
+          "RecentlyJoined",
+          "NameAscending",
+          null
+        ]
+      },
+      "MembershipState": {
+        "description": "Where a membership is in its life.",
+        "enum": [
+          "Active",
+          "Frozen",
+          "Expired",
+          "Cancelled",
+          "NoMembership"
+        ]
+      },
+      "MembershipSummary": {
+        "properties": {
+          "currency": {
+            "description": "ISO 4217.",
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "Last day, inclusive, after any freeze extensions.",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "description": "The membership.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "packageName": {
+            "description": "Snapshotted at sale.",
+            "type": "string"
+          },
+          "packageTemplateId": {
+            "description": "Where it came from. May name a template that no longer exists.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "price": {
+            "description": "Snapshotted. Omitted without `members.financial.read`.",
+            "format": "double",
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "sessionCount": {
+            "description": "Null means unlimited.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sessionsRemaining": {
+            "description": "Credits left, or null when unlimited.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sessionsTotal": {
+            "description": "Everything ever credited.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "startsOn": {
+            "description": "First day.",
+            "format": "date",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MembershipState",
+            "description": "Where it is in its life."
+          }
+        },
+        "required": [
+          "id",
+          "packageTemplateId",
+          "packageName",
+          "price",
+          "currency",
+          "sessionCount",
+          "startsOn",
+          "endsOn",
+          "state",
+          "sessionsRemaining",
+          "sessionsTotal"
+        ],
+        "type": "object"
+      },
       "NotificationBody": {
         "properties": {
           "channel": {
@@ -1442,6 +2105,54 @@
         ],
         "type": "object"
       },
+      "PageOfMemberListItem": {
+        "description": "One page of a collection, with an opaque cursor to the next.",
+        "properties": {
+          "items": {
+            "description": "The rows, in the requested order.",
+            "items": {
+              "$ref": "#/components/schemas/MemberListItem"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its\r\ncontents are this server's business, and a client that parses it is one that breaks when the\r\nsort changes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "PageOfSessionLedgerEntry": {
+        "description": "One page of a collection, with an opaque cursor to the next.",
+        "properties": {
+          "items": {
+            "description": "The rows, in the requested order.",
+            "items": {
+              "$ref": "#/components/schemas/SessionLedgerEntry"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its\r\ncontents are this server's business, and a client that parses it is one that breaks when the\r\nsort changes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
       "PendingInvitation": {
         "description": "An invitation that has neither been accepted nor withdrawn.",
         "properties": {
@@ -1794,6 +2505,37 @@
         ],
         "type": "object"
       },
+      "SellMembershipBody": {
+        "properties": {
+          "packageTemplateId": {
+            "description": "What to sell.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "priceOverride": {
+            "description": "What was actually charged, when it differs from the template.",
+            "format": "double",
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "startsOn": {
+            "description": "Defaults to the studio's today.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "packageTemplateId",
+          "startsOn",
+          "priceOverride"
+        ],
+        "type": "object"
+      },
       "SessionClientKind": {
         "default": "Web",
         "description": "Where a session is being used from. Decides how the refresh handle is carried.",
@@ -1801,6 +2543,67 @@
           "Web",
           "Native"
         ]
+      },
+      "SessionCreditReason": {
+        "description": "Why session credits moved.",
+        "enum": [
+          "Purchase",
+          "Booking",
+          "BookingCancelled",
+          "Gift",
+          "ManualAdjustment",
+          "Expiry"
+        ]
+      },
+      "SessionLedgerEntry": {
+        "properties": {
+          "balanceAfter": {
+            "description": "The balance immediately after, so the history reads without re-summing.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "delta": {
+            "description": "Signed, never zero.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "id": {
+            "description": "The ledger row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "membershipId": {
+            "description": "Which package paid.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "description": "Free text, on manual adjustments.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "occurredAt": {
+            "description": "When.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/SessionCreditReason",
+            "description": "Why."
+          }
+        },
+        "required": [
+          "id",
+          "membershipId",
+          "delta",
+          "reason",
+          "balanceAfter",
+          "occurredAt",
+          "note"
+        ],
+        "type": "object"
       },
       "StaffRole": {
         "description": "A role held by a staff member <i>within an organization</i>.",
@@ -3866,6 +4669,854 @@
         ]
       }
     },
+    "/api/v1/members": {
+      "get": {
+        "operationId": "ListMembers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/MembershipState"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "coachId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeArchived",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "$ref": "#/components/schemas/MemberSort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "A page of members with the counters above the list, under one filter.",
+        "tags": [
+          "Members"
+        ]
+      },
+      "post": {
+        "operationId": "CreateMember",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDetail"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a member.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}": {
+      "get": {
+        "operationId": "GetMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One member, with memberships, freezes, gifts and recent credit movements.",
+        "tags": [
+          "Members"
+        ]
+      },
+      "put": {
+        "operationId": "UpdateMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edits a member's profile. Does not touch their memberships.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/archive": {
+      "post": {
+        "operationId": "ArchiveMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Takes a member off the working roster. Never a delete — the history stays.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/gifts": {
+      "post": {
+        "operationId": "GrantMemberGift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantGiftBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GiftSummary"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Grants a gift and applies its effect in the same transaction.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/membership/cancel": {
+      "post": {
+        "operationId": "CancelMembership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CancelBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Ends the membership early.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/membership/freeze": {
+      "post": {
+        "operationId": "FreezeMembership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FreezeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreezeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Pauses the membership. The term is not extended until it is released.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/membership/unfreeze": {
+      "post": {
+        "operationId": "UnfreezeMembership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreezeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Releases the freeze and extends the term by the days actually frozen.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/memberships": {
+      "post": {
+        "operationId": "SellMembership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SellMembershipBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipSummary"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Sells a package, copying its terms onto the membership.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/restore": {
+      "post": {
+        "operationId": "RestoreMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Puts an archived member back on the roster.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/sessions": {
+      "get": {
+        "operationId": "ListMemberSessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfSessionLedgerEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The credit ledger, newest first.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
+    "/api/v1/members/{memberId}/sessions/adjust": {
+      "post": {
+        "operationId": "AdjustMemberSessionCredits",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustCreditsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionLedgerEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Corrects the balance by hand. Needs a reason, and writes a ledger row.",
+        "tags": [
+          "Members"
+        ]
+      }
+    },
     "/api/v1/organization/deletion": {
       "post": {
         "operationId": "RequestOrganizationDeletion",
@@ -4615,6 +6266,9 @@
     },
     {
       "name": "Catalogs"
+    },
+    {
+      "name": "Members"
     },
     {
       "name": "Organization"

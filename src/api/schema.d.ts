@@ -1155,6 +1155,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of members with the counters above the list, under one filter. */
+        get: operations["ListMembers"];
+        put?: never;
+        /** Adds a member. */
+        post: operations["CreateMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One member, with memberships, freezes, gifts and recent credit movements. */
+        get: operations["GetMember"];
+        /** Edits a member's profile. Does not touch their memberships. */
+        put: operations["UpdateMember"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Takes a member off the working roster. Never a delete — the history stays. */
+        post: operations["ArchiveMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/gifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grants a gift and applies its effect in the same transaction. */
+        post: operations["GrantMemberGift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/membership/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ends the membership early. */
+        post: operations["CancelMembership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/membership/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pauses the membership. The term is not extended until it is released. */
+        post: operations["FreezeMembership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/membership/unfreeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Releases the freeze and extends the term by the days actually frozen. */
+        post: operations["UnfreezeMembership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sells a package, copying its terms onto the membership. */
+        post: operations["SellMembership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Puts an archived member back on the roster. */
+        post: operations["RestoreMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The credit ledger, newest first. */
+        get: operations["ListMemberSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/sessions/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Corrects the balance by hand. Needs a reason, and writes a ledger row. */
+        post: operations["AdjustMemberSessionCredits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization/deletion": {
         parameters: {
             query?: never;
@@ -1417,6 +1606,15 @@ export interface components {
             /** @description Whether a new account was created and signed in, or an existing one was linked to the roster. */
             outcome: components["schemas"]["InvitationAcceptance"];
         };
+        AdjustCreditsBody: {
+            /**
+             * Format: int32
+             * @description Signed, never zero.
+             */
+            delta: number;
+            /** @description Required. An unexplained adjustment is the one nobody can defend. */
+            note: string;
+        };
         /**
          * @description What kind of thing happened. Stored as a string, so adding one is a code change with no
          *     migration and reading the table needs no lookup.
@@ -1535,6 +1733,10 @@ export interface components {
             /** @description The complete week. Anything omitted is deleted. */
             intervals: components["schemas"]["BusinessHourInterval"][];
         };
+        CancelBody: {
+            /** @description Why the membership was ended early. */
+            reason: null | string;
+        };
         /** @description What is pointing at a catalog entry, and therefore what deleting it would do. */
         CatalogEntryUsage: {
             /**
@@ -1620,11 +1822,82 @@ export interface components {
             /** @description The address to send a reset link to, if it has an account. */
             email: string;
         };
+        FreezeBody: {
+            /**
+             * Format: date
+             * @description When the studio expects to release it. A request, not a commitment.
+             */
+            endsOn: string;
+            /** @description Free text. */
+            reason: null | string;
+            /**
+             * Format: date
+             * @description First frozen day. Defaults to today.
+             */
+            startsOn: null | string;
+        };
+        FreezeSummary: {
+            /**
+             * Format: date
+             * @description What the studio asked for. A request, not a fact.
+             */
+            endsOn: string;
+            /**
+             * Format: int32
+             * @description Days added to the term at release (ADR-0027). Null while running.
+             */
+            extendedByDays: null | number;
+            /**
+             * Format: uuid
+             * @description The freeze.
+             */
+            id: string;
+            /** @description Free text. */
+            reason: null | string;
+            /**
+             * Format: date
+             * @description When it actually ended, or null while running.
+             */
+            releasedOn: null | string;
+            /**
+             * Format: date
+             * @description First frozen day.
+             */
+            startsOn: string;
+        };
         /**
          * @description What granting a gift actually does.
          * @enum {unknown}
          */
         GiftEffectType: "ExtendDays" | "AddSessions" | "FreeSession";
+        GiftSummary: {
+            /**
+             * Format: int32
+             * @description How much.
+             */
+            effectAmount: number;
+            /** @description What it did. */
+            effectType: components["schemas"]["GiftEffectType"];
+            /** @description Snapshotted at grant. */
+            giftName: string;
+            /**
+             * Format: date
+             * @description When.
+             */
+            grantedOn: string;
+            /**
+             * Format: uuid
+             * @description The grant.
+             */
+            id: string;
+            /** @description Free text. */
+            note: null | string;
+            /**
+             * Format: int32
+             * @description Free sessions left, or null for the effects applied once.
+             */
+            remainingUses: null | number;
+        };
         GiftTemplateBody: {
             /** @description Optional free text. */
             description: null | string;
@@ -1679,6 +1952,15 @@ export interface components {
             sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
+        };
+        GrantGiftBody: {
+            /**
+             * Format: uuid
+             * @description What to give.
+             */
+            giftTemplateId: string;
+            /** @description Free text. */
+            note: null | string;
         };
         /**
          * @description How an acceptance ended.
@@ -1948,6 +2230,226 @@ export interface components {
              */
             isEmailVerified: boolean;
         };
+        /**
+         * @description What a member's row shows at a glance. <b>Derived, never stored.</b>
+         * @enum {unknown}
+         */
+        MemberBadge: "Active" | "RenewalSoon" | "Overdue" | "Frozen" | "Inactive";
+        MemberBody: {
+            /**
+             * Format: date
+             * @description Optional.
+             */
+            birthDate: null | string;
+            /** @description Optional. */
+            email: null | string;
+            /** @description Required. */
+            fullName: string;
+            /** @description Catalog entry ids. */
+            interestIds: null | string[];
+            /**
+             * Format: date
+             * @description Defaults to the studio's today.
+             */
+            joinedOn: null | string;
+            /** @description Optional. */
+            notes: null | string;
+            /** @description Optional. */
+            phoneNumber: null | string;
+            /**
+             * Format: uuid
+             * @description Roster id, never a name (ADR-0016).
+             */
+            primaryCoachStaffMemberId: null | string;
+        };
+        /** @description The counters above the members list. */
+        MemberCounts: {
+            /**
+             * Format: int32
+             * @description With a running membership.
+             */
+            active: number;
+            /**
+             * Format: int32
+             * @description Active and ending within the renewal window.
+             */
+            expiring: number;
+            /**
+             * Format: int32
+             * @description Paused.
+             */
+            frozen: number;
+            /**
+             * Format: int32
+             * @description Expired, cancelled, or never had one.
+             */
+            lapsed: number;
+            /**
+             * Format: int32
+             * @description Members matching the filter.
+             */
+            total: number;
+        };
+        /** @description Everything the member detail drawer shows, in one response. */
+        MemberDetail: {
+            /**
+             * Format: date
+             * @description Optional.
+             */
+            birthDate: null | string;
+            current: null | components["schemas"]["MembershipSummary"];
+            /** @description Optional. */
+            email: null | string;
+            /** @description Every freeze on the current membership. */
+            freezes: components["schemas"]["FreezeSummary"][];
+            /** @description Display name. */
+            fullName: string;
+            /** @description What has been given. */
+            gifts: components["schemas"]["GiftSummary"][];
+            /** @description Everything else, newest first. */
+            history: components["schemas"]["MembershipSummary"][];
+            /**
+             * Format: uuid
+             * @description The member.
+             */
+            id: string;
+            /** @description Catalog entry ids. Resolved client-side against the catalog snapshot. */
+            interestIds: string[];
+            /** @description Whether they are off the working roster. */
+            isArchived: boolean;
+            /**
+             * Format: date
+             * @description When they first joined.
+             */
+            joinedOn: string;
+            /** @description The studio's own notes. */
+            notes: null | string;
+            /** @description As typed. */
+            phoneNumber: null | string;
+            /**
+             * Format: uuid
+             * @description Roster id.
+             */
+            primaryCoachStaffMemberId: null | string;
+            /** @description The last page of ledger rows. */
+            recentSessions: components["schemas"]["SessionLedgerEntry"][];
+        };
+        MemberList: {
+            /** @description The counters, under the same filter. */
+            counts: components["schemas"]["MemberCounts"];
+            /** @description The rows. */
+            page: components["schemas"]["PageOfMemberListItem"];
+        };
+        /** @description One row of the members list. */
+        MemberListItem: {
+            /** @description The at-a-glance status, derived from the two fields above it. */
+            badge: components["schemas"]["MemberBadge"];
+            /** @description Optional. */
+            email: null | string;
+            /** @description Display name. Initials are derived by the client; storing them was one more thing to keep in sync. */
+            fullName: string;
+            /**
+             * Format: uuid
+             * @description The member.
+             */
+            id: string;
+            /** @description Whether they are off the working roster. */
+            isArchived: boolean;
+            /**
+             * Format: date
+             * @description When they first joined.
+             */
+            joinedOn: string;
+            /**
+             * Format: date
+             * @description Inclusive last day, or null.
+             */
+            membershipEndsOn: null | string;
+            /** @description The current membership's state, or MembershipState.NoMembership. Never null. */
+            membershipState: components["schemas"]["MembershipState"];
+            /** @description What they are on, snapshotted at sale (ADR-0035). Null with no membership. */
+            packageName: null | string;
+            /** @description As typed. */
+            phoneNumber: null | string;
+            /**
+             * Format: uuid
+             * @description Roster id, never a name (ADR-0016).
+             */
+            primaryCoachStaffMemberId: null | string;
+            /**
+             * Format: int32
+             * @description Days until the term ends, in the organization's zone. <b>Computed, never stored</b> — the panel
+             *     stores it and hardcodes 30 at creation, so a March member still reports 30 days left in August.
+             *     Negative when the term has passed.
+             */
+            renewalDaysLeft: null | number;
+            /**
+             * Format: int32
+             * @description Credits left, or null for an unlimited package — where a number would be a lie rather than a
+             *     large value.
+             */
+            sessionsRemaining: null | number;
+            /**
+             * Format: int32
+             * @description Everything ever credited, so "8 of 10" renders without the ledger.
+             */
+            sessionsTotal: null | number;
+        };
+        /** @enum {unknown} */
+        MemberSort: "RecentlyJoined" | "NameAscending" | null;
+        /**
+         * @description Where a membership is in its life.
+         * @enum {unknown}
+         */
+        MembershipState: "Active" | "Frozen" | "Expired" | "Cancelled" | "NoMembership";
+        MembershipSummary: {
+            /** @description ISO 4217. */
+            currency: string;
+            /**
+             * Format: date
+             * @description Last day, inclusive, after any freeze extensions.
+             */
+            endsOn: string;
+            /**
+             * Format: uuid
+             * @description The membership.
+             */
+            id: string;
+            /** @description Snapshotted at sale. */
+            packageName: string;
+            /**
+             * Format: uuid
+             * @description Where it came from. May name a template that no longer exists.
+             */
+            packageTemplateId: null | string;
+            /**
+             * Format: double
+             * @description Snapshotted. Omitted without `members.financial.read`.
+             */
+            price: null | number;
+            /**
+             * Format: int32
+             * @description Null means unlimited.
+             */
+            sessionCount: null | number;
+            /**
+             * Format: int32
+             * @description Credits left, or null when unlimited.
+             */
+            sessionsRemaining: null | number;
+            /**
+             * Format: int32
+             * @description Everything ever credited.
+             */
+            sessionsTotal: null | number;
+            /**
+             * Format: date
+             * @description First day.
+             */
+            startsOn: string;
+            /** @description Where it is in its life. */
+            state: components["schemas"]["MembershipState"];
+        };
         NotificationBody: {
             /** @description How it is delivered. */
             channel: components["schemas"]["NotificationChannel"];
@@ -2153,6 +2655,28 @@ export interface components {
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
         };
+        /** @description One page of a collection, with an opaque cursor to the next. */
+        PageOfMemberListItem: {
+            /** @description The rows, in the requested order. */
+            items: components["schemas"]["MemberListItem"][];
+            /**
+             * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
+             *     contents are this server's business, and a client that parses it is one that breaks when the
+             *     sort changes.
+             */
+            nextCursor: null | string;
+        };
+        /** @description One page of a collection, with an opaque cursor to the next. */
+        PageOfSessionLedgerEntry: {
+            /** @description The rows, in the requested order. */
+            items: components["schemas"]["SessionLedgerEntry"][];
+            /**
+             * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
+             *     contents are this server's business, and a client that parses it is one that breaks when the
+             *     sort changes.
+             */
+            nextCursor: null | string;
+        };
         /** @description An invitation that has neither been accepted nor withdrawn. */
         PendingInvitation: {
             /**
@@ -2300,12 +2824,65 @@ export interface components {
             /** @description The handle from the reset link. */
             token: string;
         };
+        SellMembershipBody: {
+            /**
+             * Format: uuid
+             * @description What to sell.
+             */
+            packageTemplateId: string;
+            /**
+             * Format: double
+             * @description What was actually charged, when it differs from the template.
+             */
+            priceOverride: null | number;
+            /**
+             * Format: date
+             * @description Defaults to the studio's today.
+             */
+            startsOn: null | string;
+        };
         /**
          * @description Where a session is being used from. Decides how the refresh handle is carried.
          * @default Web
          * @enum {unknown}
          */
         SessionClientKind: "Web" | "Native";
+        /**
+         * @description Why session credits moved.
+         * @enum {unknown}
+         */
+        SessionCreditReason: "Purchase" | "Booking" | "BookingCancelled" | "Gift" | "ManualAdjustment" | "Expiry";
+        SessionLedgerEntry: {
+            /**
+             * Format: int32
+             * @description The balance immediately after, so the history reads without re-summing.
+             */
+            balanceAfter: number;
+            /**
+             * Format: int32
+             * @description Signed, never zero.
+             */
+            delta: number;
+            /**
+             * Format: uuid
+             * @description The ledger row.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Which package paid.
+             */
+            membershipId: string;
+            /** @description Free text, on manual adjustments. */
+            note: null | string;
+            /**
+             * Format: date-time
+             * @description When.
+             */
+            occurredAt: string;
+            /** @description Why. */
+            reason: components["schemas"]["SessionCreditReason"];
+        };
         /**
          * @description A role held by a staff member <i>within an organization</i>.
          * @enum {unknown}
@@ -3165,6 +3742,557 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListMembers: {
+        parameters: {
+            query?: {
+                search?: string;
+                state?: components["schemas"]["MembershipState"][];
+                coachId?: string;
+                includeArchived?: boolean;
+                sort?: components["schemas"]["MemberSort"];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberList"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GrantMemberGift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantGiftBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GiftSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CancelBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    FreezeMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezeBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreezeSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UnfreezeMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreezeSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SellMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SellMembershipBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RestoreMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListMemberSessions: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfSessionLedgerEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdjustMemberSessionCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustCreditsBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionLedgerEntry"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

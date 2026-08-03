@@ -11,7 +11,11 @@ interface ListPageHeaderProps {
   searchPlaceholder: string;
   searchValue: string;
   onSearchChange: (value: string) => void;
-  onFilterPress: () => void;
+  /**
+   * Opens the filter sheet. Omit it and the button is not rendered — a screen whose filtering is
+   * done another way should not show a control that does nothing.
+   */
+  onFilterPress?: () => void;
   filterCount?: number;
   primaryActionLabel: string;
   primaryActionIcon?: IconName;
@@ -48,20 +52,22 @@ export function ListPageHeader({
       <View style={[styles.controls, isMobile && styles.controlsMobile]}>
         <SearchInput placeholder={searchPlaceholder} value={searchValue} onChangeText={onSearchChange} />
 
-        <Pressable
-          onPress={onFilterPress}
-          accessibilityRole="button"
-          accessibilityLabel="Filtrele"
-          style={({ pressed }) => [styles.filterButton, pressed && styles.filterButtonPressed]}
-        >
-          <AppIcon name="filter-outline" size={16} color={colors.textPrimary} />
-          <Text style={styles.filterLabel}>Filtrele</Text>
-          {filterCount > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{filterCount}</Text>
-            </View>
-          )}
-        </Pressable>
+        {onFilterPress ? (
+          <Pressable
+            onPress={onFilterPress}
+            accessibilityRole="button"
+            accessibilityLabel="Filtrele"
+            style={({ pressed }) => [styles.filterButton, pressed && styles.filterButtonPressed]}
+          >
+            <AppIcon name="filter-outline" size={16} color={colors.textPrimary} />
+            <Text style={styles.filterLabel}>Filtrele</Text>
+            {filterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{filterCount}</Text>
+              </View>
+            )}
+          </Pressable>
+        ) : null}
 
         {secondaryActionLabel && onSecondaryAction ? (
           <Pressable

@@ -5,12 +5,29 @@ import { Badge } from '@/components/ui/Badge';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { getMemberDisplayStatus } from '@/utils/members';
-import type { Member } from '@/types/members';
+import { MEMBER_BADGE_LABELS, MEMBER_BADGE_TONES } from '@/api/enums';
+import { formatIsoDateLabel } from '@/utils/date';
+import type { MemberListItem } from '@/api/members';
 
 interface MemberTableProps {
-  members: Member[];
-  onMemberPress: (member: Member) => void;
+  members: MemberListItem[];
+  onMemberPress: (member: MemberListItem) => void;
+}
+
+/**
+ * Initials from a name, computed at render.
+ *
+ * The panel stores `avatarInitials` on the member, which is one more field to keep in step with a
+ * rename and no cheaper than deriving it.
+ */
+function initialsOf(fullName: string): string {
+  return fullName
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toLocaleUpperCase('tr');
 }
 
 function sessionsColor(remaining: number | null) {
@@ -20,12 +37,32 @@ function sessionsColor(remaining: number | null) {
   return colors.textPrimary;
 }
 
-function renewalSubtext(daysLeft: number) {
+/**
+ * How a member's remaining sessions read.
+ *
+ * `null` is unlimited, not zero and not missing — the server returns no number for an unlimited
+ * package because there is no honest one to return.
+ */
+function sessionsLabel(item: MemberListItem): string {
+  if (item.membershipState === 'NoMembership') return '—';
+  if (item.sessionsTotal === null) return 'Sınırsız';
+  return `${item.sessionsRemaining ?? 0} / ${item.sessionsTotal}`;
+}
+
+function renewalSubtext(daysLeft: number | null) {
+  if (daysLeft === null) return null;
   if (daysLeft < 0) return { text: `${Math.abs(daysLeft)} gün gecikmiş`, color: colors.critical };
   if (daysLeft <= 7) return { text: `${daysLeft} gün kaldı`, color: colors.warning };
   return { text: `${daysLeft} gün kaldı`, color: colors.textSecondary };
 }
 
+/**
+ * The members list.
+ *
+ * <b>"Son Ziyaret" is gone.</b> It was a formatted string on the mock and there is nothing behind
+ * it yet: a last visit is the most recent attended booking, and attendance arrives in Phase 2.3.
+ * A column reading "—" for everybody says so; one reading a stale date does not.
+ */
 export function MemberTable({ members, onMemberPress }: MemberTableProps) {
   const { isMobile } = useResponsiveLayout();
 
@@ -33,38 +70,57 @@ export function MemberTable({ members, onMemberPress }: MemberTableProps) {
     return (
       <View style={styles.mobileList}>
         {members.map((member) => {
-          const status = getMemberDisplayStatus(member);
           const renewal = renewalSubtext(member.renewalDaysLeft);
-          const sessionsLabel = member.sessionsTotal === null ? 'Sınırsız' : `${member.sessionsRemaining} / ${member.sessionsTotal}`;
+
           return (
             <Pressable
               key={member.id}
               onPress={() => onMemberPress(member)}
               accessibilityRole="button"
-              accessibilityLabel={`${member.name} detayını gör`}
+              accessibilityLabel={`${member.fullName} detayını gör`}
             >
               <Card style={styles.mobileCard}>
                 <View style={styles.mobileHeaderRow}>
-                  <Avatar initials={member.avatarInitials} />
+                  <Avatar initials={initialsOf(member.fullName)} />
                   <View style={styles.mobileNameGroup}>
-                    <Text style={styles.name} numberOfLines={1}>{member.name}</Text>
-                    <Text style={styles.packageText} numberOfLines={1}>{member.packageName}</Text>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {member.fullName}
+                    </Text>
+                    <Text style={styles.packageText} numberOfLines={1}>
+                      {member.packageName ?? 'Üyelik yok'}
+                    </Text>
                   </View>
-                  <Badge label={status.label} tone={status.tone} />
+                  <Badge
+                    label={MEMBER_BADGE_LABELS[member.badge]}
+                    tone={MEMBER_BADGE_TONES[member.badge]}
+                  />
                 </View>
                 <View style={styles.mobileMetaRow}>
                   <Text style={styles.mobileMetaLabel}>Kalan Ders</Text>
-                  <Text style={[styles.mobileMetaValue, { color: sessionsColor(member.sessionsRemaining) }]}>{sessionsLabel}</Text>
+                  <Text
+                    style={[
+                      styles.mobileMetaValue,
+                      { color: sessionsColor(member.sessionsRemaining) },
+                    ]}
+                  >
+                    {sessionsLabel(member)}
+                  </Text>
                 </View>
                 <View style={styles.mobileMetaRow}>
-                  <Text style={styles.mobileMetaLabel}>Son Ziyaret</Text>
-                  <Text style={styles.mobileMetaValue}>{member.lastVisit}</Text>
+                  <Text style={styles.mobileMetaLabel}>Telefon</Text>
+                  <Text style={styles.mobileMetaValue}>{member.phoneNumber ?? '—'}</Text>
                 </View>
                 <View style={styles.mobileMetaRow}>
                   <Text style={styles.mobileMetaLabel}>Yenileme</Text>
                   <View style={styles.mobileRenewalGroup}>
-                    <Text style={styles.mobileMetaValue}>{member.renewalDate}</Text>
-                    <Text style={[styles.renewalSubtext, { color: renewal.color }]}>{renewal.text}</Text>
+                    <Text style={styles.mobileMetaValue}>
+                      {member.membershipEndsOn ? formatIsoDateLabel(member.membershipEndsOn) : '—'}
+                    </Text>
+                    {renewal ? (
+                      <Text style={[styles.renewalSubtext, { color: renewal.color }]}>
+                        {renewal.text}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               </Card>
@@ -81,47 +137,72 @@ export function MemberTable({ members, onMemberPress }: MemberTableProps) {
         <Text style={[styles.headerLabel, columnStyles.member]}>Üye</Text>
         <Text style={[styles.headerLabel, columnStyles.package]}>Paket</Text>
         <Text style={[styles.headerLabel, columnStyles.sessions]}>Kalan Ders</Text>
-        <Text style={[styles.headerLabel, columnStyles.visit]}>Son Ziyaret</Text>
+        <Text style={[styles.headerLabel, columnStyles.visit]}>Telefon</Text>
         <Text style={[styles.headerLabel, columnStyles.renewal]}>Yenileme</Text>
         <Text style={[styles.headerLabel, columnStyles.status]}>Durum</Text>
         <View style={columnStyles.menu} />
       </View>
 
       {members.map((member, index) => {
-        const status = getMemberDisplayStatus(member);
         const renewal = renewalSubtext(member.renewalDaysLeft);
-        const sessionsLabel = member.sessionsTotal === null ? 'Sınırsız' : `${member.sessionsRemaining} / ${member.sessionsTotal}`;
+
         return (
-          <View key={member.id} style={[styles.row, index === members.length - 1 && styles.rowLast]}>
+          // The whole row opens the member, not just the chevron. The panel made a 32px target the
+          // only way in, which is a hard thing to hit and an easy thing to not notice missing.
+          <Pressable
+            key={member.id}
+            onPress={() => onMemberPress(member)}
+            accessibilityRole="button"
+            accessibilityLabel={`${member.fullName} detayını gör`}
+            style={({ pressed }) => [
+              styles.row,
+              index === members.length - 1 && styles.rowLast,
+              pressed && styles.rowPressed,
+            ]}
+          >
             <View style={[styles.memberCell, columnStyles.member]}>
-              <Avatar initials={member.avatarInitials} size={32} />
-              <Text style={styles.name} numberOfLines={1}>{member.name}</Text>
+              <Avatar initials={initialsOf(member.fullName)} size={32} />
+              <Text style={styles.name} numberOfLines={1}>
+                {member.fullName}
+              </Text>
             </View>
-            <Text style={[styles.cellText, columnStyles.package]} numberOfLines={1}>{member.packageName}</Text>
-            <Text style={[styles.cellText, columnStyles.sessions, { color: sessionsColor(member.sessionsRemaining) }]}>
-              {sessionsLabel}
+            <Text style={[styles.cellText, columnStyles.package]} numberOfLines={1}>
+              {member.packageName ?? 'Üyelik yok'}
             </Text>
-            <Text style={[styles.cellText, columnStyles.visit]}>{member.lastVisit}</Text>
+            <Text
+              style={[
+                styles.cellText,
+                columnStyles.sessions,
+                { color: sessionsColor(member.sessionsRemaining) },
+              ]}
+            >
+              {sessionsLabel(member)}
+            </Text>
+            <Text style={[styles.cellText, columnStyles.visit]} numberOfLines={1}>
+              {member.phoneNumber ?? '—'}
+            </Text>
             <View style={columnStyles.renewal}>
-              <Text style={styles.cellText}>{member.renewalDate}</Text>
-              <Text style={[styles.renewalSubtext, { color: renewal.color }]}>{renewal.text}</Text>
+              <Text style={styles.cellText}>
+                {member.membershipEndsOn ? formatIsoDateLabel(member.membershipEndsOn) : '—'}
+              </Text>
+              {renewal ? (
+                <Text style={[styles.renewalSubtext, { color: renewal.color }]}>
+                  {renewal.text}
+                </Text>
+              ) : null}
             </View>
             <View style={columnStyles.status}>
-              <Badge label={status.label} tone={status.tone} />
+              <Badge
+                label={MEMBER_BADGE_LABELS[member.badge]}
+                tone={MEMBER_BADGE_TONES[member.badge]}
+              />
             </View>
-            <Pressable
-              onPress={() => onMemberPress(member)}
-              accessibilityRole="button"
-              accessibilityLabel={`${member.name} için daha fazla işlem`}
-              hitSlop={8}
-              style={({ pressed }) => [columnStyles.menu, styles.menuButton, pressed && styles.menuButtonPressed]}
-            >
-              <AppIcon name="ellipsis-vertical" size={16} color={colors.textSecondary} />
-            </Pressable>
-          </View>
+            <View style={[columnStyles.menu, styles.menuButton]}>
+              <AppIcon name="chevron-forward" size={16} color={colors.textSecondary} />
+            </View>
+          </Pressable>
         );
       })}
-
     </Card>
   );
 }
@@ -164,6 +245,9 @@ const styles = StyleSheet.create({
   rowLast: {
     borderBottomWidth: 0,
   },
+  rowPressed: {
+    backgroundColor: colors.pageBackground,
+  },
   memberCell: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -192,9 +276,6 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: radii.sm,
     justifyContent: 'center',
-  },
-  menuButtonPressed: {
-    backgroundColor: colors.pageBackground,
   },
   mobileList: {
     gap: spacing.md,
