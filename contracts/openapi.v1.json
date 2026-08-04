@@ -1117,6 +1117,62 @@
           "Saturday"
         ]
       },
+      "DeliveryBody": {
+        "properties": {
+          "channel": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProgramDeliveryChannel",
+                "description": "Where the conversation happened. Defaults to WhatsApp."
+              }
+            ]
+          },
+          "evidence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeliveryEvidence",
+                "description": "How it is known. Defaults to `SelfReported`, and `PlatformConfirmed` is refused with\r\n`programs.delivery.evidence_unavailable` until the connector exists (ADR-0054)."
+              }
+            ]
+          },
+          "month": {
+            "description": "1–12.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "year": {
+            "description": "Which month the delivery is about. Null for the studio's month.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          }
+        },
+        "required": [
+          "year",
+          "month",
+          "channel",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "DeliveryEvidence": {
+        "description": "How a delivery is known to have happened.",
+        "enum": [
+          "SelfReported",
+          "PlatformConfirmed"
+        ]
+      },
       "ExportBody": {
         "properties": {
           "format": {
@@ -3132,6 +3188,67 @@
         ],
         "type": "object"
       },
+      "MemberProgramDetail": {
+        "description": "One member's programme for one month, with its weeks.",
+        "properties": {
+          "isStaleSinceDelivery": {
+            "description": "`true` when the programme has been edited since the newest delivery — its\r\n        int MemberProgramDetail.Revision exceeds that delivery's int ProgramDeliveryRecord.ProgramRevision.\r\n        The one thing a timestamp pair cannot tell you, because a save that changes nothing still moves\r\n        the timestamp.",
+            "type": "boolean"
+          },
+          "latestDelivery": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProgramDeliveryRecord",
+                "description": "The newest delivery record, or null if it has never been passed on."
+              }
+            ]
+          },
+          "memberId": {
+            "description": "Who it is for.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "description": "Resolved through `IMemberRoster`, never joined (ADR-0017).",
+            "type": "string"
+          },
+          "month": {
+            "$ref": "#/components/schemas/ProgramMonth",
+            "description": "Which month."
+          },
+          "revision": {
+            "description": "Increments on every save. What a delivery points at.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "updatedAt": {
+            "description": "Last saved.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "weeks": {
+            "description": "Only the weeks that were written, ascending.",
+            "items": {
+              "$ref": "#/components/schemas/ProgramWeek"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "memberId",
+          "memberName",
+          "month",
+          "revision",
+          "weeks",
+          "updatedAt",
+          "latestDelivery",
+          "isStaleSinceDelivery"
+        ],
+        "type": "object"
+      },
       "MemberSort": {
         "enum": [
           "RecentlyJoined",
@@ -4445,6 +4562,284 @@
           "address",
           "phoneNumber",
           "contactPersonName"
+        ],
+        "type": "object"
+      },
+      "ProgramBody": {
+        "properties": {
+          "month": {
+            "description": "1–12.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "weeks": {
+            "description": "The whole month. What is sent is what exists afterwards.",
+            "items": {
+              "$ref": "#/components/schemas/ProgramWeekBody"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "year": {
+            "description": "Four digits, or null with Month for the studio's month.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          }
+        },
+        "required": [
+          "year",
+          "month",
+          "weeks"
+        ],
+        "type": "object"
+      },
+      "ProgramCounters": {
+        "description": "What the month looks like across the roster.",
+        "properties": {
+          "delivered": {
+            "description": "How many have been passed on at least once. <b>Counts self-reported deliveries</b>, and the\r\nresponse says so through each row's evidence — this is the studio's working number, not the\r\ndelivery-rate metric ADR-0054 excludes them from.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "members": {
+            "description": "How many members are in scope.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "withProgram": {
+            "description": "How many have at least one week written.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "members",
+          "withProgram",
+          "delivered"
+        ],
+        "type": "object"
+      },
+      "ProgramDeliveryChannel": {
+        "description": "How a programme reached the member.",
+        "enum": [
+          "WhatsApp",
+          "InPerson"
+        ]
+      },
+      "ProgramDeliveryRecord": {
+        "description": "A record that a programme was passed to the member.",
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/ProgramDeliveryChannel",
+            "description": "Where to look for the conversation."
+          },
+          "deliveredAt": {
+            "description": "When. UTC; the client renders it in the studio's zone.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deliveredByStaffMemberId": {
+            "description": "Who says so.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/DeliveryEvidence",
+            "description": "How it is known. `SelfReported` is a coach's assertion and is excluded from every\r\ndelivery-rate metric (ADR-0054) — the client shows \"kendisi bildirdi\" so the exclusion is\r\nvisible where the claim is."
+          },
+          "id": {
+            "description": "The delivery row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "programRevision": {
+            "description": "The programme revision this delivery was made against.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "deliveredAt",
+          "channel",
+          "evidence",
+          "deliveredByStaffMemberId",
+          "programRevision"
+        ],
+        "type": "object"
+      },
+      "ProgramMonth": {
+        "description": "A month, as two integers.",
+        "properties": {
+          "month": {
+            "description": "1–12.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "year": {
+            "description": "Four digits.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "month"
+        ],
+        "type": "object"
+      },
+      "ProgramRoster": {
+        "description": "The programme screen for one month.",
+        "properties": {
+          "counters": {
+            "$ref": "#/components/schemas/ProgramCounters",
+            "description": "The three numbers above the list, over the same set of rows."
+          },
+          "isCurrentMonth": {
+            "description": "Whether ProgramMonth ProgramRoster.Month is the studio's current month, decided in the organization's zone.\r\nThe client cannot decide this: the device clock is in whichever zone the laptop is in.",
+            "type": "boolean"
+          },
+          "items": {
+            "description": "One line per member, by name.",
+            "items": {
+              "$ref": "#/components/schemas/ProgramRosterEntry"
+            },
+            "type": "array"
+          },
+          "month": {
+            "$ref": "#/components/schemas/ProgramMonth",
+            "description": "The month these rows are about."
+          },
+          "scope": {
+            "description": "`Own` when the rows are the caller's assigned members, `All` for the whole\r\n        organization. Server-computed from the caller's permission, never requested.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "isCurrentMonth",
+          "scope",
+          "items",
+          "counters"
+        ],
+        "type": "object"
+      },
+      "ProgramRosterEntry": {
+        "description": "One line of the programme screen: a member, and where their month stands.",
+        "properties": {
+          "isStaleSinceDelivery": {
+            "description": "Edited after it was sent.",
+            "type": "boolean"
+          },
+          "latestDelivery": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProgramDeliveryRecord",
+                "description": "The newest delivery, or null."
+              }
+            ]
+          },
+          "memberId": {
+            "description": "Who.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "description": "Digits as the studio typed them, or null. What the client opens a conversation with — and\r\n<b>nothing more</b>: the `wa.me` link carries no `text` parameter (ADR-0054).",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "primaryCoachStaffMemberId": {
+            "description": "Who the member is assigned to. Present so a manager's oversight view can group by coach without\r\nasking the members module a second time.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "revision": {
+            "description": "The programme's revision, or null when there is no programme.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "weeksWritten": {
+            "description": "How many weeks have a plan. Zero means nothing has been written.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "memberId",
+          "memberName",
+          "phoneNumber",
+          "primaryCoachStaffMemberId",
+          "weeksWritten",
+          "revision",
+          "latestDelivery",
+          "isStaleSinceDelivery"
+        ],
+        "type": "object"
+      },
+      "ProgramWeek": {
+        "description": "One week of a programme.",
+        "properties": {
+          "plan": {
+            "description": "What the member does. Empty is not stored — the week is simply absent.",
+            "type": "string"
+          },
+          "weekNumber": {
+            "description": "1–6. Six is how many calendar weeks a month can touch.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekNumber",
+          "plan"
+        ],
+        "type": "object"
+      },
+      "ProgramWeekBody": {
+        "properties": {
+          "plan": {
+            "description": "Blank deletes the week rather than storing an empty one.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "weekNumber": {
+            "description": "1–6. Six is how many calendar weeks a month can touch.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekNumber",
+          "plan"
         ],
         "type": "object"
       },
@@ -10229,6 +10624,275 @@
         ]
       }
     },
+    "/api/v1/programs": {
+      "get": {
+        "operationId": "GetProgramRoster",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramRoster"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "A month's programme status per member, scoped to the caller's own roster.",
+        "tags": [
+          "Programs"
+        ]
+      }
+    },
+    "/api/v1/programs/{memberId}": {
+      "get": {
+        "operationId": "GetMemberProgram",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberProgramDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One member's programme for a month, with the weeks that were written.",
+        "tags": [
+          "Programs"
+        ]
+      },
+      "put": {
+        "operationId": "SaveMemberProgram",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberProgramDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Writes a month's weeks. The weeks sent are the weeks that exist afterwards.",
+        "tags": [
+          "Programs"
+        ]
+      }
+    },
+    "/api/v1/programs/{memberId}/deliveries": {
+      "post": {
+        "operationId": "RecordProgramDelivery",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberProgramDetail"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Records that the programme was passed on. Append-only; nothing is replaced.",
+        "tags": [
+          "Programs"
+        ]
+      }
+    },
     "/api/v1/scheduling/bookings/{bookingId}": {
       "delete": {
         "operationId": "CancelBooking",
@@ -11421,6 +12085,9 @@
     },
     {
       "name": "Finance"
+    },
+    {
+      "name": "Programs"
     },
     {
       "name": "Organization"

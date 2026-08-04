@@ -1908,6 +1908,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A month's programme status per member, scoped to the caller's own roster. */
+        get: operations["GetProgramRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/programs/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One member's programme for a month, with the weeks that were written. */
+        get: operations["GetMemberProgram"];
+        /** Writes a month's weeks. The weeks sent are the weeks that exist afterwards. */
+        put: operations["SaveMemberProgram"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/programs/{memberId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records that the programme was passed on. Append-only; nothing is replaced. */
+        post: operations["RecordProgramDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scheduling/bookings/{bookingId}": {
         parameters: {
             query?: never;
@@ -2801,6 +2853,25 @@ export interface components {
         };
         /** @enum {unknown} */
         DayOfWeek: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+        DeliveryBody: {
+            channel: null | components["schemas"]["ProgramDeliveryChannel"];
+            evidence: null | components["schemas"]["DeliveryEvidence"];
+            /**
+             * Format: int32
+             * @description 1–12.
+             */
+            month: null | number;
+            /**
+             * Format: int32
+             * @description Which month the delivery is about. Null for the studio's month.
+             */
+            year: null | number;
+        };
+        /**
+         * @description How a delivery is known to have happened.
+         * @enum {unknown}
+         */
+        DeliveryEvidence: "SelfReported" | "PlatformConfirmed";
         ExportBody: {
             /**
              * @description What the file should be. `Xlsx` and `Pdf` are registered and refused with
@@ -3834,6 +3905,38 @@ export interface components {
              */
             sessionsTotal: null | number;
         };
+        /** @description One member's programme for one month, with its weeks. */
+        MemberProgramDetail: {
+            /**
+             * @description `true` when the programme has been edited since the newest delivery — its
+             *             int MemberProgramDetail.Revision exceeds that delivery's int ProgramDeliveryRecord.ProgramRevision.
+             *             The one thing a timestamp pair cannot tell you, because a save that changes nothing still moves
+             *             the timestamp.
+             */
+            isStaleSinceDelivery: boolean;
+            latestDelivery: null | components["schemas"]["ProgramDeliveryRecord"];
+            /**
+             * Format: uuid
+             * @description Who it is for.
+             */
+            memberId: string;
+            /** @description Resolved through `IMemberRoster`, never joined (ADR-0017). */
+            memberName: string;
+            /** @description Which month. */
+            month: components["schemas"]["ProgramMonth"];
+            /**
+             * Format: int32
+             * @description Increments on every save. What a delivery points at.
+             */
+            revision: number;
+            /**
+             * Format: date-time
+             * @description Last saved.
+             */
+            updatedAt: string;
+            /** @description Only the weeks that were written, ascending. */
+            weeks: components["schemas"]["ProgramWeek"][];
+        };
         /** @enum {unknown} */
         MemberSort: "RecentlyJoined" | "NameAscending" | null;
         /**
@@ -4519,6 +4622,161 @@ export interface components {
             name: string;
             /** @description Optional. */
             phoneNumber: null | string;
+        };
+        ProgramBody: {
+            /**
+             * Format: int32
+             * @description 1–12.
+             */
+            month: null | number;
+            /** @description The whole month. What is sent is what exists afterwards. */
+            weeks: null | components["schemas"]["ProgramWeekBody"][];
+            /**
+             * Format: int32
+             * @description Four digits, or null with Month for the studio's month.
+             */
+            year: null | number;
+        };
+        /** @description What the month looks like across the roster. */
+        ProgramCounters: {
+            /**
+             * Format: int32
+             * @description How many have been passed on at least once. <b>Counts self-reported deliveries</b>, and the
+             *     response says so through each row's evidence — this is the studio's working number, not the
+             *     delivery-rate metric ADR-0054 excludes them from.
+             */
+            delivered: number;
+            /**
+             * Format: int32
+             * @description How many members are in scope.
+             */
+            members: number;
+            /**
+             * Format: int32
+             * @description How many have at least one week written.
+             */
+            withProgram: number;
+        };
+        /**
+         * @description How a programme reached the member.
+         * @enum {unknown}
+         */
+        ProgramDeliveryChannel: "WhatsApp" | "InPerson";
+        /** @description A record that a programme was passed to the member. */
+        ProgramDeliveryRecord: {
+            /** @description Where to look for the conversation. */
+            channel: components["schemas"]["ProgramDeliveryChannel"];
+            /**
+             * Format: date-time
+             * @description When. UTC; the client renders it in the studio's zone.
+             */
+            deliveredAt: string;
+            /**
+             * Format: uuid
+             * @description Who says so.
+             */
+            deliveredByStaffMemberId: null | string;
+            /**
+             * @description How it is known. `SelfReported` is a coach's assertion and is excluded from every
+             *     delivery-rate metric (ADR-0054) — the client shows "kendisi bildirdi" so the exclusion is
+             *     visible where the claim is.
+             */
+            evidence: components["schemas"]["DeliveryEvidence"];
+            /**
+             * Format: uuid
+             * @description The delivery row.
+             */
+            id: string;
+            /**
+             * Format: int32
+             * @description The programme revision this delivery was made against.
+             */
+            programRevision: number;
+        };
+        /** @description A month, as two integers. */
+        ProgramMonth: {
+            /**
+             * Format: int32
+             * @description 1–12.
+             */
+            month: number;
+            /**
+             * Format: int32
+             * @description Four digits.
+             */
+            year: number;
+        };
+        /** @description The programme screen for one month. */
+        ProgramRoster: {
+            /** @description The three numbers above the list, over the same set of rows. */
+            counters: components["schemas"]["ProgramCounters"];
+            /**
+             * @description Whether ProgramMonth ProgramRoster.Month is the studio's current month, decided in the organization's zone.
+             *     The client cannot decide this: the device clock is in whichever zone the laptop is in.
+             */
+            isCurrentMonth: boolean;
+            /** @description One line per member, by name. */
+            items: components["schemas"]["ProgramRosterEntry"][];
+            /** @description The month these rows are about. */
+            month: components["schemas"]["ProgramMonth"];
+            /**
+             * @description `Own` when the rows are the caller's assigned members, `All` for the whole
+             *             organization. Server-computed from the caller's permission, never requested.
+             */
+            scope: string;
+        };
+        /** @description One line of the programme screen: a member, and where their month stands. */
+        ProgramRosterEntry: {
+            /** @description Edited after it was sent. */
+            isStaleSinceDelivery: boolean;
+            latestDelivery: null | components["schemas"]["ProgramDeliveryRecord"];
+            /**
+             * Format: uuid
+             * @description Who.
+             */
+            memberId: string;
+            /** @description Display name. */
+            memberName: string;
+            /**
+             * @description Digits as the studio typed them, or null. What the client opens a conversation with — and
+             *     <b>nothing more</b>: the `wa.me` link carries no `text` parameter (ADR-0054).
+             */
+            phoneNumber: null | string;
+            /**
+             * Format: uuid
+             * @description Who the member is assigned to. Present so a manager's oversight view can group by coach without
+             *     asking the members module a second time.
+             */
+            primaryCoachStaffMemberId: null | string;
+            /**
+             * Format: int32
+             * @description The programme's revision, or null when there is no programme.
+             */
+            revision: null | number;
+            /**
+             * Format: int32
+             * @description How many weeks have a plan. Zero means nothing has been written.
+             */
+            weeksWritten: number;
+        };
+        /** @description One week of a programme. */
+        ProgramWeek: {
+            /** @description What the member does. Empty is not stored — the week is simply absent. */
+            plan: string;
+            /**
+             * Format: int32
+             * @description 1–6. Six is how many calendar weeks a month can touch.
+             */
+            weekNumber: number;
+        };
+        ProgramWeekBody: {
+            /** @description Blank deletes the week rather than storing an empty one. */
+            plan: null | string;
+            /**
+             * Format: int32
+             * @description 1–6. Six is how many calendar weeks a month can touch.
+             */
+            weekNumber: number;
         };
         /** @description One thing a studio is owed. */
         ReceivableItem: {
@@ -7768,6 +8026,178 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaxProfileSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetProgramRoster: {
+        parameters: {
+            query?: {
+                year?: number;
+                month?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramRoster"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetMemberProgram: {
+        parameters: {
+            query?: {
+                year?: number;
+                month?: number;
+            };
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberProgramDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SaveMemberProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberProgramDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RecordProgramDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberProgramDetail"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

@@ -19,6 +19,23 @@ export function localDayOf(instant: string, timeZoneId: string): string {
   }).format(new Date(instant));
 }
 
+/**
+ * An instant as the studio saw it — `'3 Ağustos 14:05'`.
+ *
+ * The zone is the organization's, not the device's, for the same reason {@link localDayOf} exists:
+ * a delivery recorded at 01:20 in Istanbul is the previous evening in UTC and a different day again
+ * on a laptop in London.
+ */
+export function formatInstantIn(instant: string, timeZoneId: string): string {
+  return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: timeZoneId,
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(instant));
+}
+
 /** Today, in the studio's zone, as `YYYY-MM-DD`. */
 export function studioToday(timeZoneId: string): string {
   return localDayOf(new Date().toISOString(), timeZoneId);

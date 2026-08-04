@@ -3,7 +3,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { CatalogsProvider } from '@/context/CatalogsContext';
 import { AuthProvider } from '@/context/AuthContext';
-import { ProgramsProvider } from '@/context/ProgramsContext';
 import { BootstrapGate } from '@/components/auth/BootstrapGate';
 
 export default function RootLayout() {
@@ -17,10 +16,13 @@ export default function RootLayout() {
           a cold start shows the sign-in screen for a beat to somebody who was signed in.
         */}
         <BootstrapGate>
+          {/*
+            No ProgramsProvider. Programmes are server state — a month's weeks and the record of
+            passing them on — and the context that held them in memory could only ever describe the
+            current session's edits.
+          */}
           <CatalogsProvider>
-              <ProgramsProvider>
-                <Stack screenOptions={{ headerShown: false }} />
-              </ProgramsProvider>
+            <Stack screenOptions={{ headerShown: false }} />
           </CatalogsProvider>
         </BootstrapGate>
       </AuthProvider>
