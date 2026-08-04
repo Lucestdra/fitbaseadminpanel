@@ -1,9 +1,18 @@
 import { type ReactNode } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  Linking,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { colors, radii, spacing, typography, cardShadow } from '@/theme';
+import { LEGAL_URLS } from '@/api/legal';
 import type { IconName } from '@/types/dashboard';
 
 /**
@@ -37,6 +46,27 @@ export function AuthScreen({
           </View>
 
           {children}
+        </View>
+
+        {/* On every unauthenticated screen, not only registration. App stores and Meta both
+            expect the policy to be reachable from the product itself, and somebody deciding
+            whether to sign up should not have to create an account to read it first. */}
+        <View style={styles.legalRow}>
+          <Text
+            style={styles.legalLink}
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(LEGAL_URLS.privacy)}
+          >
+            Gizlilik Politikası
+          </Text>
+          <Text style={styles.legalSeparator}>·</Text>
+          <Text
+            style={styles.legalLink}
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(LEGAL_URLS.terms)}
+          >
+            Kullanım Koşulları
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -139,25 +169,51 @@ export function AuthCheckbox({
   checked,
   onToggle,
   label,
+  link,
 }: {
   checked: boolean;
   onToggle: () => void;
   label: string;
+  /**
+   * The document being consented to.
+   *
+   * Optional in the type and mandatory in practice for the KVKK box: art. 10 requires the subject
+   * to be informed *before* their data is processed, and a checkbox naming a notice nobody can
+   * open informs nobody. Rendered outside the pressable, so tapping the link opens the document
+   * rather than silently ticking the box.
+   */
+  link?: { label: string; href: string };
 }) {
   return (
-    <Pressable
-      onPress={onToggle}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      accessibilityLabel={label}
-      style={styles.checkboxRow}
-      hitSlop={6}
-    >
-      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-        {checked ? <AppIcon name="checkmark-outline" size={13} color={colors.white} /> : null}
-      </View>
-      <Text style={styles.checkboxLabel}>{label}</Text>
-    </Pressable>
+    <View style={styles.checkboxRow}>
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        accessibilityLabel={label}
+        style={styles.checkboxHit}
+        hitSlop={6}
+      >
+        <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+          {checked ? <AppIcon name="checkmark-outline" size={13} color={colors.white} /> : null}
+        </View>
+      </Pressable>
+      <Text style={styles.checkboxLabel}>
+        {label}
+        {link ? (
+          <>
+            {' '}
+            <Text
+              style={styles.checkboxLink}
+              accessibilityRole="link"
+              onPress={() => Linking.openURL(link.href)}
+            >
+              {link.label}
+            </Text>
+          </>
+        ) : null}
+      </Text>
+    </View>
   );
 }
 
@@ -194,7 +250,12 @@ export function AuthFooterLink({
   return (
     <View style={styles.footerRow}>
       <Text style={styles.footerText}>{text}</Text>
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={linkLabel} hitSlop={8}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={linkLabel}
+        hitSlop={8}
+      >
         <Text style={styles.footerLink}>{linkLabel}</Text>
       </Pressable>
     </View>
@@ -277,7 +338,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.pageBackground,
   },
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  legalLink: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: { ...typography.caption, color: colors.textSecondary },
+  checkboxHit: { paddingTop: 1 },
   checkboxLabel: { ...typography.caption, color: colors.textSecondary, flex: 1, lineHeight: 18 },
+  checkboxLink: { ...typography.captionStrong, color: colors.primaryDark },
   notice: {
     flexDirection: 'row',
     alignItems: 'flex-start',

@@ -10,6 +10,7 @@ import {
 } from '@/components/auth/AuthScreen';
 import { ApiError, describeProblem } from '@/api/problem';
 import * as api from '@/api/session';
+import { LEGAL_URLS } from '@/api/legal';
 
 const KVKK_LABEL =
   'KVKK aydınlatma metnini okudum ve kişisel verilerimin işlenmesini kabul ediyorum.';
@@ -161,6 +162,7 @@ export default function SignUpScreen() {
         checked={acceptedKvkk}
         onToggle={() => setAcceptedKvkk((current) => !current)}
         label={KVKK_LABEL}
+        link={{ label: '(metni oku)', href: LEGAL_URLS.kvkkNotice }}
       />
 
       {mismatched ? <AuthNotice tone="error" message="Şifreler eşleşmiyor." /> : null}
