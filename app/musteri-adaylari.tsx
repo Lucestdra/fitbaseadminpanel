@@ -18,7 +18,9 @@ import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { colors, spacing, typography } from '@/theme';
 import { formatDateTimeLabel, addHours, formatRelativeDateTimeLabel, WEEKDAYS } from '@/utils/date';
-import { useCalendar } from '@/context/CalendarContext';
+import { useAuth } from '@/context/AuthContext';
+import * as schedulingApi from '@/api/scheduling';
+import { nextWeekdayInstant } from '@/utils/calendar';
 import {
   leads as initialLeads,
   additionalLeadsByStage,
@@ -48,7 +50,7 @@ export default function LeadsScreen() {
   const router = useRouter();
   const { isMobile, isTablet } = useResponsiveLayout();
   const { stages } = useCatalogs();
-  const { addSession } = useCalendar();
+  const { timeZoneId } = useAuth();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [leads, setLeads] = useState(initialLeads);
@@ -182,16 +184,34 @@ export default function LeadsScreen() {
     const now = new Date();
     const nowLabel = formatRelativeDateTimeLabel(now, now);
 
-    addSession({
-      id: `sess-${Date.now()}`,
-      day: weekdayId,
-      time,
-      title: `${targetLead.name} - ${kindLabel}`,
-      trainer: trainerName ?? targetLead.assignedTrainer,
-      booked: 1,
-      capacity: 1,
-      type: kind === 'yuzyuze-gorusme' ? 'randevu' : 'deneme',
-    });
+    // A real session on the real calendar, on the next occurrence of the chosen weekday.
+    //
+    // The lead itself is still mock until Phase 2.4, so this cannot yet carry a `leadId` — the
+    // meeting is created as an ordinary one-off with the lead's name in its title. That is the
+    // honest half-step: a consultant who books a trial gets a calendar entry that survives a
+    // reload, which is more than the context this replaced ever did, and 2.4 links it to the lead.
+    //
+    // The coach is left unassigned deliberately. `trainerName` comes from the mock team list and
+    // there is no reliable way to resolve a display name to a roster id (ADR-0016) — guessing would
+    // silently attach the meeting to the wrong person the first time two coaches share a name.
+    void (async () => {
+      try {
+        await schedulingApi.createSession({
+          title: `${targetLead.name} - ${kindLabel}`,
+          startsAt: nextWeekdayInstant(weekdayId, time, timeZoneId),
+          durationMinutes: 45,
+          capacity: 1,
+          coachStaffMemberId: null,
+          classDefinitionId: null,
+          notes: trainerName ? `Eğitmen: ${trainerName}` : null,
+        });
+      } catch {
+        // The lead's own record below still updates. Failing the whole interaction because the
+        // calendar entry could not be written would lose the call outcome the consultant just
+        // typed, which is the part they cannot reconstruct.
+        show('Görüşme kaydedildi, ancak takvime eklenemedi.');
+      }
+    })();
 
     setLeads((current) =>
       current.map((lead) =>

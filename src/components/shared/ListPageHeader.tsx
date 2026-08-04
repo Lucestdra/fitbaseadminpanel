@@ -17,9 +17,14 @@ interface ListPageHeaderProps {
    */
   onFilterPress?: () => void;
   filterCount?: number;
-  primaryActionLabel: string;
+  /**
+   * The main action. Omit both this and {@link onPrimaryAction} and the button is not rendered —
+   * which is how a permission-gated screen hides an action the server would refuse anyway. Hiding
+   * it is a courtesy; the refusal is still enforced server-side (CLAUDE.md §35).
+   */
+  primaryActionLabel?: string;
   primaryActionIcon?: IconName;
-  onPrimaryAction: () => void;
+  onPrimaryAction?: () => void;
   secondaryActionLabel?: string;
   secondaryActionIcon?: IconName;
   onSecondaryAction?: () => void;
@@ -81,15 +86,17 @@ export function ListPageHeader({
           </Pressable>
         ) : null}
 
-        <Pressable
-          onPress={onPrimaryAction}
-          accessibilityRole="button"
-          accessibilityLabel={primaryActionLabel}
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
-        >
-          <AppIcon name={primaryActionIcon} size={16} color={colors.white} />
-          <Text style={styles.primaryLabel} numberOfLines={1}>{primaryActionLabel}</Text>
-        </Pressable>
+        {primaryActionLabel && onPrimaryAction ? (
+          <Pressable
+            onPress={onPrimaryAction}
+            accessibilityRole="button"
+            accessibilityLabel={primaryActionLabel}
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+          >
+            <AppIcon name={primaryActionIcon} size={16} color={colors.white} />
+            <Text style={styles.primaryLabel} numberOfLines={1}>{primaryActionLabel}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

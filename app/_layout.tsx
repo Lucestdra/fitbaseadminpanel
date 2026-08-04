@@ -2,7 +2,6 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { CatalogsProvider } from '@/context/CatalogsContext';
-import { CalendarProvider } from '@/context/CalendarContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProgramsProvider } from '@/context/ProgramsContext';
 import { BootstrapGate } from '@/components/auth/BootstrapGate';
@@ -19,11 +18,9 @@ export default function RootLayout() {
         */}
         <BootstrapGate>
           <CatalogsProvider>
-            <CalendarProvider>
               <ProgramsProvider>
                 <Stack screenOptions={{ headerShown: false }} />
               </ProgramsProvider>
-            </CalendarProvider>
           </CatalogsProvider>
         </BootstrapGate>
       </AuthProvider>

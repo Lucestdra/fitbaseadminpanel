@@ -1,69 +1,85 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { DayDetailModal } from './DayDetailModal';
 import { colors, spacing, typography, radii } from '@/theme';
 import { TURKISH_MONTHS } from '@/utils/date';
-import type { CalendarSession } from '@/types/calendar';
+import { buildMonthGrid, formatTimeIn, isBeyondGenerated } from '@/utils/calendar';
+import type { CalendarSession } from '@/api/scheduling';
 
 interface MonthCalendarBoardProps {
+  year: number;
+  /** Zero-based, matching `TURKISH_MONTHS`. */
+  month: number;
   sessions: CalendarSession[];
+  /** From `range.materializedThrough`. Null means generation has never run. */
+  materializedThrough: string | null;
+  /** The studio's zone. Times are meaningless in any other. */
+  timeZoneId: string;
+  /** `YYYY-MM-DD` in the studio's zone, not the device's. */
+  today: string;
+  onChangeMonth: (year: number, month: number) => void;
+  onSelectDay: (isoDate: string) => void;
+  onSelectSession: (sessionId: string) => void;
 }
 
-const WEEKDAY_LABELS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-const WEEKDAY_BY_JS_INDEX = ['paz', 'pzt', 'sal', 'car', 'per', 'cum', 'cmt'];
 const MAX_VISIBLE_PER_DAY = 3;
 
-function typeColor(type: CalendarSession['type']) {
-  if (type === 'randevu') return colors.info;
-  if (type === 'deneme') return colors.warning;
+function stateColor(session: CalendarSession) {
+  if (session.state === 'Cancelled') return colors.textSecondary;
+  if (session.kind === 'Appointment') return colors.info;
+  if (session.kind === 'OneOff') return colors.warning;
   return colors.primary;
 }
 
-export function MonthCalendarBoard({ sessions }: MonthCalendarBoardProps) {
-  const today = useMemo(() => new Date(), []);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [selectedDay, setSelectedDay] = useState<{ day: number; weekdayId: string } | null>(null);
+/**
+ * A month of real dates.
+ *
+ * <b>Every cell is a date and a session belongs to it by `occursOn`.</b> The version this replaces
+ * matched on a weekday id — `sessions.filter(s => s.day === cell.weekdayId)` — so one Tuesday class
+ * rendered on every Tuesday of every month in every year, a studio could not tell this Tuesday from
+ * next, and cancelling a single date was not expressible at all.
+ *
+ * Days past `materializedThrough` are marked rather than left blank. An empty cell there means "not
+ * generated yet", which is a fact about a job; an empty cell inside the horizon means the studio has
+ * nothing on. Rendering both as white space is how the panel's calendar could never be trusted.
+ */
+export function MonthCalendarBoard({
+  year,
+  month,
+  sessions,
+  materializedThrough,
+  timeZoneId,
+  today,
+  onChangeMonth,
+  onSelectDay,
+  onSelectSession,
+}: MonthCalendarBoardProps) {
+  const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
-  const cells = useMemo(() => {
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const firstWeekday = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
-    const result: ({ day: number; weekdayId: string } | null)[] = [];
-    for (let i = 0; i < firstWeekday; i++) result.push(null);
-    for (let day = 1; day <= daysInMonth; day++) {
-      const weekdayId = WEEKDAY_BY_JS_INDEX[new Date(viewYear, viewMonth, day).getDay()];
-      result.push({ day, weekdayId });
-    }
-    return result;
-  }, [viewYear, viewMonth]);
+  // Bucketed once per render rather than filtered per cell: 42 cells × N sessions is a scan for
+  // every square, and the month view is the screen a studio leaves open.
+  const byDate = useMemo(() => {
+    const map = new Map<string, CalendarSession[]>();
 
-  const goToPreviousMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
+    for (const session of sessions) {
+      const bucket = map.get(session.occursOn);
+      if (bucket) bucket.push(session);
+      else map.set(session.occursOn, [session]);
     }
+
+    return map;
+  }, [sessions]);
+
+  const step = (delta: number) => {
+    const next = new Date(year, month + delta, 1);
+    onChangeMonth(next.getFullYear(), next.getMonth());
   };
-
-  const goToNextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
-    }
-  };
-
-  const isToday = (day: number) =>
-    viewYear === today.getFullYear() && viewMonth === today.getMonth() && day === today.getDate();
 
   return (
     <View style={styles.container}>
       <View style={styles.monthNav}>
         <Pressable
-          onPress={goToPreviousMonth}
+          onPress={() => step(-1)}
           accessibilityRole="button"
           accessibilityLabel="Önceki ay"
           hitSlop={8}
@@ -71,9 +87,11 @@ export function MonthCalendarBoard({ sessions }: MonthCalendarBoardProps) {
         >
           <AppIcon name="chevron-back" size={16} color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.monthLabel}>{TURKISH_MONTHS[viewMonth]} {viewYear}</Text>
+        <Text style={styles.monthLabel}>
+          {TURKISH_MONTHS[month]} {year}
+        </Text>
         <Pressable
-          onPress={goToNextMonth}
+          onPress={() => step(1)}
           accessibilityRole="button"
           accessibilityLabel="Sonraki ay"
           hitSlop={8}
@@ -84,49 +102,79 @@ export function MonthCalendarBoard({ sessions }: MonthCalendarBoardProps) {
       </View>
 
       <View style={styles.weekdayRow}>
-        {WEEKDAY_LABELS.map((label) => (
-          <Text key={label} style={styles.weekdayLabel}>{label}</Text>
+        {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((label) => (
+          <Text key={label} style={styles.weekdayLabel}>
+            {label}
+          </Text>
         ))}
       </View>
 
       <View style={styles.grid}>
-        {cells.map((cell, index) => {
-          if (!cell) return <View key={index} style={styles.dayCell} />;
-          const daySessions = sessions.filter((session) => session.day === cell.weekdayId);
-          const visibleSessions = daySessions.slice(0, MAX_VISIBLE_PER_DAY);
-          const extraCount = daySessions.length - visibleSessions.length;
+        {grid.days.map((cell) => {
+          const daySessions = byDate.get(cell.isoDate) ?? [];
+          const visible = daySessions.slice(0, MAX_VISIBLE_PER_DAY);
+          const extra = daySessions.length - visible.length;
+          const ungenerated = isBeyondGenerated(cell.isoDate, materializedThrough);
+
           return (
-            <View key={index} style={[styles.dayCell, isToday(cell.day) && styles.dayCellToday]}>
-              <Text style={[styles.dayNumber, isToday(cell.day) && styles.dayNumberToday]}>{cell.day}</Text>
+            <Pressable
+              key={cell.isoDate}
+              onPress={() => onSelectDay(cell.isoDate)}
+              accessibilityRole="button"
+              accessibilityLabel={`${cell.dayOfMonth} ${TURKISH_MONTHS[month]}, ${daySessions.length} ders`}
+              style={[
+                styles.dayCell,
+                !cell.inMonth && styles.dayCellOutside,
+                cell.isoDate === today && styles.dayCellToday,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.dayNumber,
+                  !cell.inMonth && styles.dayNumberOutside,
+                  cell.isoDate === today && styles.dayNumberToday,
+                ]}
+              >
+                {cell.dayOfMonth}
+              </Text>
+
               <View style={styles.sessionList}>
-                {visibleSessions.map((session) => (
-                  <View key={session.id} style={styles.sessionChip}>
-                    <View style={[styles.sessionDot, { backgroundColor: typeColor(session.type) }]} />
-                    <Text style={styles.sessionText} numberOfLines={1}>{session.time} {session.title}</Text>
-                  </View>
-                ))}
-                {extraCount > 0 ? (
+                {visible.map((session) => (
                   <Pressable
-                    onPress={() => setSelectedDay(cell)}
+                    key={session.id}
+                    onPress={() => onSelectSession(session.id)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${cell.day} ${TURKISH_MONTHS[viewMonth]} için ${extraCount} ders daha göster`}
-                    hitSlop={4}
+                    accessibilityLabel={`${session.title} detayları`}
+                    style={styles.sessionChip}
                   >
-                    <Text style={styles.moreText}>+{extraCount} daha</Text>
+                    <View style={[styles.sessionDot, { backgroundColor: stateColor(session) }]} />
+                    <Text
+                      style={[
+                        styles.sessionText,
+                        session.state === 'Cancelled' && styles.sessionTextCancelled,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatTimeIn(session.startsAt, timeZoneId)} {session.title}
+                    </Text>
                   </Pressable>
+                ))}
+
+                {extra > 0 ? <Text style={styles.moreText}>+{extra} daha</Text> : null}
+
+                {/*
+                  Only where there is nothing to show. A day past the horizon that somehow holds a
+                  one-off session is not ungenerated in any sense the person cares about — one-offs
+                  are written directly and never wait for the materialiser.
+                */}
+                {ungenerated && daySessions.length === 0 ? (
+                  <Text style={styles.ungeneratedText}>oluşturulmadı</Text>
                 ) : null}
               </View>
-            </View>
+            </Pressable>
           );
         })}
       </View>
-
-      <DayDetailModal
-        visible={selectedDay !== null}
-        dateLabel={selectedDay ? `${selectedDay.day} ${TURKISH_MONTHS[viewMonth]} ${viewYear}` : ''}
-        sessions={selectedDay ? sessions.filter((session) => session.day === selectedDay.weekdayId) : []}
-        onClose={() => setSelectedDay(null)}
-      />
     </View>
   );
 }
@@ -177,12 +225,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: 4,
   },
+  dayCellOutside: {
+    backgroundColor: colors.pageBackground,
+  },
   dayCellToday: {
     backgroundColor: colors.mintLight,
   },
   dayNumber: {
     ...typography.captionStrong,
     color: colors.textPrimary,
+  },
+  dayNumberOutside: {
+    color: colors.textSecondary,
   },
   dayNumberToday: {
     color: colors.primaryDark,
@@ -206,9 +260,19 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
   },
+  sessionTextCancelled: {
+    color: colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
   moreText: {
     ...typography.caption,
     fontSize: 10,
     color: colors.textSecondary,
+  },
+  ungeneratedText: {
+    ...typography.caption,
+    fontSize: 9,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
 });

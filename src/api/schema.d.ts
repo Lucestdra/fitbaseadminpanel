@@ -1531,6 +1531,228 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scheduling/bookings/{bookingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Gives a seat up. The credit comes back outside the twelve-hour window. */
+        delete: operations["CancelBooking"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What is on between two dates, with how far generation has reached. */
+        get: operations["GetCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every class with the weekly slots it runs on. */
+        get: operations["ListClasses"];
+        put?: never;
+        /** Adds a class. Creates no occurrences — a class with no slots never runs. */
+        post: operations["CreateClass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/classes/{classId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edits a class. Occurrences that already exist keep their own terms. */
+        put: operations["UpdateClass"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/classes/{classId}/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a weekly slot and materialises it in the same transaction. */
+        post: operations["AddClassSlot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/classes/{classId}/slots/{slotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stops a slot running from a date. Booked occurrences are cancelled, not deleted. */
+        delete: operations["EndClassSlot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/classes/{classId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retires a class, or brings it back. Never a delete. */
+        post: operations["SetClassActive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/materialize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generates missing occurrences through the horizon. Idempotent. */
+        post: operations["MaterializeSessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds a session no slot generates: a private lesson, a make-up class. */
+        post: operations["CreateOneOffSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One session, its register and its counts. */
+        get: operations["GetSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/sessions/{sessionId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marks a whole register in one request. */
+        post: operations["MarkAttendance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/sessions/{sessionId}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claims a seat and charges a credit, in one transaction. */
+        post: operations["BookSeat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/sessions/{sessionId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calls off a session. Everybody on it is refunded, whatever the cutoff says. */
+        post: operations["CancelSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff": {
         parameters: {
             query?: never;
@@ -1632,6 +1854,60 @@ export interface components {
             /** @description Required. An unexplained adjustment is the one nobody can defend. */
             note: string;
         };
+        AttendanceBody: {
+            /** @description The whole register in one request, not one call per member. */
+            entries: components["schemas"]["AttendanceEntryBody"][];
+        };
+        AttendanceEntryBody: {
+            /**
+             * Format: uuid
+             * @description The seat.
+             */
+            bookingId: string;
+            /**
+             * @description What happened. `Unmarked` is accepted and undoes a mistake — a coach who marked the wrong
+             *     row needs a way back, and the alternative is a no-show nobody can clear.
+             */
+            mark: components["schemas"]["AttendanceMark"];
+        };
+        /**
+         * @description Whether the member turned up.
+         * @enum {unknown}
+         */
+        AttendanceMark: "Unmarked" | "Attended" | "NoShow" | "Excused";
+        AttendanceSummary: {
+            /**
+             * Format: int32
+             * @description Turned up.
+             */
+            attended: number;
+            /**
+             * Format: int32
+             * @description Seats claimed and not given up.
+             */
+            booked: number;
+            /**
+             * Format: int32
+             * @description Absent with the studio's blessing. Credit refunded.
+             */
+            excused: number;
+            /**
+             * Format: int32
+             * @description Did not, and did not cancel in time.
+             */
+            noShow: number;
+            /**
+             * Format: uuid
+             * @description The session.
+             */
+            sessionId: string;
+            /**
+             * Format: int32
+             * @description Still unanswered. Reported rather than folded into one of the others, because "nobody took the
+             *     register" and "nobody came" are different facts and only one of them is about the members.
+             */
+            unmarked: number;
+        };
         /**
          * @description What kind of thing happened. Stored as a string, so adding one is a code change with no
          *     migration and reading the table needs no lookup.
@@ -1702,6 +1978,46 @@ export interface components {
              */
             staffMemberId: string;
         };
+        BookSeatBody: {
+            /**
+             * Format: uuid
+             * @description Who is claiming the seat.
+             */
+            memberId: string;
+        };
+        BookingReceipt: {
+            /**
+             * Format: int32
+             * @description Seats claimed after this one, straight from the claiming statement.
+             */
+            bookedCount: number;
+            /**
+             * Format: uuid
+             * @description The seat.
+             */
+            bookingId: string;
+            /**
+             * Format: int32
+             * @description Total seats.
+             */
+            capacity: number;
+            /**
+             * Format: int32
+             * @description The member's balance afterwards, or null when the membership is unlimited — where a number
+             *     would be a lie rather than a large value.
+             */
+            creditsRemaining: null | number;
+            /**
+             * Format: uuid
+             * @description What it is on.
+             */
+            sessionId: string;
+        };
+        /**
+         * @description A member's claim on a seat.
+         * @enum {unknown}
+         */
+        BookingState: "Booked" | "Cancelled";
         /** @description Opening break-glass access. */
         BreakGlassRequest: {
             /**
@@ -1750,9 +2066,106 @@ export interface components {
             /** @description The complete week. Anything omitted is deleted. */
             intervals: components["schemas"]["BusinessHourInterval"][];
         };
+        /** @description How far the calendar can be trusted. */
+        CalendarRange: {
+            /**
+             * Format: date
+             * @description First day of the answered window, in the studio's zone.
+             */
+            from: string;
+            /**
+             * Format: date
+             * @description The furthest date generation will ever reach — today plus the 84-day horizon (ADR-0030). A
+             *     request past this is refused rather than answered emptily.
+             */
+            horizonThrough: string;
+            /**
+             * Format: date
+             * @description <b>The most important field on this record.</b> The last date class occurrences have actually
+             *                 been generated through, or null when the materialiser has never run for this studio.
+             *                 Without it, a week past the horizon and a week the studio genuinely has nothing on are the same
+             *     empty array, and the client renders "no classes" for both. One of those is a fact and the other
+             *     is a job that has not run.
+             */
+            materializedThrough: null | string;
+            /**
+             * Format: date
+             * @description Last day, inclusive.
+             */
+            to: string;
+        };
+        CalendarSession: {
+            /**
+             * Format: int32
+             * @description Seats claimed. <b>Not attendance</b> — see AttendanceMark.
+             */
+            bookedCount: number;
+            /**
+             * Format: int32
+             * @description Seats.
+             */
+            capacity: number;
+            /**
+             * Format: uuid
+             * @description Present for class occurrences; lets the client group a series.
+             */
+            classDefinitionId: null | string;
+            /** @description Resolved through `IStaffMemberDirectory`, never joined to. */
+            coachName: null | string;
+            /**
+             * Format: uuid
+             * @description Roster id (ADR-0016).
+             */
+            coachStaffMemberId: null | string;
+            /**
+             * Format: date-time
+             * @description The instant it ends.
+             */
+            endsAt: string;
+            /**
+             * Format: uuid
+             * @description The occurrence.
+             */
+            id: string;
+            /** @description Class occurrence, one-off, or appointment. */
+            kind: components["schemas"]["SessionKind"];
+            /**
+             * Format: date
+             * @description The organization-local date. What "Tuesday" means.
+             */
+            occursOn: string;
+            /**
+             * Format: date-time
+             * @description The instant. The client formats; the server never sends a formatted date.
+             */
+            startsAt: string;
+            /** @description Scheduled, cancelled, completed or a moved tombstone. */
+            state: components["schemas"]["SessionState"];
+            /** @description Snapshotted at creation, never read through from the class (ADR-0035). */
+            title: string;
+        };
+        CalendarView: {
+            /** @description What window was answered, and how far generation reaches. */
+            range: components["schemas"]["CalendarRange"];
+            /** @description Flat and ordered by start. Grouping into days is the client's job. */
+            sessions: components["schemas"]["CalendarSession"][];
+        };
         CancelBody: {
             /** @description Why the membership was ended early. */
             reason: null | string;
+        };
+        CancelSessionBody: {
+            /** @description Why it was called off. Shown to the members who lose their seat. */
+            reason: null | string;
+        };
+        CancellationReceipt: {
+            /**
+             * Format: int32
+             * @description The balance afterwards, or null for an unlimited membership.
+             */
+            creditsRemaining: null | number;
+            /** @description Whether a credit came back. False for a late member cancellation. */
+            refunded: boolean;
         };
         /** @description What is pointing at a catalog entry, and therefore what deleting it would do. */
         CatalogEntryUsage: {
@@ -1818,6 +2231,128 @@ export interface components {
             currentPassword: string;
             /** @description The replacement. Checked against the policy. */
             newPassword: string;
+        };
+        ClassBody: {
+            /**
+             * Format: uuid
+             * @description Catalog entry id, or null.
+             */
+            categoryId: null | string;
+            /**
+             * Format: int32
+             * @description Positive. Copied onto each occurrence at materialisation.
+             */
+            defaultCapacity: number;
+            /**
+             * Format: uuid
+             * @description Roster id.
+             */
+            defaultCoachStaffMemberId: null | string;
+            /**
+             * Format: int32
+             * @description Positive.
+             */
+            defaultDurationMinutes: number;
+            /** @description Optional. */
+            description: null | string;
+            /** @description Required. */
+            name: string;
+        };
+        ClassSlotSummary: {
+            /**
+             * Format: date
+             * @description The first occurrence. Sets the phase; immutable once set.
+             */
+            anchorDate: string;
+            /**
+             * Format: int32
+             * @description Seats on the occurrences it produces.
+             */
+            capacity: number;
+            /** @description Resolved, not joined. */
+            coachName: null | string;
+            /**
+             * Format: uuid
+             * @description <b>The effective coach: this slot's own, or the class's default where the slot names none.</b>
+             *             Reporting the stored value would leave the column blank for every slot that simply inherits —
+             *             which is most of them — and the timetable screen would show a studio whose classes nobody
+             *             teaches. This is also the value the materialiser stamps onto each occurrence, so the timetable
+             *             and the calendar agree about who is teaching.
+             */
+            coachStaffMemberId: null | string;
+            /** @description Which weekday it runs on. */
+            dayOfWeek: components["schemas"]["DayOfWeek"];
+            /**
+             * Format: int32
+             * @description How long.
+             */
+            durationMinutes: number;
+            /**
+             * Format: uuid
+             * @description The slot.
+             */
+            id: string;
+            /**
+             * Format: int32
+             * @description 1 = weekly, 2 = fortnightly.
+             */
+            intervalWeeks: number;
+            /**
+             * Format: time
+             * @description Wall-clock time in the studio's zone. Never an instant (ADR-0030).
+             */
+            startsAtLocal: string;
+            /**
+             * Format: date
+             * @description First day this slot applies.
+             */
+            validFrom: string;
+            /**
+             * Format: date
+             * @description Exclusive end, or null for indefinitely.
+             */
+            validTo: null | string;
+        };
+        ClassStatusBody: {
+            /** @description Whether the class is offered for new scheduling. */
+            isActive: boolean;
+        };
+        ClassSummary: {
+            /**
+             * Format: uuid
+             * @description A catalog entry, or null.
+             */
+            categoryId: null | string;
+            /**
+             * Format: int32
+             * @description Copied onto each occurrence at materialisation.
+             */
+            defaultCapacity: number;
+            /** @description Resolved, not joined. */
+            defaultCoachName: null | string;
+            /**
+             * Format: uuid
+             * @description Who normally teaches it.
+             */
+            defaultCoachStaffMemberId: null | string;
+            /**
+             * Format: int32
+             * @description Same.
+             */
+            defaultDurationMinutes: number;
+            /** @description Free text. */
+            description: null | string;
+            /**
+             * Format: uuid
+             * @description The class.
+             */
+            id: string;
+            /** @description Whether it is offered for new scheduling. */
+            isActive: boolean;
+            /** @description What it is called. */
+            name: string;
+            /** @description When it runs. Ordered by weekday then time. */
+            slots: components["schemas"]["ClassSlotSummary"][];
         };
         ClosureBody: {
             /**
@@ -2165,6 +2700,31 @@ export interface components {
             /** @description Their password. */
             password: string;
         };
+        MaterializationResult: {
+            /**
+             * Format: int32
+             * @description Occurrences refused by the trainer-overlap exclusion.
+             */
+            conflicted: number;
+            /**
+             * Format: int32
+             * @description Occurrences written on this run.
+             */
+            created: number;
+            /**
+             * Format: date
+             * @description The last date now covered. Returned to the client as `range.materializedThrough`, because a
+             *     calendar week past the horizon must read as "not generated yet" rather than as a studio with no
+             *     classes.
+             */
+            materializedThrough: string;
+            /**
+             * Format: int32
+             * @description Occurrences that already existed. Expected, and the number that proves idempotency: a second run
+             *     over the same window creates nothing and skips everything.
+             */
+            skipped: number;
+        };
         MeNavigationEntry: {
             /** @description The nav id the panel already uses, kept identical so migrating is a data change. */
             id: string;
@@ -2499,6 +3059,37 @@ export interface components {
          * @enum {unknown}
          */
         NotificationTopic: "NewLead" | "PaymentReceived" | "AppointmentReminder" | "WeeklyDigest";
+        OneOffSessionBody: {
+            /**
+             * Format: int32
+             * @description Seats. One for a private lesson.
+             */
+            capacity: number;
+            /**
+             * Format: uuid
+             * @description Optional, when the one-off belongs to a class's series.
+             */
+            classDefinitionId: null | string;
+            /**
+             * Format: uuid
+             * @description Roster id, never a name (ADR-0016).
+             */
+            coachStaffMemberId: null | string;
+            /**
+             * Format: int32
+             * @description Positive.
+             */
+            durationMinutes: number;
+            /** @description Free text. */
+            notes: null | string;
+            /**
+             * Format: date-time
+             * @description The instant. ISO-8601; the client formats, the server never does.
+             */
+            startsAt: string;
+            /** @description What appears on the calendar. */
+            title: string;
+        };
         /** @description The organization-local settings every date and number derives from. */
         OrganizationLocalization: {
             /** @description ISO 4217. Only TRY is supported in v1; the column ships from day one. */
@@ -2858,6 +3449,24 @@ export interface components {
              */
             startsOn: null | string;
         };
+        SessionCancellation: {
+            /**
+             * Format: int32
+             * @description How many got a credit back. Lower than SeatsReleased when some of the
+             *     bookings were on unlimited memberships, which consume nothing and so refund nothing.
+             */
+            creditsRefunded: number;
+            /**
+             * Format: int32
+             * @description How many members lost their seat.
+             */
+            seatsReleased: number;
+            /**
+             * Format: uuid
+             * @description What was cancelled.
+             */
+            sessionId: string;
+        };
         /**
          * @description Where a session is being used from. Decides how the refresh handle is carried.
          * @default Web
@@ -2869,6 +3478,25 @@ export interface components {
          * @enum {unknown}
          */
         SessionCreditReason: "Purchase" | "Booking" | "BookingCancelled" | "Gift" | "ManualAdjustment" | "Expiry";
+        /** @description One session with its register. Serves the calendar drawer and the attendance sheet. */
+        SessionDetail: {
+            /** @description The counts, computed from Seats by the same rules the mark endpoint returns. */
+            attendance: components["schemas"]["AttendanceSummary"];
+            /** @description Free text the studio put on it. */
+            notes: null | string;
+            /**
+             * @description Every booking ever made on this session, cancelled ones included. The register renders the live
+             *     ones; the cancelled ones are what answers "who dropped out" without a second query.
+             */
+            seats: components["schemas"]["SessionSeat"][];
+            /** @description The occurrence. */
+            session: components["schemas"]["CalendarSession"];
+        };
+        /**
+         * @description What a session <i>is</i>. One table holds all three (ADR-0032).
+         * @enum {unknown}
+         */
+        SessionKind: "ClassOccurrence" | "OneOff" | "Appointment";
         SessionLedgerEntry: {
             /**
              * Format: int32
@@ -2899,6 +3527,77 @@ export interface components {
             occurredAt: string;
             /** @description Why. */
             reason: components["schemas"]["SessionCreditReason"];
+        };
+        SessionSeat: {
+            /** @description Whether they turned up. `Unmarked` until somebody says. */
+            attendance: components["schemas"]["AttendanceMark"];
+            /**
+             * Format: date-time
+             * @description When the seat was claimed.
+             */
+            bookedAt: string;
+            /**
+             * Format: uuid
+             * @description The seat.
+             */
+            bookingId: string;
+            /**
+             * Format: uuid
+             * @description Who holds it.
+             */
+            memberId: string;
+            /**
+             * @description Resolved through `IMemberDirectory`. Null when the id resolves to nothing — a member
+             *     deleted under an erasure request. Rendered as unknown rather than refusing to open the register.
+             */
+            memberName: null | string;
+            /** @description Booked or cancelled. A cancelled seat stays on the sheet as evidence. */
+            state: components["schemas"]["BookingState"];
+        };
+        /**
+         * @description Where a session is in its life.
+         * @enum {unknown}
+         */
+        SessionState: "Scheduled" | "Cancelled" | "Completed" | "Moved";
+        SlotBody: {
+            /**
+             * Format: int32
+             * @description Null takes the class's default.
+             */
+            capacity: null | number;
+            /**
+             * Format: uuid
+             * @description Null takes the class's default coach.
+             */
+            coachStaffMemberId: null | string;
+            /** @description Which weekday it runs on. */
+            dayOfWeek: components["schemas"]["DayOfWeek"];
+            /**
+             * Format: int32
+             * @description Null takes the class's default.
+             */
+            durationMinutes: null | number;
+            /**
+             * Format: int32
+             * @description 1 = weekly, 2 = fortnightly. Defaults to weekly.
+             */
+            intervalWeeks: null | number;
+            /**
+             * Format: time
+             * @description Wall-clock time in the studio's zone, and it stays one. "09:00 Tuesday" means 09:00 in March and
+             *     09:00 in November; sending an instant would move it by an hour twice a year (ADR-0030).
+             */
+            startsAtLocal: string;
+            /**
+             * Format: date
+             * @description First day. Defaults to the studio's today. The anchor is derived from it.
+             */
+            validFrom: null | string;
+            /**
+             * Format: date
+             * @description Exclusive end, or null for indefinitely.
+             */
+            validTo: null | string;
         };
         /** @description What other modules may know about a staff member. */
         StaffMemberSummary: {
@@ -4745,6 +5444,599 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaxProfileSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationReceipt"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCalendar: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                coachId?: string;
+                classId?: string;
+                includeCancelled?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListClasses: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSummary"][];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateClass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateClass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddClassSlot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    EndClassSlot: {
+        parameters: {
+            query?: {
+                effectiveFrom?: string;
+            };
+            header?: never;
+            path: {
+                classId: string;
+                slotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetClassActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassStatusBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MaterializeSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterializationResult"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateOneOffSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OneOffSessionBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MarkAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    BookSeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookSeatBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingReceipt"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CancelSessionBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCancellation"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

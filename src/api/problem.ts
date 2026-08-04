@@ -58,6 +58,28 @@ const MESSAGES: Record<string, string> = {
   'auth.full_name_required': 'Ad soyad gerekli.',
   'auth.invitation_already_on_roster': 'Bu hesap zaten bu stüdyonun ekibinde.',
   'validation.failed': 'Girilen bilgilerde bir hata var.',
+
+  // Scheduling. Every one of these is something the person in front of the screen can act on —
+  // pick another session, sell a package, choose another coach — which is the test for whether a
+  // code belongs here rather than falling through to the generic sentence.
+  'scheduling.session.not_found': 'Bu ders bulunamadı. Takvim yenilenmiş olabilir.',
+  'scheduling.session.capacity_exceeded': 'Bu dersin kontenjanı doldu.',
+  'scheduling.session.already_started': 'Bu ders başlamış; artık değiştirilemez.',
+  'scheduling.session.cancelled': 'Bu ders iptal edilmiş.',
+  'scheduling.booking.duplicate': 'Bu üye zaten bu derse kayıtlı.',
+  'scheduling.booking.cancellation_window_closed':
+    'İptal süresi doldu. Seans hakkı iade edilmeyecek.',
+  'scheduling.trainer.double_booked': 'Bu eğitmenin aynı saatte başka bir dersi var.',
+  'scheduling.horizon.exceeded': 'Takvim bu kadar ileri tarih için henüz oluşturulmadı.',
+  'scheduling.coach.not_found': 'Bu eğitmen stüdyonun ekibinde değil.',
+  'scheduling.class.not_found': 'Bu ders tanımı bulunamadı.',
+  'scheduling.slot.not_found': 'Bu ders saati bulunamadı.',
+  'scheduling.slot.invalid_interval': 'Tekrar aralığı 1 ile 4 hafta arasında olmalı.',
+  'scheduling.slot.invalid_window': 'Bitiş tarihi başlangıçtan sonra olmalı.',
+  'scheduling.session.invalid_terms': 'Süre ve kontenjan sıfırdan büyük olmalı.',
+  'scheduling.calendar.invalid_range': 'Seçilen tarih aralığı geçersiz.',
+  'members.session_credits.insufficient': 'Bu üyenin kalan seans hakkı yok.',
+  'members.membership.inactive': 'Bu üyenin aktif bir üyeliği yok.',
 };
 
 const FALLBACK = 'Beklenmeyen bir hata oluştu. Lütfen tekrar dene.';

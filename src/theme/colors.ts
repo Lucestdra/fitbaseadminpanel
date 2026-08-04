@@ -12,6 +12,9 @@ export const colors = {
   // Paired with `critical`, as `mintLight` is with `primary`. A refusal notice needs a fill that
   // is not the page background, or it reads as body text with a red icon next to it.
   criticalLight: '#FEF2F2',
+  // The third of the same pair. A capacity notice on the booking sheet is a caution rather than a
+  // refusal, and using `criticalLight` for it would make a full class look like an error.
+  warningLight: '#FFFBEB',
   info: '#3B82F6',
   white: '#FFFFFF',
 } as const;

@@ -1,28 +1,55 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { CalendarSessionCard } from './CalendarSessionCard';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { CalendarDay, CalendarSession } from '@/types/calendar';
+import { formatShortDayLabel, isBeyondGenerated } from '@/utils/calendar';
+import { fromIsoDate } from '@/utils/date';
+import type { CalendarSession } from '@/api/scheduling';
 
 interface DayColumnProps {
-  day: CalendarDay;
+  /** `YYYY-MM-DD`. A real date, not a weekday id. */
+  isoDate: string;
   sessions: CalendarSession[];
+  materializedThrough: string | null;
+  timeZoneId: string;
   isToday: boolean;
+  onSelectSession: (sessionId: string) => void;
 }
 
-export function DayColumn({ day, sessions, isToday }: DayColumnProps) {
+const WEEKDAY_LABELS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+export function DayColumn({
+  isoDate,
+  sessions,
+  materializedThrough,
+  timeZoneId,
+  isToday,
+  onSelectSession,
+}: DayColumnProps) {
+  const date = fromIsoDate(isoDate);
+  const ungenerated = isBeyondGenerated(isoDate, materializedThrough);
+
   return (
     <View style={[styles.container, isToday && styles.containerToday]}>
       <View style={styles.header}>
-        <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{day.label}</Text>
-        <Text style={styles.dateLabel}>{day.dateLabel}</Text>
+        <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
+          {date ? WEEKDAY_LABELS[date.getDay()] : ''}
+        </Text>
+        <Text style={styles.dateLabel}>{formatShortDayLabel(isoDate)}</Text>
       </View>
 
       <View style={styles.list}>
         {sessions.length > 0 ? (
-          sessions.map((session) => <CalendarSessionCard key={session.id} session={session} />)
+          sessions.map((session) => (
+            <CalendarSessionCard
+              key={session.id}
+              session={session}
+              timeZoneId={timeZoneId}
+              onPress={() => onSelectSession(session.id)}
+            />
+          ))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Ders yok</Text>
+            <Text style={styles.emptyText}>{ungenerated ? 'Oluşturulmadı' : 'Ders yok'}</Text>
           </View>
         )}
       </View>

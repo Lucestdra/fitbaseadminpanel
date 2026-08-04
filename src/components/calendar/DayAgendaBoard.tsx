@@ -1,42 +1,49 @@
-import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { CalendarSessionCard } from './CalendarSessionCard';
 import { colors, spacing, typography, radii } from '@/theme';
-import { TURKISH_MONTHS, addDays } from '@/utils/date';
-import type { CalendarSession } from '@/types/calendar';
+import { formatDayLabel, isBeyondGenerated, shiftIsoDate } from '@/utils/calendar';
+import { fromIsoDate } from '@/utils/date';
+import type { CalendarSession } from '@/api/scheduling';
 
 interface DayAgendaBoardProps {
+  /** `YYYY-MM-DD` in the studio's zone. */
+  isoDate: string;
   sessions: CalendarSession[];
+  materializedThrough: string | null;
+  timeZoneId: string;
+  /** The studio's today, so "Bugün" means the studio's day and not the device's. */
+  today: string;
+  onChangeDay: (isoDate: string) => void;
+  onSelectSession: (sessionId: string) => void;
 }
 
-const WEEKDAY_BY_JS_INDEX = ['paz', 'pzt', 'sal', 'car', 'per', 'cum', 'cmt'];
-const WEEKDAY_FULL_LABELS: Record<string, string> = {
-  pzt: 'Pazartesi',
-  sal: 'Salı',
-  car: 'Çarşamba',
-  per: 'Perşembe',
-  cum: 'Cuma',
-  cmt: 'Cumartesi',
-  paz: 'Pazar',
-};
+const WEEKDAY_LABELS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-export function DayAgendaBoard({ sessions }: DayAgendaBoardProps) {
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const today = new Date();
-
-  const weekdayId = WEEKDAY_BY_JS_INDEX[selectedDate.getDay()];
-  const daySessions = sessions.filter((session) => session.day === weekdayId).sort((a, b) => a.time.localeCompare(b.time));
+/**
+ * One real day.
+ *
+ * <b>Ordering comes from the server</b>, which sorts by the instant. The version this replaces
+ * sorted by a `time` string — and `'9:00'.localeCompare('10:00')` is positive, so a studio opening
+ * at nine had its first class listed second, every day, in the view a coach opens in the morning.
+ */
+export function DayAgendaBoard({
+  isoDate,
+  sessions,
+  materializedThrough,
+  timeZoneId,
+  today,
+  onChangeDay,
+  onSelectSession,
+}: DayAgendaBoardProps) {
+  const date = fromIsoDate(isoDate);
+  const ungenerated = isBeyondGenerated(isoDate, materializedThrough);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => setSelectedDate((current) => addDays(current, -1))}
+          onPress={() => onChangeDay(shiftIsoDate(isoDate, -1))}
           accessibilityRole="button"
           accessibilityLabel="Önceki gün"
           hitSlop={8}
@@ -46,14 +53,12 @@ export function DayAgendaBoard({ sessions }: DayAgendaBoardProps) {
         </Pressable>
 
         <View style={styles.dateGroup}>
-          <Text style={styles.dateLabel}>
-            {selectedDate.getDate()} {TURKISH_MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
-          </Text>
-          <Text style={styles.weekdayLabel}>{WEEKDAY_FULL_LABELS[weekdayId]}</Text>
+          <Text style={styles.dateLabel}>{formatDayLabel(isoDate)}</Text>
+          <Text style={styles.weekdayLabel}>{date ? WEEKDAY_LABELS[date.getDay()] : ''}</Text>
         </View>
 
         <Pressable
-          onPress={() => setSelectedDate((current) => addDays(current, 1))}
+          onPress={() => onChangeDay(shiftIsoDate(isoDate, 1))}
           accessibilityRole="button"
           accessibilityLabel="Sonraki gün"
           hitSlop={8}
@@ -62,9 +67,9 @@ export function DayAgendaBoard({ sessions }: DayAgendaBoardProps) {
           <AppIcon name="chevron-forward" size={16} color={colors.textPrimary} />
         </Pressable>
 
-        {!isSameDay(selectedDate, today) ? (
+        {isoDate !== today ? (
           <Pressable
-            onPress={() => setSelectedDate(new Date())}
+            onPress={() => onChangeDay(today)}
             accessibilityRole="button"
             accessibilityLabel="Bugüne git"
             style={({ pressed }) => [styles.todayButton, pressed && styles.todayButtonPressed]}
@@ -75,12 +80,29 @@ export function DayAgendaBoard({ sessions }: DayAgendaBoardProps) {
       </View>
 
       <View style={styles.list}>
-        {daySessions.length > 0 ? (
-          daySessions.map((session) => <CalendarSessionCard key={session.id} session={session} />)
+        {sessions.length > 0 ? (
+          sessions.map((session) => (
+            <CalendarSessionCard
+              key={session.id}
+              session={session}
+              timeZoneId={timeZoneId}
+              onPress={() => onSelectSession(session.id)}
+            />
+          ))
         ) : (
           <View style={styles.emptyState}>
             <AppIcon name="calendar-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>Bu gün için ders veya randevu yok.</Text>
+            {/*
+              Two different sentences, and the distinction is the whole point of shipping
+              `materializedThrough`. "Nothing on" is a fact about the studio; "not generated yet" is
+              a fact about a job, and rendering both as the same empty state is what made the
+              panel's calendar impossible to trust.
+            */}
+            <Text style={styles.emptyText}>
+              {ungenerated
+                ? 'Bu tarih için takvim henüz oluşturulmadı.'
+                : 'Bu gün için ders veya randevu yok.'}
+            </Text>
           </View>
         )}
       </View>
@@ -150,9 +172,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderStyle: 'dashed',
+    padding: spacing.lg,
   },
   emptyText: {
     ...typography.caption,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

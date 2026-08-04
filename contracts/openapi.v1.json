@@ -79,6 +79,91 @@
         ],
         "type": "object"
       },
+      "AttendanceBody": {
+        "properties": {
+          "entries": {
+            "description": "The whole register in one request, not one call per member.",
+            "items": {
+              "$ref": "#/components/schemas/AttendanceEntryBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "AttendanceEntryBody": {
+        "properties": {
+          "bookingId": {
+            "description": "The seat.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "mark": {
+            "$ref": "#/components/schemas/AttendanceMark",
+            "description": "What happened. `Unmarked` is accepted and undoes a mistake — a coach who marked the wrong\r\nrow needs a way back, and the alternative is a no-show nobody can clear."
+          }
+        },
+        "required": [
+          "bookingId",
+          "mark"
+        ],
+        "type": "object"
+      },
+      "AttendanceMark": {
+        "description": "Whether the member turned up.",
+        "enum": [
+          "Unmarked",
+          "Attended",
+          "NoShow",
+          "Excused"
+        ]
+      },
+      "AttendanceSummary": {
+        "properties": {
+          "attended": {
+            "description": "Turned up.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "booked": {
+            "description": "Seats claimed and not given up.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "excused": {
+            "description": "Absent with the studio's blessing. Credit refunded.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "noShow": {
+            "description": "Did not, and did not cancel in time.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "sessionId": {
+            "description": "The session.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unmarked": {
+            "description": "Still unanswered. Reported rather than folded into one of the others, because \"nobody took the\r\nregister\" and \"nobody came\" are different facts and only one of them is about the members.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sessionId",
+          "booked",
+          "attended",
+          "noShow",
+          "excused",
+          "unmarked"
+        ],
+        "type": "object"
+      },
       "AuditAction": {
         "description": "What kind of thing happened. Stored as a string, so adding one is a code change with no\r\nmigration and reading the table needs no lookup.",
         "enum": [
@@ -201,6 +286,66 @@
         ],
         "type": "object"
       },
+      "BookSeatBody": {
+        "properties": {
+          "memberId": {
+            "description": "Who is claiming the seat.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memberId"
+        ],
+        "type": "object"
+      },
+      "BookingReceipt": {
+        "properties": {
+          "bookedCount": {
+            "description": "Seats claimed after this one, straight from the claiming statement.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "bookingId": {
+            "description": "The seat.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "capacity": {
+            "description": "Total seats.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "creditsRemaining": {
+            "description": "The member's balance afterwards, or null when the membership is unlimited — where a number\r\nwould be a lie rather than a large value.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sessionId": {
+            "description": "What it is on.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookingId",
+          "sessionId",
+          "bookedCount",
+          "capacity",
+          "creditsRemaining"
+        ],
+        "type": "object"
+      },
+      "BookingState": {
+        "description": "A member's claim on a seat.",
+        "enum": [
+          "Booked",
+          "Cancelled"
+        ]
+      },
       "BreakGlassRequest": {
         "description": "Opening break-glass access.",
         "properties": {
@@ -288,6 +433,145 @@
         ],
         "type": "object"
       },
+      "CalendarRange": {
+        "description": "How far the calendar can be trusted.",
+        "properties": {
+          "from": {
+            "description": "First day of the answered window, in the studio's zone.",
+            "format": "date",
+            "type": "string"
+          },
+          "horizonThrough": {
+            "description": "The furthest date generation will ever reach — today plus the 84-day horizon (ADR-0030). A\r\nrequest past this is refused rather than answered emptily.",
+            "format": "date",
+            "type": "string"
+          },
+          "materializedThrough": {
+            "description": "    <b>The most important field on this record.</b> The last date class occurrences have actually\r\n            been generated through, or null when the materialiser has never run for this studio.\r\n            Without it, a week past the horizon and a week the studio genuinely has nothing on are the same\r\nempty array, and the client renders \"no classes\" for both. One of those is a fact and the other\r\nis a job that has not run.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "to": {
+            "description": "Last day, inclusive.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "materializedThrough",
+          "horizonThrough"
+        ],
+        "type": "object"
+      },
+      "CalendarSession": {
+        "properties": {
+          "bookedCount": {
+            "description": "Seats claimed. <b>Not attendance</b> — see AttendanceMark.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "capacity": {
+            "description": "Seats.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "classDefinitionId": {
+            "description": "Present for class occurrences; lets the client group a series.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coachName": {
+            "description": "Resolved through `IStaffMemberDirectory`, never joined to.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coachStaffMemberId": {
+            "description": "Roster id (ADR-0016).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endsAt": {
+            "description": "The instant it ends.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "The occurrence.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SessionKind",
+            "description": "Class occurrence, one-off, or appointment."
+          },
+          "occursOn": {
+            "description": "The organization-local date. What \"Tuesday\" means.",
+            "format": "date",
+            "type": "string"
+          },
+          "startsAt": {
+            "description": "The instant. The client formats; the server never sends a formatted date.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SessionState",
+            "description": "Scheduled, cancelled, completed or a moved tombstone."
+          },
+          "title": {
+            "description": "Snapshotted at creation, never read through from the class (ADR-0035).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "occursOn",
+          "startsAt",
+          "endsAt",
+          "coachStaffMemberId",
+          "coachName",
+          "capacity",
+          "bookedCount",
+          "state",
+          "classDefinitionId"
+        ],
+        "type": "object"
+      },
+      "CalendarView": {
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/CalendarRange",
+            "description": "What window was answered, and how far generation reaches."
+          },
+          "sessions": {
+            "description": "Flat and ordered by start. Grouping into days is the client's job.",
+            "items": {
+              "$ref": "#/components/schemas/CalendarSession"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "range",
+          "sessions"
+        ],
+        "type": "object"
+      },
       "CancelBody": {
         "properties": {
           "reason": {
@@ -300,6 +584,42 @@
         },
         "required": [
           "reason"
+        ],
+        "type": "object"
+      },
+      "CancelSessionBody": {
+        "properties": {
+          "reason": {
+            "description": "Why it was called off. Shown to the members who lose their seat.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "CancellationReceipt": {
+        "properties": {
+          "creditsRemaining": {
+            "description": "The balance afterwards, or null for an unlimited membership.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "refunded": {
+            "description": "Whether a credit came back. False for a late member cancellation.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "refunded",
+          "creditsRemaining"
         ],
         "type": "object"
       },
@@ -434,6 +754,225 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ],
+        "type": "object"
+      },
+      "ClassBody": {
+        "properties": {
+          "categoryId": {
+            "description": "Catalog entry id, or null.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultCapacity": {
+            "description": "Positive. Copied onto each occurrence at materialisation.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "defaultCoachStaffMemberId": {
+            "description": "Roster id.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultDurationMinutes": {
+            "description": "Positive.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "description": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Required.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "categoryId",
+          "description",
+          "defaultCapacity",
+          "defaultDurationMinutes",
+          "defaultCoachStaffMemberId"
+        ],
+        "type": "object"
+      },
+      "ClassSlotSummary": {
+        "properties": {
+          "anchorDate": {
+            "description": "The first occurrence. Sets the phase; immutable once set.",
+            "format": "date",
+            "type": "string"
+          },
+          "capacity": {
+            "description": "Seats on the occurrences it produces.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "coachName": {
+            "description": "Resolved, not joined.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coachStaffMemberId": {
+            "description": "<b>The effective coach: this slot's own, or the class's default where the slot names none.</b>\r\n        Reporting the stored value would leave the column blank for every slot that simply inherits —\r\n        which is most of them — and the timetable screen would show a studio whose classes nobody\r\n        teaches. This is also the value the materialiser stamps onto each occurrence, so the timetable\r\n        and the calendar agree about who is teaching.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dayOfWeek": {
+            "$ref": "#/components/schemas/DayOfWeek",
+            "description": "Which weekday it runs on."
+          },
+          "durationMinutes": {
+            "description": "How long.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "id": {
+            "description": "The slot.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "intervalWeeks": {
+            "description": "1 = weekly, 2 = fortnightly.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "startsAtLocal": {
+            "description": "Wall-clock time in the studio's zone. Never an instant (ADR-0030).",
+            "format": "time",
+            "type": "string"
+          },
+          "validFrom": {
+            "description": "First day this slot applies.",
+            "format": "date",
+            "type": "string"
+          },
+          "validTo": {
+            "description": "Exclusive end, or null for indefinitely.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "dayOfWeek",
+          "startsAtLocal",
+          "durationMinutes",
+          "capacity",
+          "coachStaffMemberId",
+          "coachName",
+          "intervalWeeks",
+          "anchorDate",
+          "validFrom",
+          "validTo"
+        ],
+        "type": "object"
+      },
+      "ClassStatusBody": {
+        "properties": {
+          "isActive": {
+            "description": "Whether the class is offered for new scheduling.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isActive"
+        ],
+        "type": "object"
+      },
+      "ClassSummary": {
+        "properties": {
+          "categoryId": {
+            "description": "A catalog entry, or null.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultCapacity": {
+            "description": "Copied onto each occurrence at materialisation.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "defaultCoachName": {
+            "description": "Resolved, not joined.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultCoachStaffMemberId": {
+            "description": "Who normally teaches it.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultDurationMinutes": {
+            "description": "Same.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "description": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The class.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "description": "Whether it is offered for new scheduling.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "What it is called.",
+            "type": "string"
+          },
+          "slots": {
+            "description": "When it runs. Ordered by weekday then time.",
+            "items": {
+              "$ref": "#/components/schemas/ClassSlotSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "categoryId",
+          "description",
+          "defaultCapacity",
+          "defaultDurationMinutes",
+          "defaultCoachStaffMemberId",
+          "defaultCoachName",
+          "isActive",
+          "slots"
         ],
         "type": "object"
       },
@@ -1106,6 +1645,37 @@
         "required": [
           "email",
           "password"
+        ],
+        "type": "object"
+      },
+      "MaterializationResult": {
+        "properties": {
+          "conflicted": {
+            "description": "Occurrences refused by the trainer-overlap exclusion.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "created": {
+            "description": "Occurrences written on this run.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "materializedThrough": {
+            "description": "The last date now covered. Returned to the client as `range.materializedThrough`, because a\r\ncalendar week past the horizon must read as \"not generated yet\" rather than as a studio with no\r\nclasses.",
+            "format": "date",
+            "type": "string"
+          },
+          "skipped": {
+            "description": "Occurrences that already existed. Expected, and the number that proves idempotency: a second run\r\nover the same window creates nothing and skips everything.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "skipped",
+          "conflicted",
+          "materializedThrough"
         ],
         "type": "object"
       },
@@ -1805,6 +2375,62 @@
           "AppointmentReminder",
           "WeeklyDigest"
         ]
+      },
+      "OneOffSessionBody": {
+        "properties": {
+          "capacity": {
+            "description": "Seats. One for a private lesson.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "classDefinitionId": {
+            "description": "Optional, when the one-off belongs to a class's series.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coachStaffMemberId": {
+            "description": "Roster id, never a name (ADR-0016).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "durationMinutes": {
+            "description": "Positive.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "notes": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startsAt": {
+            "description": "The instant. ISO-8601; the client formats, the server never does.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "description": "What appears on the calendar.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "startsAt",
+          "durationMinutes",
+          "capacity",
+          "coachStaffMemberId",
+          "classDefinitionId",
+          "notes"
+        ],
+        "type": "object"
       },
       "OrganizationLocalization": {
         "description": "The organization-local settings every date and number derives from.",
@@ -2536,6 +3162,31 @@
         ],
         "type": "object"
       },
+      "SessionCancellation": {
+        "properties": {
+          "creditsRefunded": {
+            "description": "How many got a credit back. Lower than SeatsReleased when some of the\r\nbookings were on unlimited memberships, which consume nothing and so refund nothing.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "seatsReleased": {
+            "description": "How many members lost their seat.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "sessionId": {
+            "description": "What was cancelled.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "seatsReleased",
+          "creditsRefunded"
+        ],
+        "type": "object"
+      },
       "SessionClientKind": {
         "default": "Web",
         "description": "Where a session is being used from. Decides how the refresh handle is carried.",
@@ -2553,6 +3204,48 @@
           "Gift",
           "ManualAdjustment",
           "Expiry"
+        ]
+      },
+      "SessionDetail": {
+        "description": "One session with its register. Serves the calendar drawer and the attendance sheet.",
+        "properties": {
+          "attendance": {
+            "$ref": "#/components/schemas/AttendanceSummary",
+            "description": "The counts, computed from Seats by the same rules the mark endpoint returns."
+          },
+          "notes": {
+            "description": "Free text the studio put on it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "seats": {
+            "description": "Every booking ever made on this session, cancelled ones included. The register renders the live\r\nones; the cancelled ones are what answers \"who dropped out\" without a second query.",
+            "items": {
+              "$ref": "#/components/schemas/SessionSeat"
+            },
+            "type": "array"
+          },
+          "session": {
+            "$ref": "#/components/schemas/CalendarSession",
+            "description": "The occurrence."
+          }
+        },
+        "required": [
+          "session",
+          "notes",
+          "seats",
+          "attendance"
+        ],
+        "type": "object"
+      },
+      "SessionKind": {
+        "description": "What a session <i>is</i>. One table holds all three (ADR-0032).",
+        "enum": [
+          "ClassOccurrence",
+          "OneOff",
+          "Appointment"
         ]
       },
       "SessionLedgerEntry": {
@@ -2602,6 +3295,130 @@
           "balanceAfter",
           "occurredAt",
           "note"
+        ],
+        "type": "object"
+      },
+      "SessionSeat": {
+        "properties": {
+          "attendance": {
+            "$ref": "#/components/schemas/AttendanceMark",
+            "description": "Whether they turned up. `Unmarked` until somebody says."
+          },
+          "bookedAt": {
+            "description": "When the seat was claimed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "bookingId": {
+            "description": "The seat.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberId": {
+            "description": "Who holds it.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "description": "Resolved through `IMemberDirectory`. Null when the id resolves to nothing — a member\r\ndeleted under an erasure request. Rendered as unknown rather than refusing to open the register.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/BookingState",
+            "description": "Booked or cancelled. A cancelled seat stays on the sheet as evidence."
+          }
+        },
+        "required": [
+          "bookingId",
+          "memberId",
+          "memberName",
+          "state",
+          "attendance",
+          "bookedAt"
+        ],
+        "type": "object"
+      },
+      "SessionState": {
+        "description": "Where a session is in its life.",
+        "enum": [
+          "Scheduled",
+          "Cancelled",
+          "Completed",
+          "Moved"
+        ]
+      },
+      "SlotBody": {
+        "properties": {
+          "capacity": {
+            "description": "Null takes the class's default.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "coachStaffMemberId": {
+            "description": "Null takes the class's default coach.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dayOfWeek": {
+            "$ref": "#/components/schemas/DayOfWeek",
+            "description": "Which weekday it runs on."
+          },
+          "durationMinutes": {
+            "description": "Null takes the class's default.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "intervalWeeks": {
+            "description": "1 = weekly, 2 = fortnightly. Defaults to weekly.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "startsAtLocal": {
+            "description": "Wall-clock time in the studio's zone, and it stays one. \"09:00 Tuesday\" means 09:00 in March and\r\n09:00 in November; sending an instant would move it by an hour twice a year (ADR-0030).",
+            "format": "time",
+            "type": "string"
+          },
+          "validFrom": {
+            "description": "First day. Defaults to the studio's today. The anchor is derived from it.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "validTo": {
+            "description": "Exclusive end, or null for indefinitely.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "startsAtLocal",
+          "durationMinutes",
+          "capacity",
+          "coachStaffMemberId",
+          "intervalWeeks",
+          "validFrom",
+          "validTo"
         ],
         "type": "object"
       },
@@ -6072,6 +6889,905 @@
         ]
       }
     },
+    "/api/v1/scheduling/bookings/{bookingId}": {
+      "delete": {
+        "operationId": "CancelBooking",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bookingId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancellationReceipt"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Gives a seat up. The credit comes back outside the twelve-hour window.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/calendar": {
+      "get": {
+        "operationId": "GetCalendar",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "coachId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeCancelled",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "What is on between two dates, with how far generation has reached.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/classes": {
+      "get": {
+        "operationId": "ListClasses",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "includeInactive",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSummary"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every class with the weekly slots it runs on.",
+        "tags": [
+          "Scheduling"
+        ]
+      },
+      "post": {
+        "operationId": "CreateClass",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSummary"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a class. Creates no occurrences — a class with no slots never runs.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/classes/{classId}": {
+      "put": {
+        "operationId": "UpdateClass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "classId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edits a class. Occurrences that already exist keep their own terms.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/classes/{classId}/slots": {
+      "post": {
+        "operationId": "AddClassSlot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "classId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSummary"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a weekly slot and materialises it in the same transaction.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/classes/{classId}/slots/{slotId}": {
+      "delete": {
+        "operationId": "EndClassSlot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "classId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slotId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effectiveFrom",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Stops a slot running from a date. Booked occurrences are cancelled, not deleted.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/classes/{classId}/status": {
+      "post": {
+        "operationId": "SetClassActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "classId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassStatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Retires a class, or brings it back. Never a delete.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/materialize": {
+      "post": {
+        "operationId": "MaterializeSessions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterializationResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Generates missing occurrences through the horizon. Idempotent.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/sessions": {
+      "post": {
+        "operationId": "CreateOneOffSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OneOffSessionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetail"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a session no slot generates: a private lesson, a make-up class.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/sessions/{sessionId}": {
+      "get": {
+        "operationId": "GetSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One session, its register and its counts.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/sessions/{sessionId}/attendance": {
+      "post": {
+        "operationId": "MarkAttendance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttendanceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Marks a whole register in one request.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/sessions/{sessionId}/bookings": {
+      "post": {
+        "operationId": "BookSeat",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookSeatBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingReceipt"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Claims a seat and charges a credit, in one transaction.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/v1/scheduling/sessions/{sessionId}/cancel": {
+      "post": {
+        "operationId": "CancelSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CancelSessionBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCancellation"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Calls off a session. Everybody on it is refunded, whatever the cutoff says.",
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
     "/api/v1/staff": {
       "get": {
         "operationId": "ListStaffRoster",
@@ -6356,6 +8072,9 @@
     },
     {
       "name": "Members"
+    },
+    {
+      "name": "Scheduling"
     },
     {
       "name": "Organization"
