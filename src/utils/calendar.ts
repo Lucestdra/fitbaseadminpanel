@@ -133,6 +133,73 @@ export function isBeyondGenerated(isoDate: string, materializedThrough: string |
   return materializedThrough === null || isoDate > materializedThrough;
 }
 
+/** The wire's `DayOfWeek`, shortest-first, in the order a Turkish week is read. */
+export const WEEKDAY_ORDER = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+
+const WEEKDAY_SHORT: Record<string, string> = {
+  Monday: 'Pzt',
+  Tuesday: 'Sal',
+  Wednesday: 'Çar',
+  Thursday: 'Per',
+  Friday: 'Cum',
+  Saturday: 'Cmt',
+  Sunday: 'Paz',
+};
+
+export function shortWeekday(dayOfWeek: string): string {
+  return WEEKDAY_SHORT[dayOfWeek] ?? dayOfWeek;
+}
+
+/** `09:00` from the wire's `09:00:00`. */
+export function shortTime(localTime: string): string {
+  return localTime.slice(0, 5);
+}
+
+/**
+ * A class's weekly slots as one line: `Pzt, Çar, Cum 09:00 · Sal 18:30`.
+ *
+ * <b>Built from the slots, not stored.</b> The panel kept `schedule: 'Pzt, Sal, Çar, Cum 08:00'` as
+ * a typed string, so it could drift from whatever the class actually ran and nothing would notice —
+ * and it could not be filtered, sorted or generated from.
+ *
+ * Days sharing a time are grouped, which is how a studio says it out loud. A fortnightly slot is
+ * marked, because "Salı 09:00" and "iki haftada bir Salı 09:00" are different timetables and the
+ * difference is invisible until forty people turn up on the wrong week.
+ */
+export function describeSlots(
+  slots: { dayOfWeek: string; startsAtLocal: string; intervalWeeks: number }[],
+): string {
+  if (slots.length === 0) return 'Program tanımlanmadı';
+
+  const groups = new Map<string, string[]>();
+
+  for (const slot of slots) {
+    const key = `${shortTime(slot.startsAtLocal)}|${slot.intervalWeeks}`;
+    const bucket = groups.get(key);
+
+    if (bucket) bucket.push(slot.dayOfWeek);
+    else groups.set(key, [slot.dayOfWeek]);
+  }
+
+  return [...groups.entries()]
+    .map(([key, days]) => {
+      const [time, interval] = key.split('|');
+      const ordered = WEEKDAY_ORDER.filter((day) => days.includes(day)).map(shortWeekday);
+      const every = Number(interval) > 1 ? `${interval} haftada bir ` : '';
+
+      return `${every}${ordered.join(', ')} ${time}`;
+    })
+    .join(' · ');
+}
+
 /** `pzt`…`paz` → JavaScript's Sunday-zero index, matching `WEEKDAYS` in `date.ts`. */
 const WEEKDAY_INDEX: Record<string, number> = {
   paz: 0,
