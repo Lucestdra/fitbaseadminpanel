@@ -14,7 +14,9 @@ import { AppIcon } from '@/components/ui/AppIcon';
 import { MembershipPanel } from '@/components/members/MembershipPanel';
 import { SessionLedgerPanel } from '@/components/members/SessionLedgerPanel';
 import { GiftsPanel } from '@/components/members/GiftsPanel';
+import { PaymentsPanel } from '@/components/members/PaymentsPanel';
 import { MemberFormModal } from '@/components/members/MemberFormModal';
+import { useAuth } from '@/context/AuthContext';
 import { useCatalogs } from '@/context/CatalogsContext';
 import { useStaffRoster, nameOf } from '@/hooks/useStaffRoster';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -36,21 +38,27 @@ interface MemberDetailDrawerProps {
   onNotify: (message: string) => void;
 }
 
-type TabId = 'profile' | 'membership' | 'sessions' | 'gifts';
+type TabId = 'profile' | 'membership' | 'sessions' | 'payments' | 'gifts';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'profile', label: 'Profil' },
   { id: 'membership', label: 'Üyelik' },
   { id: 'sessions', label: 'Seans Geçmişi' },
+  { id: 'payments', label: 'Ödemeler' },
   { id: 'gifts', label: 'Hediyeler' },
 ];
 
 /**
- * One member, in four tabs.
+ * One member, in five tabs.
  *
- * <b>"Ödemeler" is not one of them.</b> The plan lists five tabs and the fifth needs the finance
- * module, which is Phase 2.5. A tab that opened onto "yakında" would be worse than one that is not
- * there — it would look like a feature that is broken rather than one that has not been built.
+ * <b>"Ödemeler" is the fifth, and it was deliberately absent until now.</b> It needs the finance
+ * module, and a tab opening onto "yakında" would have been worse than one that was not there — it
+ * would have looked like a feature that was broken rather than one that had not been built. The
+ * module shipped in Phase 2.5, so the tab did too.
+ *
+ * <b>It is hidden without `finance.payments.read`.</b> Rendering it and letting the panel 403 would
+ * show a coach a tab that never loads; the matrix says what a coach may see and the drawer agrees
+ * with it rather than discovering it.
  *
  * <b>The status dropdown is gone.</b> The panel let somebody set a member's status by picking from
  * a list, which is how an 8-week freeze released after 2 days ends up gifting 54 free days: the
@@ -66,12 +74,18 @@ export function MemberDetailDrawer({
   onNotify,
 }: MemberDetailDrawerProps) {
   const { isMobile } = useResponsiveLayout();
+  const { permissions } = useAuth();
   const { interests } = useCatalogs();
   const { roster } = useStaffRoster();
 
   const [detail, setDetail] = useState<MemberDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [tab, setTab] = useState<TabId>('profile');
+
+  // Hidden rather than rendered-and-refused. A coach holds no finance permission, and a tab that
+  // opened onto a 403 would read as a broken screen rather than as one that is not theirs.
+  const canSeeFinance = permissions['finance.payments.read'] !== undefined;
+  const visibleTabs = canSeeFinance ? TABS : TABS.filter((entry) => entry.id !== 'payments');
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -215,7 +229,7 @@ export function MemberDetailDrawer({
               </View>
 
               <View style={styles.tabRow}>
-                {TABS.map((entry) => {
+                {visibleTabs.map((entry) => {
                   const active = entry.id === tab;
                   return (
                     <Pressable
@@ -271,6 +285,10 @@ export function MemberDetailDrawer({
                     onChanged={refresh}
                     onNotify={onNotify}
                   />
+                ) : null}
+
+                {tab === 'payments' ? (
+                  <PaymentsPanel memberId={memberId} timeZoneId={timeZoneId} />
                 ) : null}
 
                 {tab === 'gifts' ? (

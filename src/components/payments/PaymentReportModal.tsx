@@ -1,15 +1,23 @@
 import { useMemo, useState } from 'react';
-import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import {
+  Modal,
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { Badge } from '@/components/ui/Badge';
 import { colors, spacing, typography, radii } from '@/theme';
-import { TURKISH_MONTHS, formatDateLabel, parseDateLabel } from '@/utils/date';
-import { PAYMENT_METHOD_LABEL } from '@/types/payments';
-import type { Payment } from '@/types/payments';
+import { TURKISH_MONTHS, formatDateLabel } from '@/utils/date';
+import { formatMoney } from '@/utils/money';
+import { PAYMENT_METHOD_LABELS } from '@/api/enums';
+import * as financeApi from '@/api/finance';
+import type { FinanceRangeReport } from '@/api/finance';
 
 interface PaymentReportModalProps {
   visible: boolean;
-  payments: Payment[];
   onClose: () => void;
   onExport: () => void;
 }
@@ -22,15 +30,31 @@ function toDate(pick: DatePick): Date {
   return new Date(pick.year, pick.month, pick.day);
 }
 
-const STATUS_LABEL: Record<Payment['status'], string> = {
-  'tahsil-edildi': 'Tahsil Edildi',
-  bekliyor: 'Bekliyor',
-  gecikti: 'Gecikti',
-};
+/** `YYYY-MM-DD` from the picked parts, without a UTC round-trip that would shift the day. */
+function toIsoDay(pick: DatePick): string {
+  const month = String(pick.month + 1).padStart(2, '0');
+  const day = String(pick.day).padStart(2, '0');
 
-export function PaymentReportModal({ visible, payments, onClose, onExport }: PaymentReportModalProps) {
+  return `${pick.year}-${month}-${day}`;
+}
+
+/**
+ * What a studio charged and collected over a period.
+ *
+ * <b>Two date axes, and the screen says which is which.</b> Collections and refunds are windowed on
+ * when the money moved; instalments on when they fell due. The panel summed one array three ways by
+ * payment status — so its "Geciken" figure was whatever rows somebody had typed `gecikti` against,
+ * and its "Bekleyen" was payments that had not happened rather than money that was owed.
+ *
+ * Every number here is computed server-side from the same expression the payments list and its
+ * counters use (ADR-0033). Nothing on this screen adds anything up.
+ */
+export function PaymentReportModal({ visible, onClose, onExport }: PaymentReportModalProps) {
   const today = useMemo(() => new Date(), []);
   const [step, setStep] = useState<'range' | 'preview'>('range');
+  const [report, setReport] = useState<FinanceRangeReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [start, setStart] = useState<DatePick | null>(null);
@@ -94,29 +118,12 @@ export function PaymentReportModal({ visible, payments, onClose, onExport }: Pay
     return (start && time === toDate(start).getTime()) || (end && time === toDate(end).getTime());
   };
 
-  const filteredPayments = useMemo(() => {
-    if (!start || !end) return [];
-    const startTime = toDate(start).getTime();
-    const endTime = toDate(end).getTime() + 24 * 60 * 60 * 1000 - 1;
-    return payments.filter((payment) => {
-      const paymentDate = parseDateLabel(payment.date);
-      if (!paymentDate) return false;
-      const time = paymentDate.getTime();
-      return time >= startTime && time <= endTime;
-    });
-  }, [payments, start, end]);
-
-  const totals = useMemo(() => {
-    const collected = filteredPayments.filter((p) => p.status === 'tahsil-edildi').reduce((sum, p) => sum + p.amount, 0);
-    const pending = filteredPayments.filter((p) => p.status === 'bekliyor').reduce((sum, p) => sum + p.amount, 0);
-    const overdue = filteredPayments.filter((p) => p.status === 'gecikti').reduce((sum, p) => sum + p.amount, 0);
-    return { collected, pending, overdue };
-  }, [filteredPayments]);
-
   const resetState = () => {
     setStep('range');
     setStart(null);
     setEnd(null);
+    setReport(null);
+    setFailed(false);
   };
 
   const handleClose = () => {
@@ -126,7 +133,20 @@ export function PaymentReportModal({ visible, payments, onClose, onExport }: Pay
 
   const handleApplyRange = () => {
     if (!start || !end) return;
+
     setStep('preview');
+    setLoading(true);
+    setFailed(false);
+
+    void (async () => {
+      try {
+        setReport(await financeApi.getFinanceReport(toIsoDay(start), toIsoDay(end)));
+      } catch {
+        setFailed(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
   };
 
   return (
@@ -225,44 +245,73 @@ export function PaymentReportModal({ visible, payments, onClose, onExport }: Pay
                 {start ? formatDateLabel(toDate(start)) : ''} – {end ? formatDateLabel(toDate(end)) : ''}
               </Text>
 
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Tahsil Edilen</Text>
-                  <Text style={styles.statValue}>₺{totals.collected.toLocaleString('tr-TR')}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Bekleyen</Text>
-                  <Text style={styles.statValue}>₺{totals.pending.toLocaleString('tr-TR')}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Geciken</Text>
-                  <Text style={[styles.statValue, { color: colors.critical }]}>₺{totals.overdue.toLocaleString('tr-TR')}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.fieldLabel}>{filteredPayments.length} işlem bulundu</Text>
-
-              <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-                {filteredPayments.length === 0 ? (
-                  <Text style={styles.emptyText}>Bu tarih aralığında işlem yok.</Text>
-                ) : (
-                  filteredPayments.map((payment) => (
-                    <View key={payment.id} style={styles.paymentRow}>
-                      <View style={styles.paymentInfo}>
-                        <Text style={styles.paymentName} numberOfLines={1}>{payment.memberName}</Text>
-                        <Text style={styles.paymentMeta} numberOfLines={1}>
-                          {payment.description} · {PAYMENT_METHOD_LABEL[payment.method]} · {payment.date}
-                        </Text>
-                      </View>
-                      <Text style={styles.paymentAmount}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
-                      <Badge
-                        label={STATUS_LABEL[payment.status]}
-                        tone={payment.status === 'tahsil-edildi' ? 'mint' : payment.status === 'gecikti' ? 'critical' : 'warning'}
-                      />
+              {loading ? (
+                <ActivityIndicator style={styles.loading} color={colors.primary} />
+              ) : failed || !report ? (
+                <Text style={styles.emptyText}>Rapor alınamadı. Tarihi değiştirip tekrar dene.</Text>
+              ) : (
+                <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+                  {/* The first axis: when the money moved. */}
+                  <Text style={styles.axisLabel}>Ödeme tarihine göre</Text>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statLabel}>Tahsil Edilen</Text>
+                      <Text style={styles.statValue}>{formatMoney(report.collected, 'TRY')}</Text>
                     </View>
-                  ))
-                )}
-              </ScrollView>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statLabel}>İade Edilen</Text>
+                      <Text style={[styles.statValue, { color: colors.critical }]}>
+                        {formatMoney(report.refunded, 'TRY')}
+                      </Text>
+                    </View>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statLabel}>Net</Text>
+                      <Text style={styles.statValue}>{formatMoney(report.net, 'TRY')}</Text>
+                    </View>
+                  </View>
+
+                  {/* The second axis: when the money fell due. Forcing these onto `paid_at` would
+                      make the report claim a studio is owed nothing in a month where everything due
+                      in it happened to be paid early. */}
+                  <Text style={styles.axisLabel}>Vade tarihine göre</Text>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statLabel}>Vadesi Gelen</Text>
+                      <Text style={styles.statValue}>{formatMoney(report.dueInWindow, 'TRY')}</Text>
+                    </View>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statLabel}>Ödenmemiş</Text>
+                      <Text style={[styles.statValue, { color: colors.warning }]}>
+                        {formatMoney(report.outstanding, 'TRY')}
+                      </Text>
+                    </View>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statLabel}>Gecikmiş</Text>
+                      <Text style={[styles.statValue, { color: colors.critical }]}>
+                        {formatMoney(report.overdue, 'TRY')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Tahsilatın dağılımı</Text>
+
+                  {report.byMethod.length === 0 ? (
+                    <Text style={styles.emptyText}>Bu aralıkta tahsilat yok.</Text>
+                  ) : (
+                    report.byMethod.map((entry) => (
+                      <View key={entry.method} style={styles.paymentRow}>
+                        <View style={styles.paymentInfo}>
+                          <Text style={styles.paymentName}>
+                            {PAYMENT_METHOD_LABELS[entry.method]}
+                          </Text>
+                          <Text style={styles.paymentMeta}>{entry.count} işlem</Text>
+                        </View>
+                        <Text style={styles.paymentAmount}>{formatMoney(entry.amount, 'TRY')}</Text>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+              )}
 
               <View style={styles.previewFooter}>
                 <Pressable
@@ -292,6 +341,15 @@ export function PaymentReportModal({ visible, payments, onClose, onExport }: Pay
 }
 
 const styles = StyleSheet.create({
+  axisLabel: {
+    ...typography.captionStrong,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  loading: {
+    paddingVertical: spacing.xxl,
+  },
   overlay: {
     flex: 1,
     alignItems: 'center',

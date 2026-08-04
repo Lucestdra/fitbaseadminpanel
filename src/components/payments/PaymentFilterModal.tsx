@@ -1,26 +1,49 @@
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { PaymentStatus } from '@/types/payments';
+import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '@/api/enums';
+import type { PaymentMethod, PaymentStatus } from '@/api/finance';
+
+export interface PaymentFilters {
+  statuses: NonNullable<PaymentStatus>[];
+  methods: NonNullable<PaymentMethod>[];
+}
+
+export const EMPTY_PAYMENT_FILTERS: PaymentFilters = { statuses: [], methods: [] };
+
+export function countPaymentFilters(filters: PaymentFilters): number {
+  return filters.statuses.length + filters.methods.length;
+}
 
 interface PaymentFilterModalProps {
   visible: boolean;
   onClose: () => void;
-  statuses: PaymentStatus[];
-  onChange: (statuses: PaymentStatus[]) => void;
+  filters: PaymentFilters;
+  onChange: (filters: PaymentFilters) => void;
 }
 
-const STATUS_OPTIONS: { id: PaymentStatus; label: string }[] = [
-  { id: 'tahsil-edildi', label: 'Tahsil Edildi' },
-  { id: 'bekliyor', label: 'Bekliyor' },
-  { id: 'gecikti', label: 'Gecikti' },
-];
+/**
+ * <b>There is no "Gecikti" chip any more.</b> It was a payment status in the panel, which made
+ * lateness a property of a payment — but a payment that arrived is never late. Filtering for what
+ * is late is what the receivables tab is, and it asks the question against the studio's own today
+ * (ADR-0033).
+ */
+const STATUS_OPTIONS: NonNullable<PaymentStatus>[] = ['Collected', 'Pending', 'Failed', 'Voided'];
+
+const METHOD_OPTIONS: NonNullable<PaymentMethod>[] = ['CreditCard', 'Cash', 'BankTransfer', 'Other'];
 
 function toggleValue<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
-export function PaymentFilterModal({ visible, onClose, statuses, onChange }: PaymentFilterModalProps) {
+export function PaymentFilterModal({
+  visible,
+  onClose,
+  filters,
+  onChange,
+}: PaymentFilterModalProps) {
+  const count = countPaymentFilters(filters);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -42,16 +65,50 @@ export function PaymentFilterModal({ visible, onClose, statuses, onChange }: Pay
           <Text style={styles.fieldLabel}>Durum</Text>
           <View style={styles.chipRow}>
             {STATUS_OPTIONS.map((option) => {
-              const active = statuses.includes(option.id);
+              const active = filters.statuses.includes(option);
               return (
                 <Pressable
-                  key={option.id}
-                  onPress={() => onChange(toggleValue(statuses, option.id))}
+                  key={option}
+                  onPress={() =>
+                    onChange({ ...filters, statuses: toggleValue(filters.statuses, option) })
+                  }
                   accessibilityRole="button"
-                  accessibilityLabel={option.label}
-                  style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.chipPressed]}
+                  accessibilityLabel={PAYMENT_STATUS_LABELS[option]}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    active && styles.chipActive,
+                    pressed && styles.chipPressed,
+                  ]}
                 >
-                  <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{option.label}</Text>
+                  <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                    {PAYMENT_STATUS_LABELS[option]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.fieldLabel}>Yöntem</Text>
+          <View style={styles.chipRow}>
+            {METHOD_OPTIONS.map((option) => {
+              const active = filters.methods.includes(option);
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() =>
+                    onChange({ ...filters, methods: toggleValue(filters.methods, option) })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={PAYMENT_METHOD_LABELS[option]}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    active && styles.chipActive,
+                    pressed && styles.chipPressed,
+                  ]}
+                >
+                  <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                    {PAYMENT_METHOD_LABELS[option]}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -59,12 +116,12 @@ export function PaymentFilterModal({ visible, onClose, statuses, onChange }: Pay
 
           <View style={styles.footer}>
             <Pressable
-              onPress={() => onChange([])}
+              onPress={() => onChange(EMPTY_PAYMENT_FILTERS)}
               accessibilityRole="button"
               accessibilityLabel="Filtreleri temizle"
               style={({ pressed }) => [styles.clearButton, pressed && styles.clearButtonPressed]}
             >
-              <Text style={styles.clearLabel}>Temizle {statuses.length > 0 ? `(${statuses.length})` : ''}</Text>
+              <Text style={styles.clearLabel}>Temizle {count > 0 ? `(${count})` : ''}</Text>
             </Pressable>
             <Pressable
               onPress={onClose}

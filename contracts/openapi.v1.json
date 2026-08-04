@@ -79,6 +79,55 @@
         ],
         "type": "object"
       },
+      "AllocationBody": {
+        "properties": {
+          "amount": {
+            "description": "How much of the payment goes to it.",
+            "format": "double",
+            "type": "number"
+          },
+          "installmentId": {
+            "description": "Which instalment.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "installmentId",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "AllocationLine": {
+        "properties": {
+          "amount": {
+            "description": "How much of the payment went to it.",
+            "format": "double",
+            "type": "number"
+          },
+          "installmentId": {
+            "description": "Which installment.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "sequence": {
+            "description": "Its 1-based position in the plan — \"the second instalment\".",
+            "format": "int32",
+            "type": "integer"
+          },
+          "settled": {
+            "description": "Whether that finished it.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "installmentId",
+          "sequence",
+          "amount",
+          "settled"
+        ],
+        "type": "object"
+      },
       "AttendanceBody": {
         "properties": {
           "entries": {
@@ -1068,6 +1117,70 @@
           "Saturday"
         ]
       },
+      "FinanceRangeReport": {
+        "description": "What a studio charged and collected over a period.",
+        "properties": {
+          "byMethod": {
+            "description": "Collected, split by how it arrived. Sums to decimal FinanceRangeReport.Collected.",
+            "items": {
+              "$ref": "#/components/schemas/MethodTotal"
+            },
+            "type": "array"
+          },
+          "collected": {
+            "description": "Payments whose `paid_at` falls in the window, less nothing.",
+            "format": "double",
+            "type": "number"
+          },
+          "dueInWindow": {
+            "description": "Instalments whose `due_on` falls in the window, settled or not.",
+            "format": "double",
+            "type": "number"
+          },
+          "from": {
+            "description": "Inclusive, organization-local.",
+            "format": "date",
+            "type": "string"
+          },
+          "net": {
+            "description": "Collected less refunded. Stated rather than left to the client to subtract.",
+            "format": "double",
+            "type": "number"
+          },
+          "outstanding": {
+            "description": "The unpaid part of those.",
+            "format": "double",
+            "type": "number"
+          },
+          "overdue": {
+            "description": "The part of that past its grace period as of now.",
+            "format": "double",
+            "type": "number"
+          },
+          "refunded": {
+            "description": "Refunds whose `refunded_at` falls in the window.",
+            "format": "double",
+            "type": "number"
+          },
+          "to": {
+            "description": "Inclusive.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "collected",
+          "refunded",
+          "net",
+          "dueInWindow",
+          "outstanding",
+          "overdue",
+          "byMethod"
+        ],
+        "type": "object"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -1331,6 +1444,33 @@
           "note"
         ],
         "type": "object"
+      },
+      "InstallmentBody": {
+        "properties": {
+          "amount": {
+            "description": "Positive.",
+            "format": "double",
+            "type": "number"
+          },
+          "dueOn": {
+            "description": "The organization-local date it falls due.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "dueOn"
+        ],
+        "type": "object"
+      },
+      "InstallmentStatus": {
+        "description": "Where an installment is in its life.",
+        "enum": [
+          "Pending",
+          "Settled",
+          "Cancelled"
+        ]
       },
       "InvitationAcceptance": {
         "description": "How an acceptance ended.",
@@ -2722,6 +2862,48 @@
         ],
         "type": "object"
       },
+      "MemberFinance": {
+        "description": "One member's money, for the drawer tab that Phase 2.2 deliberately left out.",
+        "properties": {
+          "payments": {
+            "description": "What they have paid, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/PaymentListItem"
+            },
+            "type": "array"
+          },
+          "plans": {
+            "description": "What they bought, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/PaymentPlanDetail"
+            },
+            "type": "array"
+          },
+          "totalOutstanding": {
+            "description": "What they still owe.",
+            "format": "double",
+            "type": "number"
+          },
+          "totalOverdue": {
+            "description": "The late part of it.",
+            "format": "double",
+            "type": "number"
+          },
+          "unallocatedCredit": {
+            "description": "Money received that is not against any instalment — an overpayment, or a payment taken before the\r\nplan was raised. Shown because a member who is \"in credit\" and one who owes nothing look\r\nidentical without it.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "plans",
+          "payments",
+          "totalOutstanding",
+          "totalOverdue",
+          "unallocatedCredit"
+        ],
+        "type": "object"
+      },
       "MemberList": {
         "properties": {
           "counts": {
@@ -2947,6 +3129,30 @@
           "state",
           "sessionsRemaining",
           "sessionsTotal"
+        ],
+        "type": "object"
+      },
+      "MethodTotal": {
+        "properties": {
+          "amount": {
+            "description": "How much.",
+            "format": "double",
+            "type": "number"
+          },
+          "count": {
+            "description": "Over how many payments.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod",
+            "description": "How the money arrived."
+          }
+        },
+        "required": [
+          "method",
+          "amount",
+          "count"
         ],
         "type": "object"
       },
@@ -3210,6 +3416,10 @@
             "$ref": "#/components/schemas/OrganizationProfile",
             "description": "The studio's details."
           },
+          "receivables": {
+            "$ref": "#/components/schemas/ReceivablesPolicy",
+            "description": "When money owed starts counting as late."
+          },
           "tax": {
             "$ref": "#/components/schemas/TaxProfileSummary",
             "description": "Tax profile, identifier redacted."
@@ -3219,6 +3429,7 @@
           "profile",
           "localization",
           "tax",
+          "receivables",
           "businessHours",
           "closures",
           "notifications"
@@ -3452,6 +3663,30 @@
         ],
         "type": "object"
       },
+      "PageOfPaymentListItem": {
+        "description": "One page of a collection, with an opaque cursor to the next.",
+        "properties": {
+          "items": {
+            "description": "The rows, in the requested order.",
+            "items": {
+              "$ref": "#/components/schemas/PaymentListItem"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its\r\ncontents are this server's business, and a client that parses it is one that breaks when the\r\nsort changes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
       "PageOfSessionLedgerEntry": {
         "description": "One page of a collection, with an opaque cursor to the next.",
         "properties": {
@@ -3475,6 +3710,385 @@
           "nextCursor"
         ],
         "type": "object"
+      },
+      "PaymentBody": {
+        "properties": {
+          "allocations": {
+            "description": "Null settles the oldest debt first, which is the ordinary case.",
+            "items": {
+              "$ref": "#/components/schemas/AllocationBody"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "amount": {
+            "description": "A number, not a formatted string. The panel sends `'₺2.400'` and strips non-digits on the\r\nway in, which turns ₺2.400,50 into 240050.",
+            "format": "double",
+            "type": "number"
+          },
+          "currency": {
+            "description": "ISO 4217. Defaults to TRY.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "memberId": {
+            "description": "Who paid.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod",
+            "description": "Cash, card, transfer."
+          },
+          "note": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paidAt": {
+            "description": "When the money arrived. Null means now.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reference": {
+            "description": "A transfer reference or receipt number.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "memberId",
+          "amount",
+          "currency",
+          "method",
+          "paidAt",
+          "reference",
+          "note",
+          "allocations"
+        ],
+        "type": "object"
+      },
+      "PaymentCounters": {
+        "description": "The four numbers above the payments screen.",
+        "properties": {
+          "collected": {
+            "description": "Sum of collected payments in the window, over `paid_at`.",
+            "format": "double",
+            "type": "number"
+          },
+          "outstanding": {
+            "description": "What is still owed, whenever it falls due. Not windowed — a debt has no date range.",
+            "format": "double",
+            "type": "number"
+          },
+          "overdue": {
+            "description": "The part of it past its grace period, computed now (ADR-0033).",
+            "format": "double",
+            "type": "number"
+          },
+          "refunded": {
+            "description": "Sum of refunds in the window, over `refunded_at`. Its own axis (ADR-0034).",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "collected",
+          "refunded",
+          "outstanding",
+          "overdue"
+        ],
+        "type": "object"
+      },
+      "PaymentList": {
+        "description": "A page of payments and the counters describing the same filter.",
+        "properties": {
+          "counters": {
+            "$ref": "#/components/schemas/PaymentCounters",
+            "description": "From the identical predicate, so a filter moves both."
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageOfPaymentListItem",
+            "description": "The rows."
+          }
+        },
+        "required": [
+          "page",
+          "counters"
+        ],
+        "type": "object"
+      },
+      "PaymentListItem": {
+        "description": "One row of the payments list.",
+        "properties": {
+          "amount": {
+            "description": "What arrived.",
+            "format": "double",
+            "type": "number"
+          },
+          "currency": {
+            "description": "ISO 4217.",
+            "type": "string"
+          },
+          "description": {
+            "description": "What it was for, taken from the plan it settled. Null for an unallocated payment.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The payment.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberId": {
+            "description": "Who paid.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "description": "Resolved through the members contract, never joined (ADR-0017).",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod",
+            "description": "How."
+          },
+          "paidAt": {
+            "description": "When the money arrived.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "reference": {
+            "description": "As typed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "refundedAmount": {
+            "description": "How much has gone back out. Zero for most rows.",
+            "format": "double",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus",
+            "description": "Collected, pending, failed or voided. <b>Never overdue</b> (ADR-0033)."
+          }
+        },
+        "required": [
+          "id",
+          "memberId",
+          "memberName",
+          "amount",
+          "currency",
+          "method",
+          "status",
+          "paidAt",
+          "reference",
+          "description",
+          "refundedAmount"
+        ],
+        "type": "object"
+      },
+      "PaymentMethod": {
+        "description": "How the money arrived.",
+        "enum": [
+          "CreditCard",
+          "Cash",
+          "BankTransfer",
+          "Other"
+        ]
+      },
+      "PaymentPlanBody": {
+        "properties": {
+          "currency": {
+            "description": "ISO 4217. Defaults to TRY.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "description": "What appears on the row. Snapshotted at sale.",
+            "type": "string"
+          },
+          "discountAmount": {
+            "description": "What the studio knocked off, for the record.",
+            "format": "double",
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "installments": {
+            "description": "How the sale is broken up. <b>No total is sent</b> — it is the sum of these, because two versions\r\nof the same number diverge the first time somebody edits one instalment.",
+            "items": {
+              "$ref": "#/components/schemas/InstallmentBody"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "memberId": {
+            "description": "Who owes it.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "membershipId": {
+            "description": "What it bought, when there is one.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "memberId",
+          "membershipId",
+          "description",
+          "discountAmount",
+          "currency",
+          "installments"
+        ],
+        "type": "object"
+      },
+      "PaymentPlanDetail": {
+        "description": "A plan, with its instalments and what is left on each.",
+        "properties": {
+          "createdAt": {
+            "description": "When it was raised.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "description": "ISO 4217.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Snapshotted at sale.",
+            "type": "string"
+          },
+          "discountAmount": {
+            "description": "What was knocked off.",
+            "format": "double",
+            "type": "number"
+          },
+          "id": {
+            "description": "The plan.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "installments": {
+            "description": "In sequence order.",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableItem"
+            },
+            "type": "array"
+          },
+          "memberId": {
+            "description": "Who owes it.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "membershipId": {
+            "description": "What it bought.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "outstandingAmount": {
+            "description": "The sum of what its instalments still owe.",
+            "format": "double",
+            "type": "number"
+          },
+          "totalAmount": {
+            "description": "The agreed total.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "memberId",
+          "membershipId",
+          "description",
+          "totalAmount",
+          "discountAmount",
+          "currency",
+          "outstandingAmount",
+          "createdAt",
+          "installments"
+        ],
+        "type": "object"
+      },
+      "PaymentReceipt": {
+        "description": "What one payment did.",
+        "properties": {
+          "allocatedAmount": {
+            "description": "How much of it settled something.",
+            "format": "double",
+            "type": "number"
+          },
+          "allocations": {
+            "description": "What it settled, in order.",
+            "items": {
+              "$ref": "#/components/schemas/AllocationLine"
+            },
+            "type": "array"
+          },
+          "amount": {
+            "description": "What arrived.",
+            "format": "double",
+            "type": "number"
+          },
+          "paymentId": {
+            "description": "The payment.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unallocatedAmount": {
+            "description": "    The rest. Returned rather than refused: somebody who overpays, or who pays before a plan\r\nexists, has still handed over money, and rejecting the record would leave the studio holding cash\r\nthe system says it never received.\r\n    It sits as credit against the member and settles the next installment raised, which is exactly\r\nwhat a studio does with it.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "paymentId",
+          "amount",
+          "allocatedAmount",
+          "unallocatedAmount",
+          "allocations"
+        ],
+        "type": "object"
+      },
+      "PaymentStatus": {
+        "description": "What happened to a payment.",
+        "enum": [
+          "Collected",
+          "Pending",
+          "Failed",
+          "Voided"
+        ]
       },
       "PendingInvitation": {
         "description": "An invitation that has neither been accepted nor withdrawn.",
@@ -3732,6 +4346,165 @@
         ],
         "type": "object"
       },
+      "ReceivableItem": {
+        "description": "One thing a studio is owed.",
+        "properties": {
+          "amount": {
+            "description": "The full instalment.",
+            "format": "double",
+            "type": "number"
+          },
+          "currency": {
+            "description": "ISO 4217.",
+            "type": "string"
+          },
+          "daysOverdue": {
+            "description": "Zero when it is not. How late, in whole days past the grace period.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "description": {
+            "description": "What was sold.",
+            "type": "string"
+          },
+          "dueOn": {
+            "description": "The organization-local date it fell due.",
+            "format": "date",
+            "type": "string"
+          },
+          "installmentId": {
+            "description": "The installment.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isOverdue": {
+            "description": "Computed from the studio's today and its own grace period, at read time. Server-computed because\r\nthe client's \"today\" is whatever zone the laptop is in.",
+            "type": "boolean"
+          },
+          "memberId": {
+            "description": "Who owes it.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "description": "Resolved, not joined.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "outstandingAmount": {
+            "description": "What is left after allocations from payments that were not voided. <b>The number that makes\r\npartial payment expressible</b> — ₺1,400 of a ₺2,400 instalment, which the panel's single amount\r\ncolumn cannot say.",
+            "format": "double",
+            "type": "number"
+          },
+          "planId": {
+            "description": "The plan it belongs to.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "sequence": {
+            "description": "1-based position within the plan.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InstallmentStatus",
+            "description": "Where it is in its life. On the receivables list this is always `Pending`; on a plan's\r\ninstalments it is what separates one that was paid from one the studio wrote off. Without it\r\nthose two are both \"outstanding 0.00\" and read as the same thing, which they are not — a\r\ncancelled instalment is a discount the studio gave."
+          }
+        },
+        "required": [
+          "installmentId",
+          "planId",
+          "memberId",
+          "memberName",
+          "description",
+          "sequence",
+          "amount",
+          "outstandingAmount",
+          "currency",
+          "dueOn",
+          "status",
+          "isOverdue",
+          "daysOverdue"
+        ],
+        "type": "object"
+      },
+      "ReceivablesBody": {
+        "properties": {
+          "overdueGraceDays": {
+            "description": "Days past due before an unpaid installment reads as late. 0–90; seven by default.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "overdueGraceDays"
+        ],
+        "type": "object"
+      },
+      "ReceivablesList": {
+        "description": "What a studio is owed, and how much of it is late.",
+        "properties": {
+          "cursor": {
+            "description": "Keyset continuation, or null at the end.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "graceDays": {
+            "description": "The number the answer was computed with. Returned so the screen can say \"7 günden fazla gecikmiş\"\r\nrather than making the client guess, and so a support question about a surprising row has an\r\nanswer in the response itself.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "items": {
+            "description": "Oldest due date first — the order somebody chases in.",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableItem"
+            },
+            "type": "array"
+          },
+          "overdueCount": {
+            "description": "How many instalments, which the sum alone does not say.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalOutstanding": {
+            "description": "Every unpaid instalment, whenever due.",
+            "format": "double",
+            "type": "number"
+          },
+          "totalOverdue": {
+            "description": "The part past its grace period.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "cursor",
+          "totalOutstanding",
+          "totalOverdue",
+          "overdueCount",
+          "graceDays"
+        ],
+        "type": "object"
+      },
+      "ReceivablesPolicy": {
+        "description": "When the studio starts chasing money it is owed.",
+        "properties": {
+          "overdueGraceDays": {
+            "description": "Days past `due_on` before an unpaid installment counts as overdue. Seven by default (plan\r\ndecision D10); zero means the day after it falls due.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "overdueGraceDays"
+        ],
+        "type": "object"
+      },
       "RefreshRequest": {
         "properties": {
           "refreshHandle": {
@@ -3746,6 +4519,41 @@
           "refreshHandle"
         ],
         "type": "object"
+      },
+      "RefundBody": {
+        "properties": {
+          "amount": {
+            "description": "How much goes back. May be part of the payment.",
+            "format": "double",
+            "type": "number"
+          },
+          "note": {
+            "description": "Free text, and personal data — a refund note routinely explains a health reason.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RefundReason",
+            "description": "The closed vocabulary the report groups by."
+          }
+        },
+        "required": [
+          "amount",
+          "reason",
+          "note"
+        ],
+        "type": "object"
+      },
+      "RefundReason": {
+        "description": "Why money went back out.",
+        "enum": [
+          "MemberRequest",
+          "StudioCancellation",
+          "BillingError",
+          "Other"
+        ]
       },
       "RegisterRequest": {
         "properties": {
@@ -4407,6 +5215,21 @@
         },
         "required": [
           "token"
+        ],
+        "type": "object"
+      },
+      "VoidBody": {
+        "properties": {
+          "reason": {
+            "description": "Why it was withdrawn. \"İki kere girildi\".",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       }
@@ -6163,6 +6986,693 @@
         "summary": "What is pointing at an entry. Asked before offering a delete.",
         "tags": [
           "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/finance/members/{memberId}": {
+      "get": {
+        "operationId": "GetMemberFinance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberFinance"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One member's plans, payments, balance and any unallocated credit.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/payments": {
+      "get": {
+        "operationId": "ListPayments",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "memberId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method",
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/PaymentMethod"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/PaymentStatus"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "A page of payments with the counters above the list, under one filter.",
+        "tags": [
+          "Finance"
+        ]
+      },
+      "post": {
+        "operationId": "RecordPayment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentReceipt"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Records money that arrived and allocates it, oldest debt first by default.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/payments/{paymentId}/refunds": {
+      "post": {
+        "operationId": "RefundPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentReceipt"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Sends money back out on its own date. The collection stays in its month.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/payments/{paymentId}/void": {
+      "post": {
+        "operationId": "VoidPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/VoidBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentReceipt"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Withdraws a payment recorded in error. What it settled becomes owed again.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/plans": {
+      "post": {
+        "operationId": "CreatePaymentPlan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentPlanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPlanDetail"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Raises a sale and the instalments it is paid in. The total is their sum.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/plans/{planId}": {
+      "get": {
+        "operationId": "GetPaymentPlan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPlanDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One plan with its instalments and what is left on each.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/plans/{planId}/cancel-remainder": {
+      "post": {
+        "operationId": "CancelPlanRemainder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPlanDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Stops chasing the unpaid part. The instalments are cancelled, not deleted.",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/receivables": {
+      "get": {
+        "operationId": "ListReceivables",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "memberId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "overdueOnly",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dueBefore",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivablesList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "What the studio is owed. Overdue is computed now, never stored (ADR-0033).",
+        "tags": [
+          "Finance"
+        ]
+      }
+    },
+    "/api/v1/finance/report": {
+      "get": {
+        "operationId": "GetFinanceRangeReport",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceRangeReport"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Collections over paid_at and debts over due_on — two axes, deliberately.",
+        "tags": [
+          "Finance"
         ]
       }
     },
@@ -8336,6 +9846,62 @@
         ]
       }
     },
+    "/api/v1/organization/settings/receivables": {
+      "put": {
+        "operationId": "UpdateReceivablesPolicy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceivablesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivablesPolicy"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "How many days past due an installment is chased. Applied at read time, never stored.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
     "/api/v1/organization/settings/summary": {
       "get": {
         "operationId": "GetOrganizationSettingsSummary",
@@ -9627,6 +11193,9 @@
     },
     {
       "name": "Leads"
+    },
+    {
+      "name": "Finance"
     },
     {
       "name": "Organization"

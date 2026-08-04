@@ -1138,6 +1138,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One member's plans, payments, balance and any unallocated credit. */
+        get: operations["GetMemberFinance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of payments with the counters above the list, under one filter. */
+        get: operations["ListPayments"];
+        put?: never;
+        /** Records money that arrived and allocates it, oldest debt first by default. */
+        post: operations["RecordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payments/{paymentId}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sends money back out on its own date. The collection stays in its month. */
+        post: operations["RefundPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payments/{paymentId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraws a payment recorded in error. What it settled becomes owed again. */
+        post: operations["VoidPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Raises a sale and the instalments it is paid in. The total is their sum. */
+        post: operations["CreatePaymentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One plan with its instalments and what is left on each. */
+        get: operations["GetPaymentPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/plans/{planId}/cancel-remainder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stops chasing the unpaid part. The instalments are cancelled, not deleted. */
+        post: operations["CancelPlanRemainder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the studio is owed. Overdue is computed now, never stored (ADR-0033). */
+        get: operations["ListReceivables"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Collections over paid_at and debts over due_on — two axes, deliberately. */
+        get: operations["GetFinanceRangeReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leads": {
         parameters: {
             query?: never;
@@ -1669,6 +1823,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organization/settings/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** How many days past due an installment is chased. Applied at read time, never stored. */
+        put: operations["UpdateReceivablesPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization/settings/summary": {
         parameters: {
             query?: never;
@@ -2025,6 +2196,37 @@ export interface components {
             delta: number;
             /** @description Required. An unexplained adjustment is the one nobody can defend. */
             note: string;
+        };
+        AllocationBody: {
+            /**
+             * Format: double
+             * @description How much of the payment goes to it.
+             */
+            amount: number;
+            /**
+             * Format: uuid
+             * @description Which instalment.
+             */
+            installmentId: string;
+        };
+        AllocationLine: {
+            /**
+             * Format: double
+             * @description How much of the payment went to it.
+             */
+            amount: number;
+            /**
+             * Format: uuid
+             * @description Which installment.
+             */
+            installmentId: string;
+            /**
+             * Format: int32
+             * @description Its 1-based position in the plan — "the second instalment".
+             */
+            sequence: number;
+            /** @description Whether that finished it. */
+            settled: boolean;
         };
         AttendanceBody: {
             /** @description The whole register in one request, not one call per member. */
@@ -2565,6 +2767,51 @@ export interface components {
         };
         /** @enum {unknown} */
         DayOfWeek: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+        /** @description What a studio charged and collected over a period. */
+        FinanceRangeReport: {
+            /** @description Collected, split by how it arrived. Sums to decimal FinanceRangeReport.Collected. */
+            byMethod: components["schemas"]["MethodTotal"][];
+            /**
+             * Format: double
+             * @description Payments whose `paid_at` falls in the window, less nothing.
+             */
+            collected: number;
+            /**
+             * Format: double
+             * @description Instalments whose `due_on` falls in the window, settled or not.
+             */
+            dueInWindow: number;
+            /**
+             * Format: date
+             * @description Inclusive, organization-local.
+             */
+            from: string;
+            /**
+             * Format: double
+             * @description Collected less refunded. Stated rather than left to the client to subtract.
+             */
+            net: number;
+            /**
+             * Format: double
+             * @description The unpaid part of those.
+             */
+            outstanding: number;
+            /**
+             * Format: double
+             * @description The part of that past its grace period as of now.
+             */
+            overdue: number;
+            /**
+             * Format: double
+             * @description Refunds whose `refunded_at` falls in the window.
+             */
+            refunded: number;
+            /**
+             * Format: date
+             * @description Inclusive.
+             */
+            to: string;
+        };
         ForgotPasswordRequest: {
             /** @description The address to send a reset link to, if it has an account. */
             email: string;
@@ -2709,6 +2956,23 @@ export interface components {
             /** @description Free text. */
             note: null | string;
         };
+        InstallmentBody: {
+            /**
+             * Format: double
+             * @description Positive.
+             */
+            amount: number;
+            /**
+             * Format: date
+             * @description The organization-local date it falls due.
+             */
+            dueOn: string;
+        };
+        /**
+         * @description Where an installment is in its life.
+         * @enum {unknown}
+         */
+        InstallmentStatus: "Pending" | "Settled" | "Cancelled";
         /**
          * @description How an acceptance ended.
          * @enum {unknown}
@@ -3389,6 +3653,30 @@ export interface components {
             /** @description The last page of ledger rows. */
             recentSessions: components["schemas"]["SessionLedgerEntry"][];
         };
+        /** @description One member's money, for the drawer tab that Phase 2.2 deliberately left out. */
+        MemberFinance: {
+            /** @description What they have paid, newest first. */
+            payments: components["schemas"]["PaymentListItem"][];
+            /** @description What they bought, newest first. */
+            plans: components["schemas"]["PaymentPlanDetail"][];
+            /**
+             * Format: double
+             * @description What they still owe.
+             */
+            totalOutstanding: number;
+            /**
+             * Format: double
+             * @description The late part of it.
+             */
+            totalOverdue: number;
+            /**
+             * Format: double
+             * @description Money received that is not against any instalment — an overpayment, or a payment taken before the
+             *     plan was raised. Shown because a member who is "in credit" and one who owes nothing look
+             *     identical without it.
+             */
+            unallocatedCredit: number;
+        };
         MemberList: {
             /** @description The counters, under the same filter. */
             counts: components["schemas"]["MemberCounts"];
@@ -3504,6 +3792,20 @@ export interface components {
             startsOn: string;
             /** @description Where it is in its life. */
             state: components["schemas"]["MembershipState"];
+        };
+        MethodTotal: {
+            /**
+             * Format: double
+             * @description How much.
+             */
+            amount: number;
+            /**
+             * Format: int32
+             * @description Over how many payments.
+             */
+            count: number;
+            /** @description How the money arrived. */
+            method: components["schemas"]["PaymentMethod"];
         };
         MoveStageBody: {
             /** @description Optional. Recorded on the transition. */
@@ -3621,6 +3923,8 @@ export interface components {
             notifications: components["schemas"]["NotificationPreference"][];
             /** @description The studio's details. */
             profile: components["schemas"]["OrganizationProfile"];
+            /** @description When money owed starts counting as late. */
+            receivables: components["schemas"]["ReceivablesPolicy"];
             /** @description Tax profile, identifier redacted. */
             tax: components["schemas"]["TaxProfileSummary"];
         };
@@ -3777,6 +4081,17 @@ export interface components {
             nextCursor: null | string;
         };
         /** @description One page of a collection, with an opaque cursor to the next. */
+        PageOfPaymentListItem: {
+            /** @description The rows, in the requested order. */
+            items: components["schemas"]["PaymentListItem"][];
+            /**
+             * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
+             *     contents are this server's business, and a client that parses it is one that breaks when the
+             *     sort changes.
+             */
+            nextCursor: null | string;
+        };
+        /** @description One page of a collection, with an opaque cursor to the next. */
         PageOfSessionLedgerEntry: {
             /** @description The rows, in the requested order. */
             items: components["schemas"]["SessionLedgerEntry"][];
@@ -3787,6 +4102,213 @@ export interface components {
              */
             nextCursor: null | string;
         };
+        PaymentBody: {
+            /** @description Null settles the oldest debt first, which is the ordinary case. */
+            allocations: null | components["schemas"]["AllocationBody"][];
+            /**
+             * Format: double
+             * @description A number, not a formatted string. The panel sends `'₺2.400'` and strips non-digits on the
+             *     way in, which turns ₺2.400,50 into 240050.
+             */
+            amount: number;
+            /** @description ISO 4217. Defaults to TRY. */
+            currency: null | string;
+            /**
+             * Format: uuid
+             * @description Who paid.
+             */
+            memberId: string;
+            /** @description Cash, card, transfer. */
+            method: components["schemas"]["PaymentMethod"];
+            /** @description Free text. */
+            note: null | string;
+            /**
+             * Format: date-time
+             * @description When the money arrived. Null means now.
+             */
+            paidAt: null | string;
+            /** @description A transfer reference or receipt number. */
+            reference: null | string;
+        };
+        /** @description The four numbers above the payments screen. */
+        PaymentCounters: {
+            /**
+             * Format: double
+             * @description Sum of collected payments in the window, over `paid_at`.
+             */
+            collected: number;
+            /**
+             * Format: double
+             * @description What is still owed, whenever it falls due. Not windowed — a debt has no date range.
+             */
+            outstanding: number;
+            /**
+             * Format: double
+             * @description The part of it past its grace period, computed now (ADR-0033).
+             */
+            overdue: number;
+            /**
+             * Format: double
+             * @description Sum of refunds in the window, over `refunded_at`. Its own axis (ADR-0034).
+             */
+            refunded: number;
+        };
+        /** @description A page of payments and the counters describing the same filter. */
+        PaymentList: {
+            /** @description From the identical predicate, so a filter moves both. */
+            counters: components["schemas"]["PaymentCounters"];
+            /** @description The rows. */
+            page: components["schemas"]["PageOfPaymentListItem"];
+        };
+        /** @description One row of the payments list. */
+        PaymentListItem: {
+            /**
+             * Format: double
+             * @description What arrived.
+             */
+            amount: number;
+            /** @description ISO 4217. */
+            currency: string;
+            /** @description What it was for, taken from the plan it settled. Null for an unallocated payment. */
+            description: null | string;
+            /**
+             * Format: uuid
+             * @description The payment.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Who paid.
+             */
+            memberId: string;
+            /** @description Resolved through the members contract, never joined (ADR-0017). */
+            memberName: null | string;
+            /** @description How. */
+            method: components["schemas"]["PaymentMethod"];
+            /**
+             * Format: date-time
+             * @description When the money arrived.
+             */
+            paidAt: string;
+            /** @description As typed. */
+            reference: null | string;
+            /**
+             * Format: double
+             * @description How much has gone back out. Zero for most rows.
+             */
+            refundedAmount: number;
+            /** @description Collected, pending, failed or voided. <b>Never overdue</b> (ADR-0033). */
+            status: components["schemas"]["PaymentStatus"];
+        };
+        /**
+         * @description How the money arrived.
+         * @enum {unknown}
+         */
+        PaymentMethod: "CreditCard" | "Cash" | "BankTransfer" | "Other";
+        PaymentPlanBody: {
+            /** @description ISO 4217. Defaults to TRY. */
+            currency: null | string;
+            /** @description What appears on the row. Snapshotted at sale. */
+            description: string;
+            /**
+             * Format: double
+             * @description What the studio knocked off, for the record.
+             */
+            discountAmount: null | number;
+            /**
+             * @description How the sale is broken up. <b>No total is sent</b> — it is the sum of these, because two versions
+             *     of the same number diverge the first time somebody edits one instalment.
+             */
+            installments: null | components["schemas"]["InstallmentBody"][];
+            /**
+             * Format: uuid
+             * @description Who owes it.
+             */
+            memberId: string;
+            /**
+             * Format: uuid
+             * @description What it bought, when there is one.
+             */
+            membershipId: null | string;
+        };
+        /** @description A plan, with its instalments and what is left on each. */
+        PaymentPlanDetail: {
+            /**
+             * Format: date-time
+             * @description When it was raised.
+             */
+            createdAt: string;
+            /** @description ISO 4217. */
+            currency: string;
+            /** @description Snapshotted at sale. */
+            description: string;
+            /**
+             * Format: double
+             * @description What was knocked off.
+             */
+            discountAmount: number;
+            /**
+             * Format: uuid
+             * @description The plan.
+             */
+            id: string;
+            /** @description In sequence order. */
+            installments: components["schemas"]["ReceivableItem"][];
+            /**
+             * Format: uuid
+             * @description Who owes it.
+             */
+            memberId: string;
+            /**
+             * Format: uuid
+             * @description What it bought.
+             */
+            membershipId: null | string;
+            /**
+             * Format: double
+             * @description The sum of what its instalments still owe.
+             */
+            outstandingAmount: number;
+            /**
+             * Format: double
+             * @description The agreed total.
+             */
+            totalAmount: number;
+        };
+        /** @description What one payment did. */
+        PaymentReceipt: {
+            /**
+             * Format: double
+             * @description How much of it settled something.
+             */
+            allocatedAmount: number;
+            /** @description What it settled, in order. */
+            allocations: components["schemas"]["AllocationLine"][];
+            /**
+             * Format: double
+             * @description What arrived.
+             */
+            amount: number;
+            /**
+             * Format: uuid
+             * @description The payment.
+             */
+            paymentId: string;
+            /**
+             * Format: double
+             * @description The rest. Returned rather than refused: somebody who overpays, or who pays before a plan
+             *     exists, has still handed over money, and rejecting the record would leave the studio holding cash
+             *     the system says it never received.
+             *         It sits as credit against the member and settles the next installment raised, which is exactly
+             *     what a studio does with it.
+             */
+            unallocatedAmount: number;
+        };
+        /**
+         * @description What happened to a payment.
+         * @enum {unknown}
+         */
+        PaymentStatus: "Collected" | "Pending" | "Failed" | "Voided";
         /** @description An invitation that has neither been accepted nor withdrawn. */
         PendingInvitation: {
             /**
@@ -3902,10 +4424,134 @@ export interface components {
             /** @description Optional. */
             phoneNumber: null | string;
         };
+        /** @description One thing a studio is owed. */
+        ReceivableItem: {
+            /**
+             * Format: double
+             * @description The full instalment.
+             */
+            amount: number;
+            /** @description ISO 4217. */
+            currency: string;
+            /**
+             * Format: int32
+             * @description Zero when it is not. How late, in whole days past the grace period.
+             */
+            daysOverdue: number;
+            /** @description What was sold. */
+            description: string;
+            /**
+             * Format: date
+             * @description The organization-local date it fell due.
+             */
+            dueOn: string;
+            /**
+             * Format: uuid
+             * @description The installment.
+             */
+            installmentId: string;
+            /**
+             * @description Computed from the studio's today and its own grace period, at read time. Server-computed because
+             *     the client's "today" is whatever zone the laptop is in.
+             */
+            isOverdue: boolean;
+            /**
+             * Format: uuid
+             * @description Who owes it.
+             */
+            memberId: string;
+            /** @description Resolved, not joined. */
+            memberName: null | string;
+            /**
+             * Format: double
+             * @description What is left after allocations from payments that were not voided. <b>The number that makes
+             *     partial payment expressible</b> — ₺1,400 of a ₺2,400 instalment, which the panel's single amount
+             *     column cannot say.
+             */
+            outstandingAmount: number;
+            /**
+             * Format: uuid
+             * @description The plan it belongs to.
+             */
+            planId: string;
+            /**
+             * Format: int32
+             * @description 1-based position within the plan.
+             */
+            sequence: number;
+            /**
+             * @description Where it is in its life. On the receivables list this is always `Pending`; on a plan's
+             *     instalments it is what separates one that was paid from one the studio wrote off. Without it
+             *     those two are both "outstanding 0.00" and read as the same thing, which they are not — a
+             *     cancelled instalment is a discount the studio gave.
+             */
+            status: components["schemas"]["InstallmentStatus"];
+        };
+        ReceivablesBody: {
+            /**
+             * Format: int32
+             * @description Days past due before an unpaid installment reads as late. 0–90; seven by default.
+             */
+            overdueGraceDays: number;
+        };
+        /** @description What a studio is owed, and how much of it is late. */
+        ReceivablesList: {
+            /** @description Keyset continuation, or null at the end. */
+            cursor: null | string;
+            /**
+             * Format: int32
+             * @description The number the answer was computed with. Returned so the screen can say "7 günden fazla gecikmiş"
+             *     rather than making the client guess, and so a support question about a surprising row has an
+             *     answer in the response itself.
+             */
+            graceDays: number;
+            /** @description Oldest due date first — the order somebody chases in. */
+            items: components["schemas"]["ReceivableItem"][];
+            /**
+             * Format: int32
+             * @description How many instalments, which the sum alone does not say.
+             */
+            overdueCount: number;
+            /**
+             * Format: double
+             * @description Every unpaid instalment, whenever due.
+             */
+            totalOutstanding: number;
+            /**
+             * Format: double
+             * @description The part past its grace period.
+             */
+            totalOverdue: number;
+        };
+        /** @description When the studio starts chasing money it is owed. */
+        ReceivablesPolicy: {
+            /**
+             * Format: int32
+             * @description Days past `due_on` before an unpaid installment counts as overdue. Seven by default (plan
+             *     decision D10); zero means the day after it falls due.
+             */
+            overdueGraceDays: number;
+        };
         RefreshRequest: {
             /** @description Native clients only; web clients send the cookie. */
             refreshHandle: null | string;
         };
+        RefundBody: {
+            /**
+             * Format: double
+             * @description How much goes back. May be part of the payment.
+             */
+            amount: number;
+            /** @description Free text, and personal data — a refund note routinely explains a health reason. */
+            note: null | string;
+            /** @description The closed vocabulary the report groups by. */
+            reason: components["schemas"]["RefundReason"];
+        };
+        /**
+         * @description Why money went back out.
+         * @enum {unknown}
+         */
+        RefundReason: "MemberRequest" | "StudioCancellation" | "BillingError" | "Other";
         RegisterRequest: {
             /** @description Whether the aydınlatma metni was acknowledged. */
             acceptedKvkkNotice: boolean;
@@ -4228,6 +4874,10 @@ export interface components {
         VerifyEmailRequest: {
             /** @description The handle from the verification link. */
             token: string;
+        };
+        VoidBody: {
+            /** @description Why it was withdrawn. "İki kere girildi". */
+            reason: null | string;
         };
     };
     responses: never;
@@ -4937,6 +5587,430 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetMemberFinance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFinance"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListPayments: {
+        parameters: {
+            query?: {
+                memberId?: string;
+                from?: string;
+                to?: string;
+                method?: components["schemas"]["PaymentMethod"][];
+                status?: components["schemas"]["PaymentStatus"][];
+                search?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentList"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RecordPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentReceipt"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentReceipt"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    VoidPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["VoidBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentReceipt"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreatePaymentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentPlanBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentPlanDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetPaymentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentPlanDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelPlanRemainder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentPlanDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListReceivables: {
+        parameters: {
+            query?: {
+                memberId?: string;
+                overdueOnly?: boolean;
+                dueBefore?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivablesList"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetFinanceRangeReport: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceRangeReport"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */
@@ -6385,6 +7459,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationProfile"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateReceivablesPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceivablesBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivablesPolicy"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

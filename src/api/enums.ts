@@ -1,6 +1,12 @@
 import type { BadgeTone } from '@/components/ui/Badge';
 import type { CallOutcome, LeadLossReason, LeadMeetingKind } from './leads';
 import type { MemberBadge, MembershipState, SessionCreditReason } from './members';
+import type {
+  InstallmentStatus,
+  PaymentMethod,
+  PaymentStatus,
+  RefundReason,
+} from './finance';
 
 /**
  * Turkish labels for the wire enums.
@@ -99,3 +105,65 @@ export const LEAD_MEETING_KIND_LABELS = {
   Consultation: 'Yüzyüze Görüşme',
   TrialSession: 'Deneme Dersi',
 } satisfies Record<LeadMeetingKind, string>;
+
+/**
+ * How the money arrived.
+ *
+ * A wire enum rather than a studio-editable catalog, deliberately. "Havale" is not a vocabulary a
+ * gym owns — it is how Turkish banking works — and making it one would put a foreign concept in
+ * the catalogs screen for no benefit.
+ */
+export const PAYMENT_METHOD_LABELS = {
+  CreditCard: 'Kredi Kartı',
+  Cash: 'Nakit',
+  BankTransfer: 'Havale',
+  Other: 'Diğer',
+} satisfies Record<NonNullable<PaymentMethod>, string>;
+
+/**
+ * What happened to a payment.
+ *
+ * <b>There is no `Overdue` here, and its absence is the point</b> (ADR-0033). The panel's `gecikti`
+ * was a fourth value in this list, which made lateness a property of a payment — but a payment that
+ * arrived is never late. What was late is the money the studio was waiting for, and that is an
+ * instalment, on the receivables list, computed against today.
+ */
+export const PAYMENT_STATUS_LABELS = {
+  Collected: 'Tahsil Edildi',
+  Pending: 'Beklemede',
+  Failed: 'Başarısız',
+  Voided: 'İptal Edildi',
+} satisfies Record<NonNullable<PaymentStatus>, string>;
+
+export const PAYMENT_STATUS_TONES = {
+  Collected: 'mint',
+  Pending: 'warning',
+  Failed: 'critical',
+  Voided: 'neutral',
+} satisfies Record<NonNullable<PaymentStatus>, BadgeTone>;
+
+/**
+ * Why money went back out.
+ *
+ * A closed set because it is what the report groups by, and because the difference matters:
+ * `StudioCancellation` is the studio's fault and `MemberRequest` is not, which is the distinction
+ * an owner wants when the refund line grows.
+ */
+export const REFUND_REASON_LABELS = {
+  MemberRequest: 'Üye Talebi',
+  StudioCancellation: 'Stüdyo İptali',
+  BillingError: 'Tahsilat Hatası',
+  Other: 'Diğer',
+} satisfies Record<NonNullable<RefundReason>, string>;
+
+/**
+ * Where an instalment is in its life.
+ *
+ * `Cancelled` is a discount the studio gave rather than a row that was deleted — money it chose not
+ * to pursue is still a decision it made, and it shows up here as one.
+ */
+export const INSTALLMENT_STATUS_LABELS = {
+  Pending: 'Bekliyor',
+  Settled: 'Ödendi',
+  Cancelled: 'İptal Edildi',
+} satisfies Record<NonNullable<InstallmentStatus>, string>;
