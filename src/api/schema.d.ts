@@ -1138,6 +1138,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of leads with the counters above the list, under one filter. */
+        get: operations["ListLeads"];
+        put?: never;
+        /** Adds a lead in the pipeline's first stage. */
+        post: operations["CreateLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The same leads grouped into pipeline columns, from the identical filter. */
+        get: operations["GetLeadBoard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One lead, with notes, calls and the history of how it moved. */
+        get: operations["GetLead"];
+        /** Edits a lead's details. Does not move them between stages. */
+        put: operations["UpdateLead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records a call, moving the lead when the outcome says to. */
+        post: operations["LogLeadCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closes a lead as lost, with the reason the funnel groups by. */
+        post: operations["CloseLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a member from the lead and closes it as converted. */
+        post: operations["ConvertLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Books a meeting or trial on the calendar and on the lead, in one transaction. */
+        post: operations["ScheduleLeadMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Writes a note against a lead. */
+        post: operations["AddLeadNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Puts a closed lead back in the pipeline. */
+        post: operations["ReopenLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{leadId}/stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Moves a lead to another stage and records the transition. */
+        post: operations["MoveLeadStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -2150,6 +2322,23 @@ export interface components {
             /** @description Flat and ordered by start. Grouping into days is the client's job. */
             sessions: components["schemas"]["CalendarSession"][];
         };
+        CallBody: {
+            /**
+             * Format: date-time
+             * @description When to try again. Refused alongside `Spoke` — a call that reached the lead has nothing to
+             *     follow up, and scheduling one anyway is how a dealt-with lead stays on the call list forever.
+             */
+            followUpAt: null | string;
+            /** @description Free text. */
+            note: null | string;
+            /** @description How the call went. */
+            outcome: components["schemas"]["CallOutcome"];
+        };
+        /**
+         * @description How a call went.
+         * @enum {unknown}
+         */
+        CallOutcome: "Unreachable" | "Busy" | "Spoke";
         CancelBody: {
             /** @description Why the membership was ended early. */
             reason: null | string;
@@ -2353,6 +2542,12 @@ export interface components {
             name: string;
             /** @description When it runs. Ordered by weekday then time. */
             slots: components["schemas"]["ClassSlotSummary"][];
+        };
+        CloseBody: {
+            /** @description The detail behind the bucket. */
+            note: null | string;
+            /** @description Which bucket. A closed set, because these are what a studio acts on. */
+            reason: components["schemas"]["LeadLossReason"];
         };
         ClosureBody: {
             /**
@@ -2591,6 +2786,250 @@ export interface components {
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
         };
+        LeadBoard: {
+            /** @description Every stage, in `sort_order`, including the empty ones. */
+            columns: components["schemas"]["LeadBoardColumn"][];
+            /** @description The same counters the list returns, from the same filter. */
+            counts: components["schemas"]["LeadCounts"];
+        };
+        LeadBoardColumn: {
+            /** @description The first page of the column. */
+            leads: components["schemas"]["LeadListItem"][];
+            /**
+             * Format: int32
+             * @description Explicit position, replacing the panel's reliance on array order.
+             */
+            sortOrder: number;
+            /**
+             * Format: uuid
+             * @description The column.
+             */
+            stageId: string;
+            /** @description Its heading. */
+            title: string;
+            /** @description A display hint. Carries no behaviour. */
+            tone: string;
+            /**
+             * Format: int32
+             * @description How many leads are in it, before any page limit.
+             */
+            total: number;
+        };
+        LeadBody: {
+            /**
+             * Format: uuid
+             * @description Roster id, never a display name (ADR-0016).
+             */
+            assignedStaffMemberId: null | string;
+            /** @description Optional. */
+            email: null | string;
+            /** @description Required. */
+            fullName: string;
+            /**
+             * Format: uuid
+             * @description Catalog entry id.
+             */
+            interestId: null | string;
+            /** @description An opening note, written as the lead is created. */
+            note: null | string;
+            /** @description Optional, and the only thing conversion can deduplicate on. */
+            phoneNumber: null | string;
+            /**
+             * Format: uuid
+             * @description Catalog entry id, never a bare string.
+             */
+            sourceId: null | string;
+        };
+        LeadCallEntry: {
+            /** @description Who made it. */
+            callerName: null | string;
+            /**
+             * Format: date-time
+             * @description When to try again, or null.
+             */
+            followUpAt: null | string;
+            /**
+             * Format: uuid
+             * @description The call.
+             */
+            id: string;
+            /** @description Free text. */
+            note: null | string;
+            /**
+             * Format: date-time
+             * @description When the call happened.
+             */
+            occurredAt: string;
+            /** @description How it went. */
+            outcome: components["schemas"]["CallOutcome"];
+        };
+        LeadConversion: {
+            /**
+             * @description True when the phone number matched somebody already on the roster and the lead was linked to
+             *     them instead of a duplicate being created.
+             */
+            alreadyExisted: boolean;
+            /**
+             * Format: uuid
+             * @description The member the lead became.
+             */
+            memberId: string;
+        };
+        LeadCounts: {
+            /**
+             * Format: int32
+             * @description Closed as converted since the start of the studio's month.
+             */
+            convertedThisMonth: number;
+            /**
+             * Format: int32
+             * @description Closed as lost in the same window. Reported beside conversions rather than hidden, because a
+             *     month with forty conversions and two hundred losses is a different month.
+             */
+            lostThisMonth: number;
+            /**
+             * Format: int32
+             * @description Whose next action is in the past. The number that should drive the day.
+             */
+            overdue: number;
+            /**
+             * Format: int32
+             * @description Open leads matching the filter.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Nobody owns the follow-up — the leads that quietly go cold.
+             */
+            unassigned: number;
+        };
+        LeadDetail: {
+            /** @description Newest first. */
+            calls: components["schemas"]["LeadCallEntry"][];
+            /** @description The row, as the list renders it. */
+            lead: components["schemas"]["LeadListItem"];
+            /** @description Newest first. */
+            notes: components["schemas"]["LeadNoteEntry"][];
+            /**
+             * @description <b>Oldest first.</b> This is a story — arrived, unreachable, unreachable, spoke, met, joined —
+             *             and a story reads forwards.
+             */
+            transitions: components["schemas"]["LeadTransitionEntry"][];
+        };
+        LeadList: {
+            /**
+             * @description Computed from the same predicate as the rows, which is what stops a filter changing the list and
+             *     not the numbers over it.
+             */
+            counts: components["schemas"]["LeadCounts"];
+            /** @description The rows. */
+            page: components["schemas"]["PageOfLeadListItem"];
+        };
+        LeadListItem: {
+            /**
+             * Format: uuid
+             * @description Roster id (ADR-0016).
+             */
+            assignedStaffMemberId: null | string;
+            /** @description Resolved through the roster, never stored. */
+            assignedStaffName: null | string;
+            /**
+             * Format: uuid
+             * @description The member they became, or null.
+             */
+            convertedMemberId: null | string;
+            /**
+             * Format: date-time
+             * @description When the lead arrived. The funnel's denominator.
+             */
+            createdAt: string;
+            /** @description As typed. */
+            email: null | string;
+            /** @description Display name. */
+            fullName: string;
+            /**
+             * Format: uuid
+             * @description The lead.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Catalog entry id, or null.
+             */
+            interestId: null | string;
+            /** @description Resolved, not joined. */
+            interestName: null | string;
+            /**
+             * @description Computed against the studio's now, server-side. The client cannot derive it: the device clock is
+             *     in whichever zone the laptop is, and this is an organization-local question.
+             */
+            isOverdue: boolean;
+            lossReason: null | components["schemas"]["LeadLossReason"];
+            /**
+             * Format: date-time
+             * @description When somebody should do something. <b>An instant, not "2 gün önce"</b> — the client formats, and
+             *     a stored phrase is what makes "who is overdue" unanswerable.
+             */
+            nextActionAt: null | string;
+            /** @description As typed. */
+            phoneNumber: null | string;
+            /**
+             * Format: uuid
+             * @description Catalog entry id, or null.
+             */
+            sourceId: null | string;
+            /** @description Resolved, not joined. Null when the entry was deleted. */
+            sourceName: null | string;
+            /**
+             * Format: uuid
+             * @description The current column.
+             */
+            stageId: string;
+            /** @description The board heading. */
+            stageTitle: string;
+            /**
+             * @description What a lead in this stage is called on its own row. The panel keeps these separate — the board
+             *     says "Yüzyüze Görüşme", the lead says "Görüşme Planlandı" — so the model does too.
+             */
+            statusLabel: string;
+        };
+        /** @enum {unknown} */
+        LeadLossReason: "NoResponse" | "Price" | "WentElsewhere" | "NotSuitable" | "Timing" | "Other" | null;
+        LeadMeeting: {
+            /** @description True when the trainer-overlap exclusion refused it. */
+            coachUnavailable: boolean;
+            /**
+             * Format: uuid
+             * @description The calendar entry, or null when the coach was busy.
+             */
+            sessionId: null | string;
+            /**
+             * Format: date-time
+             * @description When it is.
+             */
+            startsAt: string;
+        };
+        /**
+         * @description What a scheduled meeting with a lead is.
+         * @enum {unknown}
+         */
+        LeadMeetingKind: "Consultation" | "TrialSession";
+        LeadNoteEntry: {
+            /** @description Who, resolved through the roster. Null when they have left. */
+            authorName: null | string;
+            /**
+             * Format: date-time
+             * @description When. An instant; the client formats it.
+             */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description The note.
+             */
+            id: string;
+            /** @description What was written. */
+            text: string;
+        };
         LeadSourceBody: {
             /** @description An Ionicons name. */
             icon: string;
@@ -2677,6 +3116,26 @@ export interface components {
         };
         /** @enum {unknown} */
         LeadStageSemanticRole: "New" | "ToCall" | "Unreachable" | "CallBack" | "Interested" | "MeetingScheduled" | "TrialScheduled" | "OfferMade" | "Converted" | "Lost" | null;
+        LeadTransitionEntry: {
+            /** @description Null for the row that created the lead. */
+            fromStageTitle: null | string;
+            /**
+             * Format: uuid
+             * @description The transition.
+             */
+            id: string;
+            /** @description Who. */
+            movedByName: null | string;
+            /**
+             * Format: date-time
+             * @description When.
+             */
+            occurredAt: string;
+            /** @description Why, when something other than a person moved it. */
+            reason: null | string;
+            /** @description Where it went. "Silinmiş aşama" when the entry is gone. */
+            toStageTitle: string;
+        };
         /**
          * @description Whether an entry is offered for new work. `Aktif` / `Pasif` in the panel.
          * @enum {unknown}
@@ -2806,6 +3265,25 @@ export interface components {
              *     assumed, because that is a property of the account and not of this endpoint's expectations.
              */
             isEmailVerified: boolean;
+        };
+        MeetingBody: {
+            /**
+             * Format: uuid
+             * @description Who is taking it. Refused if they are already booked.
+             */
+            coachStaffMemberId: null | string;
+            /**
+             * Format: int32
+             * @description Positive.
+             */
+            durationMinutes: number;
+            /** @description A consultation or a trial class. */
+            kind: components["schemas"]["LeadMeetingKind"];
+            /**
+             * Format: date-time
+             * @description The instant. ISO-8601; the client resolves the studio's zone.
+             */
+            startsAt: string;
         };
         /**
          * @description What a member's row shows at a glance. <b>Derived, never stored.</b>
@@ -3026,6 +3504,19 @@ export interface components {
             startsOn: string;
             /** @description Where it is in its life. */
             state: components["schemas"]["MembershipState"];
+        };
+        MoveStageBody: {
+            /** @description Optional. Recorded on the transition. */
+            reason: null | string;
+            /**
+             * Format: uuid
+             * @description Where to move them.
+             */
+            stageId: string;
+        };
+        NoteBody: {
+            /** @description Required. */
+            text: string;
         };
         NotificationBody: {
             /** @description How it is delivered. */
@@ -3262,6 +3753,17 @@ export interface components {
             sortOrder: number;
             /** @description Whether it is offered for new work. */
             status: components["schemas"]["LifecycleStatus"];
+        };
+        /** @description One page of a collection, with an opaque cursor to the next. */
+        PageOfLeadListItem: {
+            /** @description The rows, in the requested order. */
+            items: components["schemas"]["LeadListItem"][];
+            /**
+             * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
+             *     contents are this server's business, and a client that parses it is one that breaks when the
+             *     sort changes.
+             */
+            nextCursor: null | string;
         };
         /** @description One page of a collection, with an opaque cursor to the next. */
         PageOfMemberListItem: {
@@ -4435,6 +4937,525 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListLeads: {
+        parameters: {
+            query?: {
+                search?: string;
+                stageId?: string[];
+                sourceId?: string[];
+                assignedTo?: string[];
+                overdueOnly?: boolean;
+                includeClosed?: boolean;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadList"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLeadBoard: {
+        parameters: {
+            query?: {
+                search?: string;
+                stageId?: string[];
+                sourceId?: string[];
+                assignedTo?: string[];
+                overdueOnly?: boolean;
+                includeClosed?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadBoard"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LogLeadCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CloseLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConvertLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadConversion"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ScheduleLeadMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadMeeting"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddLeadNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadNoteEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReopenLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MoveLeadStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveStageBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadDetail"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

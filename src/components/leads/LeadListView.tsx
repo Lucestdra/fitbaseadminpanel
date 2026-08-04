@@ -5,53 +5,81 @@ import { Badge } from '@/components/ui/Badge';
 import { colors, spacing, typography, radii } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useCatalogs } from '@/context/CatalogsContext';
-import { getLeadSourceMeta, getStageMeta } from '@/utils/leads';
-import type { Lead } from '@/types/leads';
+import { toBadgeTone, toIconName } from '@/types/settings';
+import { formatRelativeDateTimeLabel } from '@/utils/date';
+import type { LeadListItem } from '@/api/leads';
 
 interface LeadListViewProps {
-  leads: Lead[];
-  onLeadPress: (lead: Lead) => void;
+  leads: LeadListItem[];
+  onLeadPress: (lead: LeadListItem) => void;
 }
 
+/**
+ * The pipeline as a table.
+ *
+ * <b>The date column shows the next action, not the creation date.</b> The panel renders
+ * `dateLabel` — a pre-rendered phrase like "2 gün önce" whose meaning changes per stage — so the
+ * column answers a different question on every row. Here it is one question: when is somebody
+ * supposed to do something, and is it already late.
+ */
 export function LeadListView({ leads, onLeadPress }: LeadListViewProps) {
   const { isMobile } = useResponsiveLayout();
   const { leadSources, stages } = useCatalogs();
+
+  const toneOf = (stageId: string) =>
+    toBadgeTone(stages.find((stage) => stage.id === stageId)?.tone ?? 'neutral');
+
+  const sourceOf = (sourceId: string | null) =>
+    sourceId === null ? undefined : leadSources.find((entry) => entry.id === sourceId);
+
+  const nextActionLabel = (lead: LeadListItem) =>
+    lead.nextActionAt === null ? '—' : formatRelativeDateTimeLabel(new Date(lead.nextActionAt));
 
   if (isMobile) {
     return (
       <View style={styles.mobileList}>
         {leads.map((lead) => {
-          const source = getLeadSourceMeta(leadSources, lead.source);
-          const stageTone = getStageMeta(stages, lead.stage).tone;
+          const source = sourceOf(lead.sourceId);
+
           return (
             <Pressable
               key={lead.id}
               onPress={() => onLeadPress(lead)}
               accessibilityRole="button"
-              accessibilityLabel={`${lead.name} detayını gör`}
+              accessibilityLabel={`${lead.fullName} detayını gör`}
             >
               <Card style={styles.mobileCard}>
                 <View style={styles.mobileHeaderRow}>
                   <View style={styles.mobileNameGroup}>
-                    <Text style={styles.name} numberOfLines={1}>{lead.name}</Text>
-                    <View style={styles.sourceRow}>
-                      <AppIcon name={source.icon} size={13} color={colors.textSecondary} />
-                      <Text style={styles.sourceLabel}>{source.label}</Text>
-                    </View>
+                    <Text style={styles.name} numberOfLines={1}>{lead.fullName}</Text>
+                    {source ? (
+                      <View style={styles.sourceRow}>
+                        <AppIcon
+                          name={toIconName(source.icon)}
+                          size={13}
+                          color={colors.textSecondary}
+                        />
+                        <Text style={styles.sourceLabel}>{lead.sourceName ?? source.label}</Text>
+                      </View>
+                    ) : null}
                   </View>
-                  <Badge label={lead.statusLabel} tone={stageTone} />
+                  <Badge label={lead.statusLabel} tone={toneOf(lead.stageId)} />
                 </View>
                 <View style={styles.mobileMetaRow}>
                   <Text style={styles.mobileMetaLabel}>İlgi</Text>
-                  <Text style={styles.mobileMetaValue}>{lead.interest}</Text>
+                  <Text style={styles.mobileMetaValue}>{lead.interestName ?? '—'}</Text>
                 </View>
                 <View style={styles.mobileMetaRow}>
                   <Text style={styles.mobileMetaLabel}>Sorumlu</Text>
-                  <Text style={styles.mobileMetaValue}>{lead.assignedTrainer}</Text>
+                  <Text style={styles.mobileMetaValue}>{lead.assignedStaffName ?? 'Atanmadı'}</Text>
                 </View>
                 <View style={styles.mobileMetaRow}>
-                  <Text style={styles.mobileMetaLabel}>Tarih</Text>
-                  <Text style={styles.mobileMetaValue}>{lead.dateLabel}</Text>
+                  <Text style={styles.mobileMetaLabel}>Sıradaki</Text>
+                  <Text
+                    style={[styles.mobileMetaValue, lead.isOverdue && styles.overdueText]}
+                  >
+                    {nextActionLabel(lead)}
+                  </Text>
                 </View>
               </Card>
             </Pressable>
@@ -69,32 +97,49 @@ export function LeadListView({ leads, onLeadPress }: LeadListViewProps) {
         <Text style={[styles.headerLabel, columnStyles.interest]}>İlgi</Text>
         <Text style={[styles.headerLabel, columnStyles.trainer]}>Sorumlu</Text>
         <Text style={[styles.headerLabel, columnStyles.stage]}>Aşama</Text>
-        <Text style={[styles.headerLabel, columnStyles.date]}>Tarih</Text>
+        <Text style={[styles.headerLabel, columnStyles.date]}>Sıradaki</Text>
         <View style={columnStyles.menu} />
       </View>
 
       {leads.map((lead, index) => {
-        const source = getLeadSourceMeta(leadSources, lead.source);
-        const stageTone = getStageMeta(stages, lead.stage).tone;
+        const source = sourceOf(lead.sourceId);
+
         return (
           <Pressable
             key={lead.id}
             onPress={() => onLeadPress(lead)}
             accessibilityRole="button"
-            accessibilityLabel={`${lead.name} detayını gör`}
+            accessibilityLabel={`${lead.fullName} detayını gör`}
             style={({ pressed }) => [styles.row, index === leads.length - 1 && styles.rowLast, pressed && styles.rowPressed]}
           >
-            <Text style={[styles.name, columnStyles.name]} numberOfLines={1}>{lead.name}</Text>
+            <Text style={[styles.name, columnStyles.name]} numberOfLines={1}>{lead.fullName}</Text>
             <View style={[styles.sourceRow, columnStyles.source]}>
-              <AppIcon name={source.icon} size={14} color={colors.textSecondary} />
-              <Text style={styles.cellText} numberOfLines={1}>{source.label}</Text>
+              {source ? (
+                <>
+                  <AppIcon name={toIconName(source.icon)} size={14} color={colors.textSecondary} />
+                  <Text style={styles.cellText} numberOfLines={1}>
+                    {lead.sourceName ?? source.label}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.cellText}>—</Text>
+              )}
             </View>
-            <Text style={[styles.cellText, columnStyles.interest]} numberOfLines={1}>{lead.interest}</Text>
-            <Text style={[styles.cellText, columnStyles.trainer]} numberOfLines={1}>{lead.assignedTrainer}</Text>
+            <Text style={[styles.cellText, columnStyles.interest]} numberOfLines={1}>
+              {lead.interestName ?? '—'}
+            </Text>
+            <Text style={[styles.cellText, columnStyles.trainer]} numberOfLines={1}>
+              {lead.assignedStaffName ?? 'Atanmadı'}
+            </Text>
             <View style={columnStyles.stage}>
-              <Badge label={lead.statusLabel} tone={stageTone} />
+              <Badge label={lead.statusLabel} tone={toneOf(lead.stageId)} />
             </View>
-            <Text style={[styles.cellText, columnStyles.date]} numberOfLines={1}>{lead.dateLabel}</Text>
+            <Text
+              style={[styles.cellText, columnStyles.date, lead.isOverdue && styles.overdueText]}
+              numberOfLines={1}
+            >
+              {nextActionLabel(lead)}
+            </Text>
             <View style={[columnStyles.menu, styles.menuButton]}>
               <AppIcon name="chevron-forward" size={16} color={colors.textSecondary} />
             </View>
@@ -116,6 +161,9 @@ const columnStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  overdueText: {
+    color: colors.critical,
+  },
   card: {
     flex: 1,
   },

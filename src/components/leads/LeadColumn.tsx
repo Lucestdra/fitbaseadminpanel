@@ -2,24 +2,28 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { LeadCard } from './LeadCard';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { Lead, LeadColumnDef } from '@/types/leads';
+import { toBadgeTone } from '@/types/settings';
+import type { LeadBoardColumn, LeadListItem } from '@/api/leads';
 
 interface LeadColumnProps {
-  column: LeadColumnDef;
-  leads: Lead[];
-  additionalCount: number;
+  column: LeadBoardColumn;
   onDragStart: () => void;
-  onDragMove: (lead: Lead, absoluteX: number, absoluteY: number) => void;
-  onDragRelease: (lead: Lead, absoluteX: number, absoluteY: number) => void;
+  onDragMove: (lead: LeadListItem, absoluteX: number, absoluteY: number) => void;
+  onDragRelease: (lead: LeadListItem, absoluteX: number, absoluteY: number) => void;
   onDragEnd: () => void;
   onShowMore: () => void;
-  onLeadPress: (lead: Lead) => void;
+  onLeadPress: (lead: LeadListItem) => void;
 }
 
+/**
+ * One column of the pipeline.
+ *
+ * <b>`column.total` is the server's count, not `leads.length`.</b> A column returns its first page
+ * — up to fifty — and the heading has to say how many there really are, or a studio with two
+ * hundred new leads sees "50" and believes it.
+ */
 export function LeadColumn({
   column,
-  leads,
-  additionalCount,
   onDragStart,
   onDragMove,
   onDragRelease,
@@ -27,23 +31,24 @@ export function LeadColumn({
   onShowMore,
   onLeadPress,
 }: LeadColumnProps) {
-  const totalCount = leads.length + additionalCount;
+  const hidden = column.total - column.leads.length;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>{column.title}</Text>
-          <Text style={styles.count}>{totalCount}</Text>
+          <Text style={styles.count}>{column.total}</Text>
         </View>
         <AppIcon name="ellipsis-vertical" size={16} color={colors.textSecondary} />
       </View>
 
       <View style={styles.list}>
-        {leads.map((lead) => (
+        {column.leads.map((lead) => (
           <LeadCard
             key={lead.id}
             lead={lead}
+            tone={toBadgeTone(column.tone)}
             onDragStart={onDragStart}
             onDragMove={onDragMove}
             onDragRelease={onDragRelease}
@@ -53,14 +58,14 @@ export function LeadColumn({
         ))}
       </View>
 
-      {additionalCount > 0 && (
+      {hidden > 0 && (
         <Pressable
           onPress={onShowMore}
           accessibilityRole="button"
-          accessibilityLabel={`${additionalCount} adet daha, listede gör`}
+          accessibilityLabel={`${hidden} adet daha, listede gör`}
           style={({ pressed }) => [styles.moreButton, pressed && styles.moreButtonPressed]}
         >
-          <Text style={styles.moreText}>+ {additionalCount} adet daha</Text>
+          <Text style={styles.moreText}>+ {hidden} adet daha</Text>
         </Pressable>
       )}
     </View>

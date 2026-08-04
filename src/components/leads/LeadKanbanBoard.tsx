@@ -14,27 +14,30 @@ import { LeadColumn } from './LeadColumn';
 import { LeadCardGhost } from './LeadCardGhost';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { Lead, LeadColumnDef, LeadStage } from '@/types/leads';
+import { toBadgeTone } from '@/types/settings';
+import type { LeadBoardColumn, LeadListItem } from '@/api/leads';
 
 interface LeadKanbanBoardProps {
-  columns: LeadColumnDef[];
-  leads: Lead[];
-  additionalCounts: Record<string, number>;
-  onMoveLead: (leadId: string, newStage: LeadStage) => void;
+  /**
+   * Every stage, in `sortOrder`, including the empty ones — a board that hid empty columns would
+   * rearrange itself as work moves and a studio would lose the place it drags to.
+   */
+  columns: LeadBoardColumn[];
+  onMoveLead: (leadId: string, stageId: string) => void;
   onShowMore: () => void;
-  onLeadPress: (lead: Lead) => void;
+  onLeadPress: (lead: LeadListItem) => void;
 }
 
 const COLUMN_WIDTH = 260;
 const COLUMN_STRIDE = COLUMN_WIDTH + spacing.lg;
 
-export function LeadKanbanBoard({ columns, leads, additionalCounts, onMoveLead, onShowMore, onLeadPress }: LeadKanbanBoardProps) {
+export function LeadKanbanBoard({ columns, onMoveLead, onShowMore, onLeadPress }: LeadKanbanBoardProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollRectRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const columnLayoutsRef = useRef<Record<string, { x: number; width: number }>>({});
   const scrollXRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragGhost, setDragGhost] = useState<{ lead: Lead; x: number; y: number } | null>(null);
+  const [dragGhost, setDragGhost] = useState<{ lead: LeadListItem; x: number; y: number } | null>(null);
   const [scrollX, setScrollX] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const contentWidth = columns.length * COLUMN_STRIDE;
@@ -70,12 +73,12 @@ export function LeadKanbanBoard({ columns, leads, additionalCounts, onMoveLead, 
     scrollViewRef.current?.scrollTo({ x: nextX, animated: true });
   };
 
-  const handleColumnLayout = (stage: LeadStage) => (event: LayoutChangeEvent) => {
+  const handleColumnLayout = (stageId: string) => (event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
-    columnLayoutsRef.current[stage] = { x, width };
+    columnLayoutsRef.current[stageId] = { x, width };
   };
 
-  const handleDragMove = (lead: Lead, absoluteX: number, absoluteY: number) => {
+  const handleDragMove = (lead: LeadListItem, absoluteX: number, absoluteY: number) => {
     const rect = scrollRectRef.current;
     setDragGhost({ lead, x: absoluteX - rect.x, y: absoluteY - rect.y });
   };
@@ -84,7 +87,7 @@ export function LeadKanbanBoard({ columns, leads, additionalCounts, onMoveLead, 
     setDragGhost(null);
   };
 
-  const handleDragRelease = (lead: Lead, absoluteX: number, absoluteY: number) => {
+  const handleDragRelease = (lead: LeadListItem, absoluteX: number, absoluteY: number) => {
     setIsDragging(false);
     const rect = scrollRectRef.current;
     if (absoluteY < rect.y - 40 || absoluteY > rect.y + rect.height + 40) return;
@@ -93,10 +96,15 @@ export function LeadKanbanBoard({ columns, leads, additionalCounts, onMoveLead, 
     const targetEntry = Object.entries(columnLayoutsRef.current).find(
       ([, layout]) => contentX >= layout.x && contentX <= layout.x + layout.width
     );
+
     if (targetEntry) {
-      const [stage] = targetEntry;
-      if (stage !== lead.stage) {
-        onMoveLead(lead.id, stage as LeadStage);
+      const [stageId] = targetEntry;
+
+      // Dropping a card back where it came from is something people do constantly. The server
+      // treats it as a no-op too — a self-transition records a change that did not happen — but
+      // not sending it saves a round trip and a spurious reload.
+      if (stageId !== lead.stageId) {
+        onMoveLead(lead.id, stageId);
       }
     }
   };
@@ -147,11 +155,13 @@ export function LeadKanbanBoard({ columns, leads, additionalCounts, onMoveLead, 
         onLayout={handleScrollLayout}
       >
         {columns.map((column) => (
-          <View key={column.stage} onLayout={handleColumnLayout(column.stage)} style={styles.columnWrapper}>
+          <View
+            key={column.stageId}
+            onLayout={handleColumnLayout(column.stageId)}
+            style={styles.columnWrapper}
+          >
             <LeadColumn
               column={column}
-              leads={leads.filter((lead) => lead.stage === column.stage)}
-              additionalCount={additionalCounts[column.stage] ?? 0}
               onDragStart={() => setIsDragging(true)}
               onDragMove={handleDragMove}
               onDragRelease={handleDragRelease}
@@ -164,7 +174,15 @@ export function LeadKanbanBoard({ columns, leads, additionalCounts, onMoveLead, 
       </ScrollView>
 
       {dragGhost ? (
-        <LeadCardGhost lead={dragGhost.lead} x={dragGhost.x} y={dragGhost.y} width={COLUMN_WIDTH - 20} />
+        <LeadCardGhost
+          lead={dragGhost.lead}
+          tone={toBadgeTone(
+            columns.find((column) => column.stageId === dragGhost.lead.stageId)?.tone ?? 'neutral',
+          )}
+          x={dragGhost.x}
+          y={dragGhost.y}
+          width={COLUMN_WIDTH - 20}
+        />
       ) : null}
     </View>
   );

@@ -1,4 +1,5 @@
 import type { BadgeTone } from '@/components/ui/Badge';
+import type { CallOutcome, LeadLossReason, LeadMeetingKind } from './leads';
 import type { MemberBadge, MembershipState, SessionCreditReason } from './members';
 
 /**
@@ -58,3 +59,43 @@ export const SESSION_REASON_LABELS = {
   ManualAdjustment: 'Manuel Düzeltme',
   Expiry: 'Süre Doldu',
 } satisfies Record<SessionCreditReason, string>;
+
+/**
+ * How a call went.
+ *
+ * Only `Spoke` moves the lead forward on its own. The other two mean the conversation has not
+ * happened yet, and a pipeline that promoted on "meşgul" would report interest nobody expressed.
+ */
+export const CALL_OUTCOME_LABELS = {
+  Unreachable: 'Ulaşılamadı',
+  Busy: 'Meşgul',
+  Spoke: 'Konuştu',
+} satisfies Record<CallOutcome, string>;
+
+/**
+ * Why a lead stopped being a lead.
+ *
+ * A closed set, because these are the buckets a studio acts on — "too expensive" is a pricing
+ * conversation and "went elsewhere" is a competitive one. `Timing` is the one worth calling again,
+ * which is why reopening exists.
+ *
+ * `NonNullable` because the generated `LeadLossReason` carries `| null`: the .NET OpenAPI
+ * generator folds nullability into a shared enum schema when any one property uses it nullably,
+ * and a lead that is still open has no loss reason. `LeadStageSemanticRole` has had the same shape
+ * since Phase 2.1. The null belongs to the *property*, not to the set of reasons, so it is
+ * stripped here rather than given a label — there is no such thing as a lead lost for reason null.
+ */
+export const LEAD_LOSS_REASON_LABELS = {
+  NoResponse: 'Ulaşılamadı',
+  Price: 'Fiyat',
+  WentElsewhere: 'Başka Yere Gitti',
+  NotSuitable: 'Uygun Değil',
+  Timing: 'Zamanlama',
+  Other: 'Diğer',
+} satisfies Record<NonNullable<LeadLossReason>, string>;
+
+/** A consultation or a trial class. Both hold a coach's time; only one is a class. */
+export const LEAD_MEETING_KIND_LABELS = {
+  Consultation: 'Yüzyüze Görüşme',
+  TrialSession: 'Deneme Dersi',
+} satisfies Record<LeadMeetingKind, string>;

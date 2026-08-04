@@ -1,40 +1,27 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppShell } from '@/components/layout/AppShell';
 import { ListPageHeader } from '@/components/shared/ListPageHeader';
-import { DistributionCard } from '@/components/shared/DistributionCard';
-import { QuickActionsGrid } from '@/components/shared/QuickActionsGrid';
 import { SegmentedControl, type SegmentOption } from '@/components/ui/SegmentedControl';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { LeadListView } from '@/components/leads/LeadListView';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
-import { TodaysTrialsCard } from '@/components/leads/TodaysTrialsCard';
-import { NewLeadModal } from '@/components/leads/NewLeadModal';
-import { LeadFilterModal, type LeadFilters } from '@/components/leads/LeadFilterModal';
-import { LeadDetailModal, type MeetingKind } from '@/components/leads/LeadDetailModal';
+import { LeadFormModal } from '@/components/leads/LeadFormModal';
+import { LeadDetailDrawer } from '@/components/leads/LeadDetailDrawer';
+import {
+  LeadFilterSheet,
+  EMPTY_LEAD_FILTERS,
+  countLeadFilters,
+  type LeadFilters,
+} from '@/components/leads/LeadFilterSheet';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { colors, spacing, typography } from '@/theme';
-import { formatDateTimeLabel, addHours, formatRelativeDateTimeLabel, WEEKDAYS } from '@/utils/date';
+import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/context/AuthContext';
-import * as schedulingApi from '@/api/scheduling';
-import { nextWeekdayInstant } from '@/utils/calendar';
-import {
-  leads as initialLeads,
-  additionalLeadsByStage,
-  leadKpis,
-  trialsToday,
-  additionalTrialsToday,
-  leadSourceDistribution,
-  leadSourceTotal,
-  leadQuickActions,
-} from '@/mock/leads';
-import { teamMembers } from '@/mock/team';
-import type { Lead, LeadStage, CallOutcome, CallLogEntry } from '@/types/leads';
-import { useCatalogs } from '@/context/CatalogsContext';
-import type { QuickAction } from '@/types/dashboard';
+import * as leadsApi from '@/api/leads';
+import { colors, spacing, typography, radii } from '@/theme';
+import type { KpiItem } from '@/types/dashboard';
 
 type ViewMode = 'list' | 'kanban';
 
@@ -43,306 +30,199 @@ const viewOptions: SegmentOption<ViewMode>[] = [
   { value: 'kanban', label: 'Kanban' },
 ];
 
-const EMPTY_FILTERS: LeadFilters = { sources: [], stages: [], trainers: [] };
-const trainers = teamMembers.filter((member) => member.role === 'egitmen');
-
+/**
+ * The sales pipeline, on real data.
+ *
+ * <b>Three things moved to the server, and all three were wrong here.</b> The call-outcome
+ * promotion rule ran client-side over the catalog's array order, so renaming a column broke it
+ * silently. The stage of a lead was a string that got overwritten, so nothing recorded that it ever
+ * moved. And there was no way to lose a lead at all — every lead that ever arrived stayed on the
+ * board, so the conversion rate divided by a denominator that only grew.
+ *
+ * <b>The counters come from the same request as the rows</b>, computed server-side from the same
+ * predicate. The five tiles this replaces were constants beside a list they did not describe.
+ */
 export default function LeadsScreen() {
-  const router = useRouter();
   const { isMobile, isTablet } = useResponsiveLayout();
-  const { stages } = useCatalogs();
-  const { timeZoneId } = useAuth();
-  const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [leads, setLeads] = useState(initialLeads);
-  const [filters, setFilters] = useState<LeadFilters>(EMPTY_FILTERS);
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [newLeadModalVisible, setNewLeadModalVisible] = useState(false);
-  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+  const { timeZoneId, permissions } = useAuth();
   const { message, visible, show } = useToast();
 
-  const detailLead = leads.find((lead) => lead.id === detailLeadId) ?? null;
-  const columns = stages.map((stage) => ({ stage: stage.id, title: stage.title }));
+  const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [filters, setFilters] = useState<LeadFilters>(EMPTY_LEAD_FILTERS);
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
-  const filteredLeads = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('tr');
-    return leads.filter((lead) => {
-      const matchesQuery =
-        !query ||
-        lead.name.toLocaleLowerCase('tr').includes(query) ||
-        lead.interest.toLocaleLowerCase('tr').includes(query) ||
-        lead.assignedTrainer.toLocaleLowerCase('tr').includes(query);
-      const matchesSource = filters.sources.length === 0 || filters.sources.includes(lead.source);
-      const matchesStage = filters.stages.length === 0 || filters.stages.includes(lead.stage);
-      const matchesTrainer = filters.trainers.length === 0 || filters.trainers.includes(lead.assignedTrainer);
-      return matchesQuery && matchesSource && matchesStage && matchesTrainer;
-    });
-  }, [leads, search, filters]);
+  const canManage = permissions['leads.manage'] !== undefined;
+  const canConvert = permissions['leads.convert'] !== undefined;
 
-  const filterCount = filters.sources.length + filters.stages.length + filters.trainers.length;
+  const query = useMemo<leadsApi.LeadQuery>(
+    () => ({
+      search: search.trim() || undefined,
+      stageId: filters.stageIds.length > 0 ? filters.stageIds : undefined,
+      sourceId: filters.sourceIds.length > 0 ? filters.sourceIds : undefined,
+      assignedTo: filters.assignedTo.length > 0 ? filters.assignedTo : undefined,
+      overdueOnly: filters.overdueOnly || undefined,
+      includeClosed: filters.includeClosed || undefined,
+      limit: viewMode === 'kanban' ? 20 : 25,
+    }),
+    [search, filters, viewMode],
+  );
 
-  const handleMoveLead = (leadId: string, newStage: LeadStage) => {
-    setLeads((current) =>
-      current.map((lead) =>
-        lead.id === leadId
-          ? { ...lead, stage: newStage, statusLabel: stages.find((stage) => stage.id === newStage)?.statusLabel ?? newStage }
-          : lead
-      )
-    );
-  };
+  const { items, board, counts, status, loadingMore, hasMore, loadMore, reload } = useLeads(
+    query,
+    viewMode === 'kanban' ? 'board' : 'list',
+  );
 
-  const handleCreateLead = (
-    input: Omit<Lead, 'id' | 'stage' | 'statusLabel' | 'dateLabel' | 'notes'> & { note?: string }
-  ) => {
-    const { note, ...rest } = input;
-    const newLead: Lead = {
-      ...rest,
-      id: `lead-${Date.now()}`,
-      stage: 'yeni',
-      statusLabel: stages.find((stage) => stage.id === 'yeni')?.statusLabel ?? 'Yeni',
-      dateLabel: 'Şimdi',
-      notes: note ? [{ id: `note-${Date.now()}`, text: note, dateLabel: formatDateTimeLabel(new Date()) }] : [],
-    };
-    setLeads((current) => [newLead, ...current]);
-    show(`${newLead.name} müşteri adayı olarak eklendi.`);
-  };
+  const kpis: KpiItem[] = [
+    { id: 'total', title: 'Açık Aday', value: String(counts.total), icon: 'people-outline' },
+    {
+      id: 'overdue',
+      title: 'Gecikmiş Takip',
+      value: String(counts.overdue),
+      icon: 'alert-circle-outline',
+    },
+    {
+      id: 'unassigned',
+      title: 'Sorumlusuz',
+      value: String(counts.unassigned),
+      icon: 'person-remove-outline',
+    },
+    {
+      id: 'converted',
+      title: 'Bu Ay Üye Olan',
+      value: String(counts.convertedThisMonth),
+      icon: 'checkmark-circle-outline',
+    },
+    {
+      // Reported beside conversions rather than hidden. A month with forty conversions and two
+      // hundred losses is a different month, and the panel could not show the second number at all.
+      id: 'lost',
+      title: 'Bu Ay Kaybedilen',
+      value: String(counts.lostThisMonth),
+      icon: 'close-circle-outline',
+    },
+  ];
 
-  const handleAddNote = (leadId: string, text: string) => {
-    setLeads((current) =>
-      current.map((lead) =>
-        lead.id === leadId
-          ? { ...lead, notes: [...(lead.notes ?? []), { id: `note-${Date.now()}`, text, dateLabel: formatDateTimeLabel(new Date()) }] }
-          : lead
-      )
-    );
-    show('Not eklendi.');
-  };
-
-  const handleLogCall = (leadId: string, outcome: CallOutcome, followUpHours?: number) => {
-    const now = new Date();
-    const nowLabel = formatRelativeDateTimeLabel(now, now);
-    const stageOrder = stages.map((stage) => stage.id);
-    const ilgileniyorIndex = stageOrder.indexOf('ilgileniyor');
-    const targetLead = leads.find((lead) => lead.id === leadId);
-
-    setLeads((current) =>
-      current.map((lead) => {
-        if (lead.id !== leadId) return lead;
-
-        const entry: CallLogEntry = { id: `call-${Date.now()}`, outcome, dateLabel: nowLabel };
-        let nextStage = lead.stage;
-        let nextDateLabel = lead.dateLabel;
-
-        if (followUpHours) {
-          const followUpLabel = formatRelativeDateTimeLabel(addHours(now, followUpHours), now);
-          entry.followUpLabel = followUpLabel;
-          nextStage = 'tekrar-ara';
-          nextDateLabel = followUpLabel;
-        } else if (outcome === 'konustu') {
-          const currentIndex = stageOrder.indexOf(lead.stage);
-          if (currentIndex !== -1 && ilgileniyorIndex !== -1 && currentIndex < ilgileniyorIndex) {
-            nextStage = 'ilgileniyor';
-          }
-          nextDateLabel = nowLabel;
-        }
-
-        const nextStatusLabel =
-          nextStage !== lead.stage ? stages.find((stage) => stage.id === nextStage)?.statusLabel ?? nextStage : lead.statusLabel;
-
-        return {
-          ...lead,
-          stage: nextStage,
-          statusLabel: nextStatusLabel,
-          dateLabel: nextDateLabel,
-          callLogs: [...(lead.callLogs ?? []), entry],
-        };
-      })
-    );
-
-    const name = targetLead?.name ?? 'Aday';
-    if (followUpHours) {
-      show(`${name} için ${followUpHours} saat sonra tekrar arama planlandı.`);
-    } else if (outcome === 'konustu') {
-      show(`${name} ile görüşme kaydedildi.`);
-    } else {
-      show('Arama kaydedildi.');
-    }
-  };
-
-  const handleScheduleMeeting = (
-    leadId: string,
-    kind: MeetingKind,
-    weekdayId: string,
-    time: string,
-    trainerName?: string
-  ) => {
-    const targetLead = leads.find((lead) => lead.id === leadId);
-    if (!targetLead) return;
-
-    const weekdayLabel = WEEKDAYS.find((day) => day.id === weekdayId)?.label ?? weekdayId;
-    const dateLabel = `${weekdayLabel} ${time}`;
-    const kindLabel = kind === 'yuzyuze-gorusme' ? 'Yüzyüze Görüşme' : 'Deneme Dersi';
-    const now = new Date();
-    const nowLabel = formatRelativeDateTimeLabel(now, now);
-
-    // A real session on the real calendar, on the next occurrence of the chosen weekday.
-    //
-    // The lead itself is still mock until Phase 2.4, so this cannot yet carry a `leadId` — the
-    // meeting is created as an ordinary one-off with the lead's name in its title. That is the
-    // honest half-step: a consultant who books a trial gets a calendar entry that survives a
-    // reload, which is more than the context this replaced ever did, and 2.4 links it to the lead.
-    //
-    // The coach is left unassigned deliberately. `trainerName` comes from the mock team list and
-    // there is no reliable way to resolve a display name to a roster id (ADR-0016) — guessing would
-    // silently attach the meeting to the wrong person the first time two coaches share a name.
+  const moveLead = (leadId: string, stageId: string) => {
     void (async () => {
       try {
-        await schedulingApi.createSession({
-          title: `${targetLead.name} - ${kindLabel}`,
-          startsAt: nextWeekdayInstant(weekdayId, time, timeZoneId),
-          durationMinutes: 45,
-          capacity: 1,
-          coachStaffMemberId: null,
-          classDefinitionId: null,
-          notes: trainerName ? `Eğitmen: ${trainerName}` : null,
-        });
-      } catch {
-        // The lead's own record below still updates. Failing the whole interaction because the
-        // calendar entry could not be written would lose the call outcome the consultant just
-        // typed, which is the part they cannot reconstruct.
-        show('Görüşme kaydedildi, ancak takvime eklenemedi.');
+        const result = await leadsApi.moveLeadStage(leadId, stageId, null);
+        show(`${result.lead.fullName} → ${result.lead.stageTitle}`);
+        reload();
+      } catch (error) {
+        // Includes the two deliberate refusals: dropping onto the converted or the lost column
+        // comes back as a conflict naming the action to use instead. The board reloads either way,
+        // so the card snaps back to where it actually is.
+        show(error instanceof Error ? error.message : 'Aday taşınamadı.');
+        reload();
       }
     })();
-
-    setLeads((current) =>
-      current.map((lead) =>
-        lead.id === leadId
-          ? {
-              ...lead,
-              stage: kind,
-              statusLabel: stages.find((stage) => stage.id === kind)?.statusLabel ?? kind,
-              dateLabel,
-              callLogs: [
-                ...(lead.callLogs ?? []),
-                { id: `call-${Date.now()}`, outcome: 'konustu', dateLabel: nowLabel, followUpLabel: `${dateLabel} · ${kindLabel}` },
-              ],
-            }
-          : lead
-      )
-    );
-
-    show(`${targetLead.name} için ${dateLabel} tarihine ${kindLabel.toLocaleLowerCase('tr')} planlandı ve takvime eklendi.`);
-  };
-
-  const handleQuickAction = (action: QuickAction) => {
-    switch (action.id) {
-      case 'qa-new-lead':
-        setNewLeadModalVisible(true);
-        break;
-      case 'qa-send-whatsapp':
-        router.replace('/mesajlar');
-        break;
-      default:
-        show(action.toastMessage);
-    }
   };
 
   const kpiBasis = isMobile ? '47%' : isTablet ? '31%' : '18.4%';
-
-  const sidebar = (
-    <>
-      <TodaysTrialsCard trials={trialsToday} additionalCount={additionalTrialsToday} />
-      <DistributionCard title="Kaynak Dağılımı" segments={leadSourceDistribution} total={leadSourceTotal} totalUnitLabel="aday" />
-      <QuickActionsGrid actions={leadQuickActions} onActionPress={handleQuickAction} />
-    </>
-  );
 
   return (
     <AppShell activeId="leads">
       <ListPageHeader
         title="Müşteri Adayları"
-        subtitle="Potansiyel üyeleri takip et, denemeleri planla ve satış sürecini yönet."
-        searchPlaceholder="Ara (isim, telefon, kaynak...)"
+        subtitle="Aday havuzunu takip et, arama yap, üyeliğe dönüştür."
+        searchPlaceholder="Ara (ad, telefon, e-posta...)"
         searchValue={search}
         onSearchChange={setSearch}
-        onFilterPress={() => setFilterModalVisible(true)}
-        filterCount={filterCount}
-        primaryActionLabel="Yeni Müşteri Adayı"
+        onFilterPress={() => setFilterVisible(true)}
+        filterCount={countLeadFilters(filters)}
+        primaryActionLabel={canManage ? 'Yeni Aday' : undefined}
         primaryActionIcon="add"
-        onPrimaryAction={() => setNewLeadModalVisible(true)}
+        onPrimaryAction={canManage ? () => setCreating(true) : undefined}
       />
 
       <View style={styles.kpiGrid}>
-        {leadKpis.map((item) => (
+        {kpis.map((item) => (
           <View key={item.id} style={[styles.kpiItem, { flexBasis: kpiBasis }]}>
             <KpiCard item={item} />
           </View>
         ))}
       </View>
 
-      <View style={styles.viewToggleRow}>
-        <Text style={styles.viewToggleLabel}>Görünüm</Text>
+      <View style={styles.controlRow}>
+        <Text style={styles.controlLabel}>Görünüm</Text>
         <SegmentedControl options={viewOptions} value={viewMode} onChange={setViewMode} />
       </View>
 
-      {isMobile || isTablet ? (
-        <View style={styles.stack}>
-          {viewMode === 'list' ? (
-            <LeadListView leads={filteredLeads} onLeadPress={(lead) => setDetailLeadId(lead.id)} />
-          ) : (
-            <LeadKanbanBoard
-              columns={columns}
-              leads={filteredLeads}
-              additionalCounts={additionalLeadsByStage}
-              onMoveLead={handleMoveLead}
-              onShowMore={() => setViewMode('list')}
-              onLeadPress={(lead) => setDetailLeadId(lead.id)}
-            />
-          )}
-          {sidebar}
+      {status === 'loading' ? (
+        <ActivityIndicator style={styles.loading} color={colors.primary} />
+      ) : status === 'error' ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>Adaylar yüklenemedi.</Text>
+          <Pressable onPress={reload} accessibilityRole="button" style={styles.retryButton}>
+            <Text style={styles.retryLabel}>Tekrar dene</Text>
+          </Pressable>
+        </View>
+      ) : viewMode === 'kanban' ? (
+        <LeadKanbanBoard
+          columns={board?.columns ?? []}
+          onMoveLead={moveLead}
+          onShowMore={() => setViewMode('list')}
+          onLeadPress={(lead) => setSelectedLeadId(lead.id)}
+        />
+      ) : items.length === 0 ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>
+            {countLeadFilters(filters) > 0 || search.trim()
+              ? 'Bu filtreye uyan aday yok.'
+              : 'Henüz aday eklenmedi.'}
+          </Text>
         </View>
       ) : (
-        <View style={styles.row}>
-          <View style={styles.mainCol}>
-            {viewMode === 'list' ? (
-              <LeadListView leads={filteredLeads} onLeadPress={(lead) => setDetailLeadId(lead.id)} />
-            ) : (
-              <LeadKanbanBoard
-                columns={columns}
-                leads={filteredLeads}
-                additionalCounts={additionalLeadsByStage}
-                onMoveLead={handleMoveLead}
-                onShowMore={() => setViewMode('list')}
-                onLeadPress={(lead) => setDetailLeadId(lead.id)}
-              />
-            )}
-          </View>
-          <View style={styles.sideCol}>{sidebar}</View>
-        </View>
+        <>
+          <LeadListView leads={items} onLeadPress={(lead) => setSelectedLeadId(lead.id)} />
+
+          {hasMore ? (
+            <Pressable
+              onPress={loadMore}
+              disabled={loadingMore}
+              accessibilityRole="button"
+              style={[styles.retryButton, styles.loadMore, loadingMore && styles.disabled]}
+            >
+              <Text style={styles.retryLabel}>
+                {loadingMore ? 'Yükleniyor...' : 'Daha fazla göster'}
+              </Text>
+            </Pressable>
+          ) : null}
+        </>
       )}
 
-      <NewLeadModal
-        visible={newLeadModalVisible}
-        onClose={() => setNewLeadModalVisible(false)}
-        onCreate={handleCreateLead}
-      />
-
-      <LeadFilterModal
-        visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
+      <LeadFilterSheet
+        visible={filterVisible}
         filters={filters}
         onChange={setFilters}
-        columns={columns}
+        onClose={() => setFilterVisible(false)}
       />
 
-      <LeadDetailModal
-        visible={detailLeadId !== null}
-        lead={detailLead}
-        trainers={trainers}
-        onClose={() => setDetailLeadId(null)}
-        onAddNote={handleAddNote}
-        onLogCall={handleLogCall}
-        onScheduleMeeting={handleScheduleMeeting}
-      />
+      {creating ? (
+        <LeadFormModal
+          editing={null}
+          onClose={() => setCreating(false)}
+          onSaved={(text) => {
+            show(text);
+            reload();
+          }}
+          onError={show}
+        />
+      ) : null}
+
+      {selectedLeadId ? (
+        <LeadDetailDrawer
+          leadId={selectedLeadId}
+          timeZoneId={timeZoneId}
+          canConvert={canConvert}
+          onChanged={reload}
+          onClose={() => setSelectedLeadId(null)}
+          onNotify={show}
+        />
+      ) : null}
 
       <Toast message={message} visible={visible} />
     </AppShell>
@@ -359,28 +239,44 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     minWidth: 150,
   },
-  viewToggleRow: {
+  controlRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
-  viewToggleLabel: {
+  controlLabel: {
     ...typography.captionStrong,
     color: colors.textSecondary,
   },
-  stack: {
-    gap: spacing.xxl,
+  loading: {
+    paddingVertical: spacing.xxxl,
   },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.xxl,
-    alignItems: 'flex-start',
+  errorBox: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xxxl,
   },
-  mainCol: {
-    flex: 68,
+  errorText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
-  sideCol: {
-    flex: 32,
-    gap: spacing.xxl,
+  retryButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  loadMore: {
+    alignSelf: 'center',
+  },
+  retryLabel: {
+    ...typography.button,
+    color: colors.textPrimary,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

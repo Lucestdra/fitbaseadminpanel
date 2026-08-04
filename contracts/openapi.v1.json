@@ -572,6 +572,43 @@
         ],
         "type": "object"
       },
+      "CallBody": {
+        "properties": {
+          "followUpAt": {
+            "description": "When to try again. Refused alongside `Spoke` — a call that reached the lead has nothing to\r\nfollow up, and scheduling one anyway is how a dealt-with lead stays on the call list forever.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CallOutcome",
+            "description": "How the call went."
+          }
+        },
+        "required": [
+          "outcome",
+          "followUpAt",
+          "note"
+        ],
+        "type": "object"
+      },
+      "CallOutcome": {
+        "description": "How a call went.",
+        "enum": [
+          "Unreachable",
+          "Busy",
+          "Spoke"
+        ]
+      },
       "CancelBody": {
         "properties": {
           "reason": {
@@ -973,6 +1010,26 @@
           "defaultCoachName",
           "isActive",
           "slots"
+        ],
+        "type": "object"
+      },
+      "CloseBody": {
+        "properties": {
+          "note": {
+            "description": "The detail behind the bucket.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/LeadLossReason",
+            "description": "Which bucket. A closed set, because these are what a studio acts on."
+          }
+        },
+        "required": [
+          "reason",
+          "note"
         ],
         "type": "object"
       },
@@ -1432,6 +1489,508 @@
         ],
         "type": "object"
       },
+      "LeadBoard": {
+        "properties": {
+          "columns": {
+            "description": "Every stage, in `sort_order`, including the empty ones.",
+            "items": {
+              "$ref": "#/components/schemas/LeadBoardColumn"
+            },
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/LeadCounts",
+            "description": "The same counters the list returns, from the same filter."
+          }
+        },
+        "required": [
+          "columns",
+          "counts"
+        ],
+        "type": "object"
+      },
+      "LeadBoardColumn": {
+        "properties": {
+          "leads": {
+            "description": "The first page of the column.",
+            "items": {
+              "$ref": "#/components/schemas/LeadListItem"
+            },
+            "type": "array"
+          },
+          "sortOrder": {
+            "description": "Explicit position, replacing the panel's reliance on array order.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "stageId": {
+            "description": "The column.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "description": "Its heading.",
+            "type": "string"
+          },
+          "tone": {
+            "description": "A display hint. Carries no behaviour.",
+            "type": "string"
+          },
+          "total": {
+            "description": "How many leads are in it, before any page limit.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stageId",
+          "title",
+          "sortOrder",
+          "tone",
+          "total",
+          "leads"
+        ],
+        "type": "object"
+      },
+      "LeadBody": {
+        "properties": {
+          "assignedStaffMemberId": {
+            "description": "Roster id, never a display name (ADR-0016).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "description": "Required.",
+            "type": "string"
+          },
+          "interestId": {
+            "description": "Catalog entry id.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "description": "An opening note, written as the lead is created.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneNumber": {
+            "description": "Optional, and the only thing conversion can deduplicate on.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceId": {
+            "description": "Catalog entry id, never a bare string.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "fullName",
+          "phoneNumber",
+          "email",
+          "sourceId",
+          "interestId",
+          "assignedStaffMemberId",
+          "note"
+        ],
+        "type": "object"
+      },
+      "LeadCallEntry": {
+        "properties": {
+          "callerName": {
+            "description": "Who made it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "followUpAt": {
+            "description": "When to try again, or null.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The call.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "description": "Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "occurredAt": {
+            "description": "When the call happened.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CallOutcome",
+            "description": "How it went."
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "followUpAt",
+          "note",
+          "occurredAt",
+          "callerName"
+        ],
+        "type": "object"
+      },
+      "LeadConversion": {
+        "properties": {
+          "alreadyExisted": {
+            "description": "True when the phone number matched somebody already on the roster and the lead was linked to\r\nthem instead of a duplicate being created.",
+            "type": "boolean"
+          },
+          "memberId": {
+            "description": "The member the lead became.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memberId",
+          "alreadyExisted"
+        ],
+        "type": "object"
+      },
+      "LeadCounts": {
+        "properties": {
+          "convertedThisMonth": {
+            "description": "Closed as converted since the start of the studio's month.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "lostThisMonth": {
+            "description": "Closed as lost in the same window. Reported beside conversions rather than hidden, because a\r\nmonth with forty conversions and two hundred losses is a different month.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "overdue": {
+            "description": "Whose next action is in the past. The number that should drive the day.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Open leads matching the filter.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "unassigned": {
+            "description": "Nobody owns the follow-up — the leads that quietly go cold.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "overdue",
+          "unassigned",
+          "convertedThisMonth",
+          "lostThisMonth"
+        ],
+        "type": "object"
+      },
+      "LeadDetail": {
+        "properties": {
+          "calls": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/LeadCallEntry"
+            },
+            "type": "array"
+          },
+          "lead": {
+            "$ref": "#/components/schemas/LeadListItem",
+            "description": "The row, as the list renders it."
+          },
+          "notes": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/LeadNoteEntry"
+            },
+            "type": "array"
+          },
+          "transitions": {
+            "description": "<b>Oldest first.</b> This is a story — arrived, unreachable, unreachable, spoke, met, joined —\r\n        and a story reads forwards.",
+            "items": {
+              "$ref": "#/components/schemas/LeadTransitionEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "lead",
+          "notes",
+          "calls",
+          "transitions"
+        ],
+        "type": "object"
+      },
+      "LeadList": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/LeadCounts",
+            "description": "Computed from the same predicate as the rows, which is what stops a filter changing the list and\r\nnot the numbers over it."
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageOfLeadListItem",
+            "description": "The rows."
+          }
+        },
+        "required": [
+          "page",
+          "counts"
+        ],
+        "type": "object"
+      },
+      "LeadListItem": {
+        "properties": {
+          "assignedStaffMemberId": {
+            "description": "Roster id (ADR-0016).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assignedStaffName": {
+            "description": "Resolved through the roster, never stored.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "convertedMemberId": {
+            "description": "The member they became, or null.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "description": "When the lead arrived. The funnel's denominator.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "email": {
+            "description": "As typed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The lead.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "interestId": {
+            "description": "Catalog entry id, or null.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "interestName": {
+            "description": "Resolved, not joined.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isOverdue": {
+            "description": "Computed against the studio's now, server-side. The client cannot derive it: the device clock is\r\nin whichever zone the laptop is, and this is an organization-local question.",
+            "type": "boolean"
+          },
+          "lossReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LeadLossReason",
+                "description": "Why they were closed, or null while open."
+              }
+            ]
+          },
+          "nextActionAt": {
+            "description": "When somebody should do something. <b>An instant, not \"2 gün önce\"</b> — the client formats, and\r\na stored phrase is what makes \"who is overdue\" unanswerable.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneNumber": {
+            "description": "As typed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceId": {
+            "description": "Catalog entry id, or null.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceName": {
+            "description": "Resolved, not joined. Null when the entry was deleted.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stageId": {
+            "description": "The current column.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "stageTitle": {
+            "description": "The board heading.",
+            "type": "string"
+          },
+          "statusLabel": {
+            "description": "What a lead in this stage is called on its own row. The panel keeps these separate — the board\r\nsays \"Yüzyüze Görüşme\", the lead says \"Görüşme Planlandı\" — so the model does too.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "phoneNumber",
+          "email",
+          "sourceId",
+          "sourceName",
+          "interestId",
+          "interestName",
+          "stageId",
+          "stageTitle",
+          "statusLabel",
+          "assignedStaffMemberId",
+          "assignedStaffName",
+          "nextActionAt",
+          "isOverdue",
+          "convertedMemberId",
+          "lossReason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "LeadLossReason": {
+        "enum": [
+          "NoResponse",
+          "Price",
+          "WentElsewhere",
+          "NotSuitable",
+          "Timing",
+          "Other",
+          null
+        ]
+      },
+      "LeadMeeting": {
+        "properties": {
+          "coachUnavailable": {
+            "description": "True when the trainer-overlap exclusion refused it.",
+            "type": "boolean"
+          },
+          "sessionId": {
+            "description": "The calendar entry, or null when the coach was busy.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startsAt": {
+            "description": "When it is.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "startsAt",
+          "coachUnavailable"
+        ],
+        "type": "object"
+      },
+      "LeadMeetingKind": {
+        "description": "What a scheduled meeting with a lead is.",
+        "enum": [
+          "Consultation",
+          "TrialSession"
+        ]
+      },
+      "LeadNoteEntry": {
+        "properties": {
+          "authorName": {
+            "description": "Who, resolved through the roster. Null when they have left.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "description": "When. An instant; the client formats it.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "The note.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "text": {
+            "description": "What was written.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "createdAt",
+          "authorName"
+        ],
+        "type": "object"
+      },
       "LeadSourceBody": {
         "properties": {
           "icon": {
@@ -1592,6 +2151,54 @@
           "Lost",
           null
         ]
+      },
+      "LeadTransitionEntry": {
+        "properties": {
+          "fromStageTitle": {
+            "description": "Null for the row that created the lead.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The transition.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "movedByName": {
+            "description": "Who.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "occurredAt": {
+            "description": "When.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why, when something other than a person moved it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "toStageTitle": {
+            "description": "Where it went. \"Silinmiş aşama\" when the entry is gone.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fromStageTitle",
+          "toStageTitle",
+          "reason",
+          "occurredAt",
+          "movedByName"
+        ],
+        "type": "object"
       },
       "LifecycleStatus": {
         "description": "Whether an entry is offered for new work. `Aktif` / `Pasif` in the panel.",
@@ -1831,6 +2438,39 @@
           "email",
           "fullName",
           "isEmailVerified"
+        ],
+        "type": "object"
+      },
+      "MeetingBody": {
+        "properties": {
+          "coachStaffMemberId": {
+            "description": "Who is taking it. Refused if they are already booked.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "durationMinutes": {
+            "description": "Positive.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LeadMeetingKind",
+            "description": "A consultation or a trial class."
+          },
+          "startsAt": {
+            "description": "The instant. ISO-8601; the client resolves the studio's zone.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "startsAt",
+          "durationMinutes",
+          "coachStaffMemberId"
         ],
         "type": "object"
       },
@@ -2310,6 +2950,39 @@
         ],
         "type": "object"
       },
+      "MoveStageBody": {
+        "properties": {
+          "reason": {
+            "description": "Optional. Recorded on the transition.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stageId": {
+            "description": "Where to move them.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stageId",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "NoteBody": {
+        "properties": {
+          "text": {
+            "description": "Required.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
       "NotificationBody": {
         "properties": {
           "channel": {
@@ -2728,6 +3401,30 @@
           "sortOrder",
           "isSystem",
           "status"
+        ],
+        "type": "object"
+      },
+      "PageOfLeadListItem": {
+        "description": "One page of a collection, with an opaque cursor to the next.",
+        "properties": {
+          "items": {
+            "description": "The rows, in the requested order.",
+            "items": {
+              "$ref": "#/components/schemas/LeadListItem"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its\r\ncontents are this server's business, and a client that parses it is one that breaks when the\r\nsort changes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
         ],
         "type": "object"
       },
@@ -5469,6 +6166,858 @@
         ]
       }
     },
+    "/api/v1/leads": {
+      "get": {
+        "operationId": "ListLeads",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stageId",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sourceId",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignedTo",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "overdueOnly",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeClosed",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "A page of leads with the counters above the list, under one filter.",
+        "tags": [
+          "Leads"
+        ]
+      },
+      "post": {
+        "operationId": "CreateLead",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds a lead in the pipeline's first stage.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/board": {
+      "get": {
+        "operationId": "GetLeadBoard",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stageId",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sourceId",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignedTo",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "overdueOnly",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeClosed",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadBoard"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The same leads grouped into pipeline columns, from the identical filter.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}": {
+      "get": {
+        "operationId": "GetLead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One lead, with notes, calls and the history of how it moved.",
+        "tags": [
+          "Leads"
+        ]
+      },
+      "put": {
+        "operationId": "UpdateLead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edits a lead's details. Does not move them between stages.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/calls": {
+      "post": {
+        "operationId": "LogLeadCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Records a call, moving the lead when the outcome says to.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/close": {
+      "post": {
+        "operationId": "CloseLead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Closes a lead as lost, with the reason the funnel groups by.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/convert": {
+      "post": {
+        "operationId": "ConvertLead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadConversion"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Creates a member from the lead and closes it as converted.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/meetings": {
+      "post": {
+        "operationId": "ScheduleLeadMeeting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadMeeting"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Books a meeting or trial on the calendar and on the lead, in one transaction.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/notes": {
+      "post": {
+        "operationId": "AddLeadNote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadNoteEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Writes a note against a lead.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/reopen": {
+      "post": {
+        "operationId": "ReopenLead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Puts a closed lead back in the pipeline.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{leadId}/stage": {
+      "post": {
+        "operationId": "MoveLeadStage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveStageBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Moves a lead to another stage and records the transition.",
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "GetMe",
@@ -8075,6 +9624,9 @@
     },
     {
       "name": "Scheduling"
+    },
+    {
+      "name": "Leads"
     },
     {
       "name": "Organization"

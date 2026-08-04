@@ -1,34 +1,39 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { colors, spacing, typography, radii, cardShadow } from '@/theme';
 import { useCatalogs } from '@/context/CatalogsContext';
-import { getLeadSourceMeta, getStageMeta } from '@/utils/leads';
-import type { Lead } from '@/types/leads';
+import { toIconName } from '@/types/settings';
+import type { LeadListItem } from '@/api/leads';
 
 interface LeadCardGhostProps {
-  lead: Lead;
+  lead: LeadListItem;
+  tone: BadgeTone;
   x: number;
   y: number;
   width: number;
 }
 
-export function LeadCardGhost({ lead, x, y, width }: LeadCardGhostProps) {
-  const { leadSources, stages } = useCatalogs();
-  const source = getLeadSourceMeta(leadSources, lead.source);
-  const stageTone = getStageMeta(stages, lead.stage).tone;
+/** The card that follows the finger. Renders the same resolved names as the real one. */
+export function LeadCardGhost({ lead, tone, x, y, width }: LeadCardGhostProps) {
+  const { leadSources } = useCatalogs();
+  const source = leadSources.find((entry) => entry.id === lead.sourceId);
 
   return (
     <View pointerEvents="none" style={[styles.card, { left: x - width / 2, top: y - 40, width }]}>
-      <Text style={styles.name} numberOfLines={1}>{lead.name}</Text>
-      <View style={styles.metaRow}>
-        <AppIcon name={source.icon} size={13} color={colors.textSecondary} />
-        <Text style={styles.metaText}>{source.label}</Text>
-      </View>
-      <Text style={styles.detailText} numberOfLines={1}>İlgi: {lead.interest}</Text>
-      <Text style={styles.detailText} numberOfLines={1}>Sorumlu: {lead.assignedTrainer}</Text>
+      <Text style={styles.name} numberOfLines={1}>{lead.fullName}</Text>
+      {source ? (
+        <View style={styles.metaRow}>
+          <AppIcon name={toIconName(source.icon)} size={13} color={colors.textSecondary} />
+          <Text style={styles.metaText}>{lead.sourceName ?? source.label}</Text>
+        </View>
+      ) : null}
+      <Text style={styles.detailText} numberOfLines={1}>İlgi: {lead.interestName ?? '—'}</Text>
+      <Text style={styles.detailText} numberOfLines={1}>
+        Sorumlu: {lead.assignedStaffName ?? 'Atanmadı'}
+      </Text>
       <View style={styles.footerRow}>
-        <Badge label={lead.statusLabel} tone={stageTone} />
+        <Badge label={lead.statusLabel} tone={tone} />
       </View>
     </View>
   );

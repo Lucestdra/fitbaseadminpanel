@@ -7,6 +7,7 @@ import { colors, spacing, typography, radii } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { MEMBER_BADGE_LABELS, MEMBER_BADGE_TONES } from '@/api/enums';
 import { formatIsoDateLabel } from '@/utils/date';
+import { initialsOf } from '@/utils/name';
 import type { MemberListItem } from '@/api/members';
 
 interface MemberTableProps {
@@ -20,16 +21,6 @@ interface MemberTableProps {
  * The panel stores `avatarInitials` on the member, which is one more field to keep in step with a
  * rename and no cheaper than deriving it.
  */
-function initialsOf(fullName: string): string {
-  return fullName
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toLocaleUpperCase('tr');
-}
-
 function sessionsColor(remaining: number | null) {
   if (remaining === null) return colors.info;
   if (remaining <= 0) return colors.critical;

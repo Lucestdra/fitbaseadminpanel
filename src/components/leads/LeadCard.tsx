@@ -2,28 +2,50 @@
 import { useRef, useState } from 'react';
 import { Animated, PanResponder, View, Text, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { colors, spacing, typography, radii, cardShadow } from '@/theme';
 import { useCatalogs } from '@/context/CatalogsContext';
-import { getLeadSourceMeta, getStageMeta } from '@/utils/leads';
-import type { Lead } from '@/types/leads';
+import { toIconName } from '@/types/settings';
+import { formatRelativeDateTimeLabel } from '@/utils/date';
+import type { LeadListItem } from '@/api/leads';
 
 interface LeadCardProps {
-  lead: Lead;
+  lead: LeadListItem;
+  tone: BadgeTone;
   onDragStart: () => void;
-  onDragMove: (lead: Lead, absoluteX: number, absoluteY: number) => void;
-  onDragRelease: (lead: Lead, absoluteX: number, absoluteY: number) => void;
+  onDragMove: (lead: LeadListItem, absoluteX: number, absoluteY: number) => void;
+  onDragRelease: (lead: LeadListItem, absoluteX: number, absoluteY: number) => void;
   onDragEnd: () => void;
-  onPress: (lead: Lead) => void;
+  onPress: (lead: LeadListItem) => void;
 }
 
-export function LeadCard({ lead, onDragStart, onDragMove, onDragRelease, onDragEnd, onPress }: LeadCardProps) {
-  const { leadSources, stages } = useCatalogs();
+/**
+ * One lead on the pipeline board.
+ *
+ * <b>The names arrive resolved from the server</b> — `sourceName`, `interestName`,
+ * `assignedStaffName`, `statusLabel`. Only the source's icon is looked up locally, because an icon
+ * is a display choice the catalog owns and no other module needs. The panel resolved every one of
+ * them client-side against a mock catalog, which is why a lead whose source had been deleted
+ * rendered its own raw id.
+ *
+ * <b>`isOverdue` is not computed here.</b> It arrives decided against the studio's clock rather
+ * than the device's — an owner checking the board from London would otherwise see today's
+ * callbacks as already overdue for three hours out of every twenty-four.
+ */
+export function LeadCard({
+  lead,
+  tone,
+  onDragStart,
+  onDragMove,
+  onDragRelease,
+  onDragEnd,
+  onPress,
+}: LeadCardProps) {
+  const { leadSources } = useCatalogs();
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const [dragging, setDragging] = useState(false);
-  const showDateAtTop = lead.stage === 'deneme-planlandi';
-  const source = getLeadSourceMeta(leadSources, lead.source);
-  const stageTone = getStageMeta(stages, lead.stage).tone;
+
+  const source = leadSources.find((entry) => entry.id === lead.sourceId);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -68,28 +90,42 @@ export function LeadCard({ lead, onDragStart, onDragMove, onDragRelease, onDragE
         { transform: pan.getTranslateTransform(), zIndex: dragging ? 20 : 1 },
       ]}
       accessibilityRole="none"
-      accessibilityLabel={`${lead.name}, sürükleyerek aşama değiştir`}
+      accessibilityLabel={`${lead.fullName}, sürükleyerek aşama değiştir`}
     >
-      <Text style={styles.name} numberOfLines={1}>{lead.name}</Text>
+      <Text style={styles.name} numberOfLines={1}>{lead.fullName}</Text>
 
-      {showDateAtTop ? (
+      {source ? (
         <View style={styles.metaRow}>
-          <AppIcon name="calendar-outline" size={13} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{lead.dateLabel}</Text>
+          <AppIcon name={toIconName(source.icon)} size={13} color={colors.textSecondary} />
+          <Text style={styles.metaText}>{lead.sourceName ?? source.label}</Text>
         </View>
-      ) : (
-        <View style={styles.metaRow}>
-          <AppIcon name={source.icon} size={13} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{source.label}</Text>
-        </View>
-      )}
+      ) : null}
 
-      <Text style={styles.detailText} numberOfLines={1}>İlgi: {lead.interest}</Text>
-      <Text style={styles.detailText} numberOfLines={1}>Sorumlu: {lead.assignedTrainer}</Text>
+      <Text style={styles.detailText} numberOfLines={1}>
+        İlgi: {lead.interestName ?? '—'}
+      </Text>
+      <Text style={styles.detailText} numberOfLines={1}>
+        {/*
+          Null is a real state and says so. An unassigned lead is the one that quietly goes cold,
+          which is why the counters above the board count them separately.
+        */}
+        Sorumlu: {lead.assignedStaffName ?? 'Atanmadı'}
+      </Text>
 
       <View style={styles.footerRow}>
-        <Badge label={lead.statusLabel} tone={stageTone} />
-        {!showDateAtTop && <Text style={styles.dateText}>{lead.dateLabel}</Text>}
+        <Badge label={lead.statusLabel} tone={tone} />
+        {lead.nextActionAt ? (
+          <View style={styles.metaRow}>
+            <AppIcon
+              name={lead.isOverdue ? 'alert-circle-outline' : 'time-outline'}
+              size={12}
+              color={lead.isOverdue ? colors.critical : colors.textSecondary}
+            />
+            <Text style={[styles.dateText, lead.isOverdue && styles.overdueText]}>
+              {formatRelativeDateTimeLabel(new Date(lead.nextActionAt))}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </Animated.View>
   );
@@ -132,10 +168,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.xs,
     marginTop: 4,
   },
   dateText: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  overdueText: {
+    color: colors.critical,
   },
 });

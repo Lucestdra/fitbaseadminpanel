@@ -22,6 +22,7 @@ import * as membersApi from '@/api/members';
 import { ApiError } from '@/api/problem';
 import { MEMBERSHIP_STATE_LABELS } from '@/api/enums';
 import { formatIsoDateLabel } from '@/utils/date';
+import { initialsOf } from '@/utils/name';
 import { colors, spacing, typography, radii } from '@/theme';
 import type { MemberBody, MemberDetail } from '@/api/members';
 
@@ -379,16 +380,6 @@ function Field({ label, value }: { label: string; value: string | null }) {
       <Text style={[styles.fieldValue, !value && styles.fieldEmpty]}>{value ?? '—'}</Text>
     </View>
   );
-}
-
-function initialsOf(fullName: string): string {
-  return fullName
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toLocaleUpperCase('tr');
 }
 
 const styles = StyleSheet.create({
