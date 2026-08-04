@@ -1138,6 +1138,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Asks for a file. Renders inline under 2,000 rows, queues a job above it. */
+        post: operations["RequestFinanceExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/exports/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where an export stands, with a fresh download link once it is ready. */
+        get: operations["GetFinanceExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/members/{memberId}": {
         parameters: {
             query?: never;
@@ -2767,6 +2801,68 @@ export interface components {
         };
         /** @enum {unknown} */
         DayOfWeek: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+        ExportBody: {
+            /**
+             * @description What the file should be. `Xlsx` and `Pdf` are registered and refused with
+             *     `finance.export.format_unavailable` rather than served as CSV (ADR-0041).
+             */
+            format: components["schemas"]["ExportFormat"];
+            /**
+             * Format: date
+             * @description Inclusive, organization-local.
+             */
+            from: null | string;
+            /** @description Which report. */
+            kind: components["schemas"]["ExportKind"];
+            /**
+             * Format: uuid
+             * @description One member, when the export was asked for from their drawer.
+             */
+            memberId: null | string;
+            /**
+             * Format: date
+             * @description Inclusive.
+             */
+            to: null | string;
+        };
+        /**
+         * @description What an export file is.
+         * @enum {unknown}
+         */
+        ExportFormat: "Csv" | "Xlsx" | "Pdf";
+        /**
+         * @description Which report an export covers.
+         * @enum {unknown}
+         */
+        ExportKind: "Payments" | "Receivables";
+        /**
+         * @description Where an export request is in its life.
+         * @enum {unknown}
+         */
+        ExportStatus: "Queued" | "Running" | "Completed" | "Failed";
+        /** @description Where an export stands, and how to fetch it if it is ready. */
+        ExportTicket: {
+            /**
+             * Format: uri
+             * @description A short-lived pre-signed link, issued at read time and never stored. Null until the file exists.
+             */
+            downloadUrl: null | string;
+            /**
+             * Format: uuid
+             * @description Poll this while the status is `Queued` or `Running`.
+             */
+            exportId: string;
+            /**
+             * Format: int32
+             * @description How many rows the file has, or will have.
+             */
+            rowCount: number;
+            /**
+             * @description `Completed` immediately for anything at or under the synchronous cap; `Queued` above
+             *             it, because the work moved to a job (ADR-0041).
+             */
+            status: components["schemas"]["ExportStatus"];
+        };
         /** @description What a studio charged and collected over a period. */
         FinanceRangeReport: {
             /** @description Collected, split by how it arrived. Sums to decimal FinanceRangeReport.Collected. */
@@ -5587,6 +5683,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RequestFinanceExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportTicket"];
+                };
+            };
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportTicket"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetFinanceExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportTicket"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

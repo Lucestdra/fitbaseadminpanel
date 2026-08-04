@@ -7,6 +7,8 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
@@ -19,7 +21,7 @@ import type { FinanceRangeReport } from '@/api/finance';
 interface PaymentReportModalProps {
   visible: boolean;
   onClose: () => void;
-  onExport: () => void;
+  onNotify: (message: string) => void;
 }
 
 const WEEKDAY_LABELS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -49,12 +51,76 @@ function toIsoDay(pick: DatePick): string {
  * Every number here is computed server-side from the same expression the payments list and its
  * counters use (ADR-0033). Nothing on this screen adds anything up.
  */
-export function PaymentReportModal({ visible, onClose, onExport }: PaymentReportModalProps) {
+export function PaymentReportModal({ visible, onClose, onNotify }: PaymentReportModalProps) {
   const today = useMemo(() => new Date(), []);
   const [step, setStep] = useState<'range' | 'preview'>('range');
   const [report, setReport] = useState<FinanceRangeReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  /**
+   * Asks for a file, and waits for it when the server says it queued one.
+   *
+   * <b>Two shapes from one call.</b> At or under two thousand rows the server renders inline and
+   * hands back a link; above it the work moved to a job and this polls (ADR-0041). The client
+   * cannot know which side of the cap it is on before asking, so it handles both.
+   *
+   * This replaces `window.print()` and a toast claiming a PDF was downloading — the panel generated
+   * nothing and downloaded nothing.
+   */
+  const downloadExport = () => {
+    if (!start || !end || exporting) return;
+
+    setExporting(true);
+
+    void (async () => {
+      try {
+        let ticket = await financeApi.requestExport({
+          kind: 'Payments',
+          format: 'Csv',
+          from: toIsoDay(start),
+          to: toIsoDay(end),
+          memberId: null,
+        });
+
+        // Bounded, and it gives up rather than polling forever. A studio told "still working" after
+        // half a minute is better served by being told to check back than by a spinner that never
+        // resolves — the row is durable and the export is still coming.
+        for (let attempt = 0; attempt < 15 && ticket.status !== 'Completed'; attempt++) {
+          if (ticket.status === 'Failed') break;
+
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          ticket = await financeApi.getExport(ticket.exportId);
+        }
+
+        if (ticket.status === 'Failed') {
+          onNotify('Dosya hazırlanamadı. Tekrar dene.');
+          return;
+        }
+
+        if (ticket.status !== 'Completed' || !ticket.downloadUrl) {
+          onNotify('Dosya hazırlanıyor. Birazdan tekrar dene.');
+          return;
+        }
+
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          // The link is pre-signed and short-lived, so opening it is the download. Nothing is
+          // fetched into memory here: a year of payments is a file, not a string.
+          window.open(ticket.downloadUrl, '_blank', 'noopener');
+        } else {
+          await Linking.openURL(ticket.downloadUrl);
+        }
+
+        onNotify(`${ticket.rowCount} satır indiriliyor.`);
+        onClose();
+      } catch (error) {
+        onNotify(error instanceof Error ? error.message : 'Dosya indirilemedi.');
+      } finally {
+        setExporting(false);
+      }
+    })();
+  };
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [start, setStart] = useState<DatePick | null>(null);
@@ -323,13 +389,24 @@ export function PaymentReportModal({ visible, onClose, onExport }: PaymentReport
                   <Text style={styles.backLabel}>Tarihi Değiştir</Text>
                 </Pressable>
                 <Pressable
-                  onPress={onExport}
+                  onPress={downloadExport}
+                  disabled={exporting}
                   accessibilityRole="button"
-                  accessibilityLabel="PDF olarak indir"
-                  style={({ pressed }) => [styles.applyButton, pressed && styles.applyButtonPressed]}
+                  accessibilityLabel="CSV olarak indir"
+                  style={({ pressed }) => [
+                    styles.applyButton,
+                    exporting && styles.applyButtonDisabled,
+                    pressed && !exporting && styles.applyButtonPressed,
+                  ]}
                 >
                   <AppIcon name="download-outline" size={16} color={colors.white} />
-                  <Text style={styles.applyLabel}>PDF Olarak İndir</Text>
+
+                  {/* CSV, and the button says so. "PDF Olarak İndir" over a CSV would be the same
+                      lie in a smaller font — PDF is registered and refused until D24 is answered
+                      and a font is licensed (ADR-0041). */}
+                  <Text style={styles.applyLabel}>
+                    {exporting ? 'Hazırlanıyor...' : 'CSV Olarak İndir'}
+                  </Text>
                 </Pressable>
               </View>
             </>

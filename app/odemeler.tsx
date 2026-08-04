@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Platform, View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppShell } from '@/components/layout/AppShell';
 import { ListPageHeader } from '@/components/shared/ListPageHeader';
 import { SegmentedControl, type SegmentOption } from '@/components/ui/SegmentedControl';
@@ -114,16 +114,6 @@ export default function PaymentsScreen() {
   const reload = () => {
     payments.reload();
     receivables.reload();
-  };
-
-  const handleExportReport = () => {
-    // Print, until the async PDF export lands. Honest about what it is rather than a toast claiming
-    // a download that never happens, which is what the panel showed.
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.print();
-    }
-
-    setReportVisible(false);
   };
 
   const active = tab === 'payments' ? payments.status : receivables.status;
@@ -245,7 +235,7 @@ export default function PaymentsScreen() {
       <PaymentReportModal
         visible={reportVisible}
         onClose={() => setReportVisible(false)}
-        onExport={handleExportReport}
+        onNotify={show}
       />
 
       <PaymentFilterModal

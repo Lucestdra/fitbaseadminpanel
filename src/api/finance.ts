@@ -223,3 +223,42 @@ export async function refundPayment(
     }),
   );
 }
+
+export type ExportTicket = components['schemas']['ExportTicket'];
+export type ExportKind = components['schemas']['ExportKind'];
+export type ExportFormat = components['schemas']['ExportFormat'];
+export type ExportStatus = components['schemas']['ExportStatus'];
+
+/**
+ * Asks for a file of a report.
+ *
+ * <b>The answer is either a link or a ticket.</b> At or under two thousand rows the server renders
+ * inline and `status` comes back `Completed` with a `downloadUrl`; above it the work moved to a job,
+ * `status` is `Queued`, and the caller polls {@link getExport} (ADR-0041). One call, two shapes,
+ * because the client cannot know which side of the cap it is on before asking.
+ *
+ * `Xlsx` and `Pdf` are registered wire values with no renderer behind them and come back as
+ * `finance.export.format_unavailable` — refused by name rather than served as CSV.
+ */
+export async function requestExport(body: {
+  kind: NonNullable<ExportKind>;
+  format: NonNullable<ExportFormat>;
+  from: string | null;
+  to: string | null;
+  memberId: string | null;
+}): Promise<ExportTicket> {
+  return withAuth(() => client.POST('/api/v1/finance/exports', { body }));
+}
+
+/**
+ * Where an export stands.
+ *
+ * The download link is issued fresh on every read and never stored — a saved pre-signed URL is a
+ * dead link the day somebody clicks it, and a long-lived one is an unrevocable handle to a studio's
+ * revenue.
+ */
+export async function getExport(exportId: string): Promise<ExportTicket> {
+  return withAuth(() =>
+    client.GET('/api/v1/finance/exports/{exportId}', { params: { path: { exportId } } }),
+  );
+}
