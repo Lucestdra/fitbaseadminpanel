@@ -2285,6 +2285,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/{staffMemberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Changes a staff member's role, their status, or both. */
+        patch: operations["UpdateStaffMember"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5450,6 +5467,11 @@ export interface components {
              * @description The metric's value over those days, or null where nothing was rolled up.
              */
             value: null | number;
+        };
+        /** @description What a staff-member edit may change. */
+        UpdateStaffMemberBody: {
+            role: null | components["schemas"]["StaffRole"];
+            status: null | components["schemas"]["StaffStatus"];
         };
         VerifyEmailRequest: {
             /** @description The handle from the verification link. */
@@ -9295,6 +9317,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvitationResponse"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateStaffMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                staffMemberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStaffMemberBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberSummary"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

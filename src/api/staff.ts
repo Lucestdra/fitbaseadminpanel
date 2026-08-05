@@ -77,3 +77,28 @@ export async function revokeInvitation(invitationId: string): Promise<void> {
     }),
   );
 }
+
+export type UpdateStaffMemberBody = components['schemas']['UpdateStaffMemberBody'];
+
+/**
+ * Changes a staff member's role, their status, or both.
+ *
+ * <b>PATCH, and the partiality matters.</b> Marking a leaver changes one field; sending the whole
+ * row back would let a stale form silently reassert somebody's old role. An omitted field is left
+ * alone.
+ *
+ * The server refuses four cases this client does not attempt to pre-empt — the owner, yourself,
+ * somebody who has not accepted their invitation, and assigning `Invited` — and each comes back as
+ * its own `organizations.staff.*` code with a sentence to show.
+ */
+export async function updateStaffMember(
+  staffMemberId: string,
+  body: UpdateStaffMemberBody,
+): Promise<StaffMemberSummary> {
+  return withAuth(() =>
+    client.PATCH('/api/v1/staff/{staffMemberId}', {
+      params: { path: { staffMemberId } },
+      body,
+    }),
+  );
+}

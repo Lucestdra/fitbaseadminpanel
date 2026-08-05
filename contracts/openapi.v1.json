@@ -6075,6 +6075,38 @@
         ],
         "type": "object"
       },
+      "UpdateStaffMemberBody": {
+        "description": "What a staff-member edit may change.",
+        "properties": {
+          "role": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StaffRole",
+                "description": "The new role, or null to leave it as it is."
+              }
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StaffStatus",
+                "description": "The new status, or null to leave it as it is."
+              }
+            ]
+          }
+        },
+        "required": [
+          "role",
+          "status"
+        ],
+        "type": "object"
+      },
       "VerifyEmailRequest": {
         "properties": {
           "token": {
@@ -12537,6 +12569,73 @@
           }
         ],
         "summary": "Issues a fresh link, invalidating the previous one.",
+        "tags": [
+          "Staff"
+        ]
+      }
+    },
+    "/api/v1/staff/{staffMemberId}": {
+      "patch": {
+        "operationId": "UpdateStaffMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "staffMemberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffMemberBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMemberSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Changes a staff member's role, their status, or both.",
         "tags": [
           "Staff"
         ]

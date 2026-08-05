@@ -8,6 +8,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Badge } from '@/components/ui/Badge';
 import { TeamTable } from '@/components/team/TeamTable';
 import { InviteStaffMemberModal } from '@/components/team/InviteStaffMemberModal';
+import { EditStaffMemberModal } from '@/components/team/EditStaffMemberModal';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -16,7 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, spacing, typography } from '@/theme';
 import { formatIsoDateLabel, localDateOf } from '@/utils/date';
 import { ROLE_META } from '@/utils/staff';
-import type { InviteStaffMemberBody } from '@/api/staff';
+import type { InviteStaffMemberBody, StaffMemberSummary, UpdateStaffMemberBody } from '@/api/staff';
 import type { KpiItem } from '@/types/dashboard';
 
 /**
@@ -31,17 +32,24 @@ import type { KpiItem } from '@/types/dashboard';
  * `analytics.reports.read` (ADR-0038); showing it here would have reopened the leak the dashboard's
  * trainer card just had closed.
  *
- * <b>There is no edit path, and its absence is deliberate rather than pending.</b> No staff-update
- * endpoint exists, so a row that opened an editor would be an editor whose Save could not save.
+ * <b>The edit path is the server's four refusals, surfaced.</b> The owner cannot be demoted, nobody
+ * may change their own role, somebody who has not accepted their invitation cannot be edited, and
+ * `Invited` is not assignable — each with its own code and its own sentence. This screen sends the
+ * change and renders whichever comes back rather than reimplementing the rules.
  */
 export default function TeamScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const [search, setSearch] = useState('');
   const [inviteVisible, setInviteVisible] = useState(false);
+  const [editing, setEditing] = useState<StaffMemberSummary | null>(null);
   const { message, visible, show } = useToast();
 
-  const { timeZoneId } = useAuth();
-  const { roster, invitations, status, invite, resend, revoke } = useTeam();
+  const { timeZoneId, permissions } = useAuth();
+
+  // Server-resolved, never a role comparison. A caller without it gets a list rather than a
+  // disabled button — the same information, without inviting a click that ends in a 403.
+  const canManage = permissions['organizations.staff.manage'] !== undefined;
+  const { roster, invitations, status, invite, update, resend, revoke } = useTeam();
 
   const filteredMembers = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('tr');
@@ -100,6 +108,13 @@ export default function TeamScreen() {
     show(`${body.fullName} davet edildi. E-postasına bağlantı gönderildi.`);
   };
 
+  const handleUpdate = async (staffMemberId: string, body: UpdateStaffMemberBody) => {
+    await update(staffMemberId, body);
+
+    const name = roster.find((member) => member.id === staffMemberId)?.fullName ?? 'Ekip üyesi';
+    show(`${name} güncellendi.`);
+  };
+
   return (
     <AppShell activeId="team">
       <ListPageHeader
@@ -108,9 +123,9 @@ export default function TeamScreen() {
         searchPlaceholder="Ara (isim, rol...)"
         searchValue={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Ekibe Davet Et"
+        primaryActionLabel={canManage ? 'Ekibe Davet Et' : undefined}
         primaryActionIcon="add"
-        onPrimaryAction={() => setInviteVisible(true)}
+        onPrimaryAction={canManage ? () => setInviteVisible(true) : undefined}
       />
 
       {status === 'error' ? (
@@ -188,12 +203,22 @@ export default function TeamScreen() {
         </Card>
       ) : null}
 
-      <TeamTable members={filteredMembers} />
+      <TeamTable
+        members={filteredMembers}
+        onMemberPress={canManage ? setEditing : undefined}
+      />
 
       <InviteStaffMemberModal
         visible={inviteVisible}
         onClose={() => setInviteVisible(false)}
         onInvite={handleInvite}
+      />
+
+      <EditStaffMemberModal
+        key={editing?.id ?? 'none'}
+        member={editing}
+        onClose={() => setEditing(null)}
+        onSave={handleUpdate}
       />
 
       <Toast message={message} visible={visible} />

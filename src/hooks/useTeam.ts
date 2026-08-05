@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as staffApi from '@/api/staff';
 import { useAuth } from '@/context/AuthContext';
-import type { InviteStaffMemberBody, PendingInvitation, StaffMemberSummary } from '@/api/staff';
+import type {
+  InviteStaffMemberBody,
+  PendingInvitation,
+  StaffMemberSummary,
+  UpdateStaffMemberBody,
+} from '@/api/staff';
 
 export interface TeamState {
   /** Everyone on the roster, including people who have left and people not yet accepted. */
@@ -25,6 +30,7 @@ export interface TeamState {
  */
 export function useTeam(): TeamState & {
   invite: (body: InviteStaffMemberBody) => Promise<void>;
+  update: (staffMemberId: string, body: UpdateStaffMemberBody) => Promise<void>;
   resend: (invitationId: string) => Promise<void>;
   revoke: (invitationId: string) => Promise<void>;
 } {
@@ -88,6 +94,14 @@ export function useTeam(): TeamState & {
     [reload],
   );
 
+  const update = useCallback(
+    async (staffMemberId: string, body: UpdateStaffMemberBody) => {
+      await staffApi.updateStaffMember(staffMemberId, body);
+      reload();
+    },
+    [reload],
+  );
+
   const revoke = useCallback(
     async (invitationId: string) => {
       await staffApi.revokeInvitation(invitationId);
@@ -96,5 +110,5 @@ export function useTeam(): TeamState & {
     [reload],
   );
 
-  return { ...state, invite, resend, revoke };
+  return { ...state, invite, update, resend, revoke };
 }

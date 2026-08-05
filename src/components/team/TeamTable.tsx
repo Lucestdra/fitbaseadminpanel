@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -9,6 +9,8 @@ import type { StaffMemberSummary } from '@/api/staff';
 
 interface TeamTableProps {
   members: StaffMemberSummary[];
+  /** Opens the edit sheet. Omitted for a caller without `organizations.staff.manage`. */
+  onMemberPress?: (member: StaffMemberSummary) => void;
 }
 
 /**
@@ -20,10 +22,11 @@ interface TeamTableProps {
  * (ADR-0038). Showing it here would have re-opened the leak the dashboard's trainer card just had
  * closed.
  *
- * <b>Not pressable.</b> There is no staff-update endpoint, so a row that opened an editor would be
- * an editor whose Save button could not save.
+ * A row opens the edit sheet only when `onMemberPress` is supplied. A caller who cannot manage
+ * staff gets a list rather than a disabled button — the two are the same information and only one
+ * of them invites a click that goes nowhere.
  */
-export function TeamTable({ members }: TeamTableProps) {
+export function TeamTable({ members, onMemberPress }: TeamTableProps) {
   const { isMobile } = useResponsiveLayout();
 
   if (members.length === 0) {
@@ -42,7 +45,14 @@ export function TeamTable({ members }: TeamTableProps) {
           const status = STATUS_META[member.status];
 
           return (
-            <Card key={member.id} style={styles.mobileCard}>
+            <Pressable
+              key={member.id}
+              disabled={!onMemberPress}
+              onPress={() => onMemberPress?.(member)}
+              accessibilityRole={onMemberPress ? 'button' : undefined}
+              accessibilityLabel={onMemberPress ? `${member.fullName} düzenle` : undefined}
+            >
+              <Card style={styles.mobileCard}>
               <View style={styles.mobileHeaderRow}>
                 <Avatar initials={initialsOf(member.fullName)} />
                 <View style={styles.mobileNameGroup}>
@@ -55,7 +65,8 @@ export function TeamTable({ members }: TeamTableProps) {
                 </View>
                 <Badge label={status.label} tone={status.tone} />
               </View>
-            </Card>
+              </Card>
+            </Pressable>
           );
         })}
       </View>
@@ -75,9 +86,17 @@ export function TeamTable({ members }: TeamTableProps) {
         const status = STATUS_META[member.status];
 
         return (
-          <View
+          <Pressable
             key={member.id}
-            style={[styles.row, index === members.length - 1 && styles.rowLast]}
+            disabled={!onMemberPress}
+            onPress={() => onMemberPress?.(member)}
+            accessibilityRole={onMemberPress ? 'button' : undefined}
+            accessibilityLabel={onMemberPress ? `${member.fullName} düzenle` : undefined}
+            style={({ pressed }) => [
+              styles.row,
+              index === members.length - 1 && styles.rowLast,
+              pressed && onMemberPress && styles.rowPressed,
+            ]}
           >
             <View style={[styles.nameCell, columnStyles.name]}>
               <Avatar initials={initialsOf(member.fullName)} />
@@ -93,7 +112,7 @@ export function TeamTable({ members }: TeamTableProps) {
             <View style={columnStyles.status}>
               <Badge label={status.label} tone={status.tone} />
             </View>
-          </View>
+          </Pressable>
         );
       })}
     </Card>
@@ -132,6 +151,9 @@ const styles = StyleSheet.create({
   },
   rowLast: {
     borderBottomWidth: 0,
+  },
+  rowPressed: {
+    backgroundColor: colors.pageBackground,
   },
   nameCell: {
     flexDirection: 'row',
