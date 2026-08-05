@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import * as sessionApi from '@/api/session';
 import { canAccess } from '@/utils/permissions';
 import { colors, radii, spacing, typography } from '@/theme';
-import { navItems, currentStudio } from '@/mock/navigation';
+import { navItems } from '@/config/navigation';
 import type { NavItem } from '@/types/navigation';
 
 interface StudioSidebarProps {
@@ -63,7 +63,7 @@ function SidebarNavItem({
 export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggleCollapse }: StudioSidebarProps) {
   const router = useRouter();
   const { message, visible, show } = useToast();
-  const { user, studioName, roleLabel, allowedNavIds, signOut, refresh } = useAuth();
+  const { user, studioName, studioAddress, roleLabel, allowedNavIds, signOut, refresh } = useAuth();
 
   /**
    * Saves the caller's own name and re-reads the session.
@@ -138,7 +138,14 @@ export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggl
           {!collapsed && (
             <View style={styles.footerTextGroup}>
               <Text style={styles.footerTitle} numberOfLines={1}>{studioName}</Text>
-              <Text style={styles.footerSubtitle} numberOfLines={1}>{currentStudio.location}</Text>
+              {/*
+                Rendered only when the studio has entered one. The previous version printed a
+                hard-coded city under every studio's name; a blank line is the honest answer for a
+                studio that has not filled in its address, and the placeholder was not.
+              */}
+              {studioAddress.length > 0 && (
+                <Text style={styles.footerSubtitle} numberOfLines={1}>{studioAddress}</Text>
+              )}
             </View>
           )}
         </View>

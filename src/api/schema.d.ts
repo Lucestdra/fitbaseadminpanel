@@ -3770,6 +3770,12 @@ export interface components {
             route: string;
         };
         MeOrganization: {
+            /**
+             * @description Free text, null until the studio enters one. The third and last of the duplicated identities
+             *     this response exists to collapse: the sidebar printed a hard-coded city under every studio's
+             *     name. Null is rendered as nothing, never as a placeholder.
+             */
+            address: null | string;
             /** @description ISO 4217. */
             currency: string;
             /**

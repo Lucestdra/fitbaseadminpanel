@@ -36,6 +36,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The Phase 2 exit gate, kept honest. Three mock files remain and two screens may read them;
+      # a third screen reaching for one is a screen that looks finished and is not, and nothing
+      # else in this pipeline can tell the difference.
+      - name: No unexpected mock imports
+        run: npm run check:mocks
+
       # The committed types must be what the committed contract generates. Catches two things a
       # typecheck cannot: a hand-edit to src/api/schema.d.ts, and a contract synced from the
       # backend without regenerating — which would leave the app compiling against an API shape

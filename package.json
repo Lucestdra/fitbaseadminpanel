@@ -33,6 +33,7 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "check:mocks": "node scripts/check-mock-imports.mjs",
     "api:sync": "node scripts/sync-contract.mjs",
     "api:generate": "openapi-typescript contracts/openapi.v1.json -o src/api/schema.d.ts"
   },

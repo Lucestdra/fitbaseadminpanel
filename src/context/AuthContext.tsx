@@ -26,6 +26,16 @@ interface AuthContextValue {
   studioName: string;
 
   /**
+   * The studio's address, as the studio typed it into Ayarlar.
+   *
+   * Empty when unset, and callers render nothing rather than a placeholder. The line this replaced
+   * was a hard-coded `'Kadıköy, İstanbul'` in the old `mock/navigation.ts`, under every studio's name
+   * — the last of the three duplicated studio identities, and the only one that was wrong rather
+   * than merely repeated.
+   */
+  studioAddress: string;
+
+  /**
    * The studio's IANA zone.
    *
    * <b>Not the device's.</b> "Today" is an organization-local question — a member joined today,
@@ -131,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       user: me ? toAuthUser(me) : null,
       studioName: me?.organization.name ?? '',
+      studioAddress: me?.organization.address ?? '',
       timeZoneId: me?.organization.timeZoneId ?? '',
       roleLabel: me ? ROLE_LABEL[me.staffMember.role] : '',
       allowedNavIds: navigation.map((entry) => entry.id),

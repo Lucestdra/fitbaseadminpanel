@@ -2745,6 +2745,13 @@
       },
       "MeOrganization": {
         "properties": {
+          "address": {
+            "description": "Free text, null until the studio enters one. The third and last of the duplicated identities\r\nthis response exists to collapse: the sidebar printed a hard-coded city under every studio's\r\nname. Null is rendered as nothing, never as a placeholder.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "currency": {
             "description": "ISO 4217.",
             "type": "string"
@@ -2777,7 +2784,8 @@
           "timeZoneId",
           "locale",
           "currency",
-          "weekStartDay"
+          "weekStartDay",
+          "address"
         ],
         "type": "object"
       },
