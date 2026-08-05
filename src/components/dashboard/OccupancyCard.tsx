@@ -2,13 +2,16 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { TrendChart } from '@/components/reports/TrendChart';
 import { colors, spacing, typography } from '@/theme';
 import { absentLabel, formatMetric, metricLabel } from '@/utils/metrics';
 import { METRIC, metric as findMetric } from '@/api/analytics';
-import type { MetricValue } from '@/api/analytics';
+import type { MetricValue, TrendPoint } from '@/api/analytics';
 
 interface OccupancyCardProps {
   metrics: MetricValue[];
+  /** One point per day in the window, oldest first. Empty under `Own` scope. */
+  trend: TrendPoint[];
 }
 
 const ROWS: { id: string; color: string }[] = [
@@ -26,12 +29,19 @@ const ROWS: { id: string; color: string }[] = [
  * rather than derived from `1 − attendanceRate` here, so the two cannot disagree by a rounding step
  * on the same screen.
  *
- * <b>What this is not: the panel's seven-day line chart.</b> That needed a per-day occupancy series,
- * and no endpoint returns one — the fact tables hold it, but `GET /analytics/dashboard` answers for
- * a window rather than for each day inside it. Rendering seven fabricated points would have been the
- * easier change and is exactly what this phase exists to stop. A daily series is a new endpoint.
+ * <b>The line above the rates is the daily series</b>, which `GET /analytics/dashboard` now returns
+ * as `occupancyTrend`: one point per day in the window, and `null` where there is no answer. The
+ * panel's original seven-day chart was seven hardcoded numbers; this one is the same metric as the
+ * bar beneath it, read per day instead of per window (backend ADR-0070).
+ *
+ * <b>A gap is not a zero.</b> A Sunday the studio was closed and a night the rollup did not run both
+ * arrive as null and both break the line. Plotting either as zero would tell a studio it had a
+ * catastrophe every weekend — `TrendChart` handles that and this card does not second-guess it.
+ *
+ * The chart is hidden below two points, because a line through one point is a dot pretending to be a
+ * trend. That is also what a `Day` window produces, and a day is not a series.
  */
-export function OccupancyCard({ metrics }: OccupancyCardProps) {
+export function OccupancyCard({ metrics, trend }: OccupancyCardProps) {
   const visible = ROWS.map((row) => ({ ...row, metric: findMetric(metrics, row.id) })).filter(
     (row): row is (typeof ROWS)[number] & { metric: MetricValue } => row.metric !== undefined,
   );
@@ -49,6 +59,21 @@ export function OccupancyCard({ metrics }: OccupancyCardProps) {
             : `${metricLabel(METRIC.sessionsHeld)}: ${formatMetric(sessions)}`}
         </Text>
       ) : null}
+
+      {trend.length > 1 && (
+        <TrendChart
+          series={[
+            {
+              points: trend,
+              color: colors.primary,
+              label: metricLabel(METRIC.bookedOccupancyRate),
+              // The wire carries 0..1 and the axis is a percentage. Converted here, at the one edge
+              // that renders it, matching every other chart in the panel.
+              format: (value) => `%${Math.round(value * 100)}`,
+            },
+          ]}
+        />
+      )}
 
       <View style={styles.rows}>
         {visible.map((row) => {

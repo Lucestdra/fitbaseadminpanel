@@ -54,6 +54,10 @@ export default function OverviewScreen() {
   const kpiBasis = isMobile ? '47%' : isTablet ? '31%' : '15.2%';
 
   const metrics = view?.metrics ?? [];
+
+  // Empty under Own scope, and empty for a Day window — one point is not a line. The card decides
+  // whether to draw it; this screen only passes it on.
+  const occupancyTrend = view?.occupancyTrend ?? [];
   const tiles = TILES.map((tile) => ({
     ...tile,
     metric: metrics.find((entry) => entry.id === tile.id),
@@ -134,7 +138,7 @@ export default function OverviewScreen() {
       {isMobile ? (
         <View style={styles.stack}>
           {!isOwnScope && <CollectionStatusCard metrics={metrics} />}
-          <OccupancyCard metrics={metrics} />
+          <OccupancyCard metrics={metrics} trend={occupancyTrend} />
           <QuickActionsCard onActionPress={handleQuickAction} />
         </View>
       ) : (
@@ -142,7 +146,7 @@ export default function OverviewScreen() {
           {!isOwnScope && (
             <View style={styles.flex29}><CollectionStatusCard metrics={metrics} /></View>
           )}
-          <View style={styles.flex29}><OccupancyCard metrics={metrics} /></View>
+          <View style={styles.flex29}><OccupancyCard metrics={metrics} trend={occupancyTrend} /></View>
           <View style={styles.flex21}><QuickActionsCard onActionPress={handleQuickAction} /></View>
         </View>
       )}

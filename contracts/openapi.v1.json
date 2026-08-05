@@ -1192,6 +1192,13 @@
             },
             "type": "array"
           },
+          "occupancyTrend": {
+            "description": "Booked occupancy for each day in the window, oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "type": "array"
+          },
           "scope": {
             "description": "`All` or `Own`, resolved from the caller's permission and echoed so the client can say\r\n        whose numbers these are rather than implying they are the studio's.",
             "type": "string"
@@ -1205,7 +1212,8 @@
           "window",
           "scope",
           "metrics",
-          "funnel"
+          "funnel",
+          "occupancyTrend"
         ],
         "type": "object"
       },

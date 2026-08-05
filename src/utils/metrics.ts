@@ -141,6 +141,12 @@ export function trendLabel(from: string, through: string): string {
 
   const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
+  // A point covering one day is named by the day. Without this, every point of the daily occupancy
+  // series falls into the month branch below and a month of them reads "Haz" thirty times.
+  if (from === through) {
+    return `${start.getUTCDate()} ${months[start.getUTCMonth()]}`;
+  }
+
   // A span inside one month is named by the month; one crossing a boundary is named by both ends,
   // because "Şub" for 28 January to 27 February would be wrong twice over.
   if (start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear()) {

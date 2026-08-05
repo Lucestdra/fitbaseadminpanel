@@ -2965,6 +2965,8 @@ export interface components {
              *     null</b> — a null would tell them it exists.
              */
             metrics: components["schemas"]["MetricValue"][];
+            /** @description Booked occupancy for each day in the window, oldest first. */
+            occupancyTrend: components["schemas"]["TrendPoint"][];
             /**
              * @description `All` or `Own`, resolved from the caller's permission and echoed so the client can say
              *             whose numbers these are rather than implying they are the studio's.
