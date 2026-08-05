@@ -153,3 +153,22 @@ export async function acceptInvitation(input: {
 export async function fetchMe(): Promise<MeResponse> {
   return withAuth(() => client.GET('/api/v1/me', {}));
 }
+
+export type UpdateMyProfileBody = components['schemas']['UpdateMyProfileBody'];
+export type StaffMemberSummary = components['schemas']['StaffMemberSummary'];
+
+/**
+ * The caller's own name and phone number.
+ *
+ * <b>No id, and that is the design.</b> The row is resolved from the authenticated principal, so
+ * there is nothing in this call that could name somebody else — "edit yourself" is unforgeable
+ * rather than checked.
+ *
+ * Email is deliberately absent: changing the address somebody signs in with has to prove they still
+ * hold the new one, which is a verification flow rather than a field on a form. Role and status are
+ * absent for a sharper reason — they belong to `organizations.staff.manage`, which refuses a caller
+ * editing their own, and accepting them here would be that escalation path with a friendlier name.
+ */
+export async function updateMyProfile(body: UpdateMyProfileBody): Promise<StaffMemberSummary> {
+  return withAuth(() => client.PATCH('/api/v1/me/profile', { body }));
+}

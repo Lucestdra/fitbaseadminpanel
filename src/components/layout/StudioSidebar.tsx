@@ -8,6 +8,7 @@ import { Toast } from '@/components/ui/Toast';
 import { UserProfileModal } from '@/components/layout/UserProfileModal';
 import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/context/AuthContext';
+import * as sessionApi from '@/api/session';
 import { canAccess } from '@/utils/permissions';
 import { colors, radii, spacing, typography } from '@/theme';
 import { navItems, currentStudio } from '@/mock/navigation';
@@ -62,7 +63,20 @@ function SidebarNavItem({
 export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggleCollapse }: StudioSidebarProps) {
   const router = useRouter();
   const { message, visible, show } = useToast();
-  const { user, studioName, roleLabel, allowedNavIds, signOut } = useAuth();
+  const { user, studioName, roleLabel, allowedNavIds, signOut, refresh } = useAuth();
+
+  /**
+   * Saves the caller's own name and re-reads the session.
+   *
+   * The refresh is what puts the new name in the sidebar and everywhere else that reads it.
+   * Patching `user` locally would leave the avatar initials, the sidebar and `/me` disagreeing
+   * until the next reload — which is the shape of the bug this whole change removes.
+   */
+  const handleProfileSave = async (fullName: string) => {
+    await sessionApi.updateMyProfile({ fullName, phoneNumber: null });
+    await refresh();
+    show('Profilin güncellendi.');
+  };
   const [profileModalVisible, setProfileModalVisible] = useState(false);
 
   if (!user) return null;
@@ -161,10 +175,7 @@ export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggl
         user={user}
         roleLabel={roleLabel}
         onClose={() => setProfileModalVisible(false)}
-        // Read-only until the settings surface ships (Phase 2.1). There is no endpoint behind
-        // this yet, and a modal that said "Profil güncellendi" while changing nothing on the
-        // server — and losing the edit on the next reload — would be worse than not offering it.
-        onSave={() => show('Profil düzenleme yakında eklenecek.')}
+        onSave={handleProfileSave}
       />
 
       <Toast message={message} visible={visible} />

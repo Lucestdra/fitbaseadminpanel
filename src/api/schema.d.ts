@@ -1549,6 +1549,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** The caller's own name and phone number. Not their email, role or status. */
+        patch: operations["UpdateMyProfile"];
+        trace?: never;
+    };
     "/api/v1/members": {
         parameters: {
             query?: never;
@@ -5468,6 +5485,13 @@ export interface components {
              */
             value: null | number;
         };
+        /** @description What a caller may change about themselves. */
+        UpdateMyProfileBody: {
+            /** @description Required. */
+            fullName: string;
+            /** @description Optional. Blank clears it. */
+            phoneNumber: null | string;
+        };
         /** @description What a staff-member edit may change. */
         UpdateStaffMemberBody: {
             role: null | components["schemas"]["StaffRole"];
@@ -7341,6 +7365,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyProfileBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberSummary"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

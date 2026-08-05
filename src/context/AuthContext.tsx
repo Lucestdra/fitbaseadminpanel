@@ -11,6 +11,7 @@ import * as api from '@/api/session';
 import { refreshSession, setSessionLostHandler } from '@/api/client';
 import { clearTokens } from '@/api/tokens';
 import { ROLE_LABEL, type AuthUser } from '@/types/auth';
+import { initialsOf } from '@/utils/name';
 
 /** Where the bootstrap got to. Rendering the tree before this settles is what causes a flash. */
 export type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
@@ -161,16 +162,6 @@ function toAuthUser(me: api.MeResponse): AuthUser {
     avatarInitials: initialsOf(me.staffMember.fullName),
     email: me.user.email,
   };
-}
-
-function initialsOf(fullName: string): string {
-  return fullName
-    .trim()
-    .split(/\s+/)
-    .map((part) => part[0] ?? '')
-    .join('')
-    .slice(0, 2)
-    .toLocaleUpperCase('tr');
 }
 
 export function useAuth(): AuthContextValue {

@@ -4,7 +4,8 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { colors, spacing, typography } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { ROLE_META, STATUS_META, initialsOf } from '@/utils/staff';
+import { ROLE_META, STATUS_META } from '@/utils/staff';
+import { initialsOf } from '@/utils/name';
 import type { StaffMemberSummary } from '@/api/staff';
 
 interface TeamTableProps {

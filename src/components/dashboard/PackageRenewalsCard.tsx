@@ -8,18 +8,9 @@ import { Badge } from '@/components/ui/Badge';
 import { colors, spacing, typography } from '@/theme';
 import { formatIsoDateLabel } from '@/utils/date';
 import { RENEWAL_HORIZON_DAYS, useRenewals } from '@/hooks/useDashboardPanels';
+import { initialsOf } from '@/utils/name';
 
 const URGENT_THRESHOLD_DAYS = 7;
-
-/** Initials from a full name, for the avatar. Two words at most; a third adds nothing. */
-function initialsOf(fullName: string): string {
-  return fullName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toLocaleUpperCase('tr-TR') ?? '')
-    .join('');
-}
 
 /**
  * Who is due to renew.
