@@ -1,4 +1,4 @@
-import { TURKISH_MONTHS, fromIsoDate, toIsoDate } from './date';
+import { TURKISH_MONTHS, fromIsoDate, toIsoDate, todayIn } from './date';
 
 /**
  * The clock time an instant falls on, where the studio is.
@@ -267,10 +267,21 @@ export function toInstant(isoDate: string, time: string, timeZoneId: string): st
  * <b>Next, never today.</b> A consultant booking a Tuesday meeting on a Tuesday afternoon means the
  * following week — scheduling it into an hour that has already passed would put a trial lesson in
  * the past, and nothing downstream would flag it.
+ *
+ * <b>Which day it is "today" is the studio's question, not the device's.</b> The whole function
+ * already takes `timeZoneId` to place the result, and used to count forward from the laptop's
+ * weekday — so a consultant whose device had rolled over to Tuesday while the studio was still on
+ * Monday booked a week late. It is the same mistake the backend was making in the other direction
+ * (ADR-0069), and worth fixing here even though nothing calls this yet: the next caller would
+ * inherit it silently.
  */
 export function nextWeekdayInstant(weekdayId: string, time: string, timeZoneId: string): string {
   const target = WEEKDAY_INDEX[weekdayId] ?? 1;
-  const today = new Date();
+
+  // Parsed back as a local date so the arithmetic below is calendar arithmetic, not clock
+  // arithmetic — `setDate` past the end of a month rolls over correctly and DST cannot shorten a
+  // day out from under it.
+  const today = fromIsoDate(todayIn(timeZoneId)) ?? new Date();
   const delta = ((target - today.getDay() + 7) % 7) || 7;
 
   const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + delta);
