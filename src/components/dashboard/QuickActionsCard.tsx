@@ -5,8 +5,21 @@ import { AppIcon } from '@/components/ui/AppIcon';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 import { colors, spacing, typography, radii } from '@/theme';
-import { quickActions } from '@/mock/dashboard';
 import type { QuickAction } from '@/types/dashboard';
+
+/**
+ * Shortcuts to screens that exist.
+ *
+ * A constant rather than a mock import: these are navigation targets, not data. Every one routes
+ * somewhere real — the two that only ever raised a toast saying "yakında" are gone, because a
+ * button that does nothing teaches a studio the product is unreliable rather than unfinished.
+ */
+const quickActions: QuickAction[] = [
+  { id: 'qa-new-member', label: 'Yeni Üye Ekle', icon: 'person-add-outline', toastMessage: '' },
+  { id: 'qa-plan-trial', label: 'Deneme Planla', icon: 'sparkles-outline', toastMessage: '' },
+  { id: 'qa-record-payment', label: 'Ödeme Kaydet', icon: 'card-outline', toastMessage: '' },
+  { id: 'qa-create-class', label: 'Ders Oluştur', icon: 'add-circle-outline', toastMessage: '' },
+];
 
 interface QuickActionsCardProps {
   onActionPress?: (action: QuickAction) => void;

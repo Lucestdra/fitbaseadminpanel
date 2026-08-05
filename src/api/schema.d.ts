@@ -321,6 +321,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Studio tiles and the lead funnel, or a coach's own teaching at Own scope. */
+        get: operations["GetDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trends, trainer attribution and class occupancy over a window. */
+        get: operations["GetReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -2314,6 +2348,36 @@ export interface components {
             /** @description Whether that finished it. */
             settled: boolean;
         };
+        /**
+         * @description The windows a caller may ask for.
+         * @enum {unknown}
+         */
+        AnalyticsPeriod: "Today" | "Week" | "Month";
+        /** @description The days a value covers, and what it is being compared against. */
+        AnalyticsWindow: {
+            /**
+             * Format: date
+             * @description First day of the comparison window, inclusive.
+             */
+            comparisonFrom: string;
+            /**
+             * Format: date
+             * @description Last day of the comparison window, inclusive.
+             */
+            comparisonThrough: string;
+            /**
+             * Format: date
+             * @description First organization-local day, inclusive.
+             */
+            from: string;
+            /** @description Which window was asked for. */
+            period: components["schemas"]["AnalyticsPeriod"];
+            /**
+             * Format: date
+             * @description Last organization-local day, inclusive.
+             */
+            through: string;
+        };
         AttendanceBody: {
             /** @description The whole register in one request, not one call per member. */
             entries: components["schemas"]["AttendanceEntryBody"][];
@@ -2735,6 +2799,13 @@ export interface components {
             /** @description Required. */
             name: string;
         };
+        /** @description One class definition's row on the report. */
+        ClassRow: {
+            /** Format: uuid */
+            classDefinitionId: string;
+            metrics: components["schemas"]["MetricValue"][];
+            name: string;
+        };
         ClassSlotSummary: {
             /**
              * Format: date
@@ -2850,6 +2921,23 @@ export interface components {
              * @description Inclusive.
              */
             startsOn: string;
+        };
+        /** @description The dashboard. */
+        DashboardView: {
+            /** @description The lead funnel for the window's cohort, or empty at `Own` scope. */
+            funnel: components["schemas"]["FunnelStage"][];
+            /**
+             * @description The tiles the caller may see. <b>A metric the caller lacks the permission for is absent, not
+             *     null</b> — a null would tell them it exists.
+             */
+            metrics: components["schemas"]["MetricValue"][];
+            /**
+             * @description `All` or `Own`, resolved from the caller's permission and echoed so the client can say
+             *             whose numbers these are rather than implying they are the studio's.
+             */
+            scope: string;
+            /** @description The days covered and the days compared against. */
+            window: components["schemas"]["AnalyticsWindow"];
         };
         /** @enum {unknown} */
         DayOfWeek: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
@@ -3026,6 +3114,27 @@ export interface components {
              */
             startsOn: string;
         };
+        /** @description One stage of the lead funnel, for the cohort that entered in the window. */
+        FunnelStage: {
+            /**
+             * Format: int32
+             * @description Leads in the cohort that have ever reached this stage.
+             */
+            count: number;
+            /** @description The studio's own name for it, for display. */
+            label: string;
+            /**
+             * @description The role, not the label and not the entry id (ADR-0028). A studio renaming a stage has renamed a
+             *     column, not changed its funnel.
+             */
+            semanticRole: string;
+            /**
+             * Format: double
+             * @description The count over the cohort size, in `0..1`, rounded by largest remainder so the column
+             *     does not fail to sum through rounding alone.
+             */
+            share: number;
+        };
         /**
          * @description What granting a gift actually does.
          * @enum {unknown}
@@ -3140,6 +3249,11 @@ export interface components {
          * @enum {unknown}
          */
         InstallmentStatus: "Pending" | "Settled" | "Cancelled";
+        /**
+         * @description Why a metric has no number rather than a number of zero.
+         * @enum {unknown}
+         */
+        InsufficientDataReason: "None" | "TooFewObservations" | "NoPriorPeriod" | "NotRolledUp";
         /**
          * @description How an acceptance ended.
          * @enum {unknown}
@@ -4005,6 +4119,65 @@ export interface components {
             count: number;
             /** @description How the money arrived. */
             method: components["schemas"]["PaymentMethod"];
+        };
+        /** @description How a value moved against the comparison window. */
+        MetricComparison: {
+            /**
+             * @description What it is being compared against, as a wire token the client turns into words — `previousDay`,
+             *     `previousWeek`, `previousMonthToDate`. <b>Not a Turkish phrase</b>: the panel shipped
+             *     "vs geçen ay" baked into the value string, so the number and its comparison could not be
+             *     formatted, sorted or translated apart.
+             */
+            basis: string;
+            /**
+             * Format: double
+             * @description Absolute difference, in the metric's own unit. A ratio's change is in ratio points.
+             */
+            change: number;
+            /**
+             * Format: double
+             * @description Relative difference, or `null` when the previous value was zero.
+             */
+            changeRatio: null | number;
+            /**
+             * Format: double
+             * @description The comparison window's value, or null when there is none.
+             */
+            previousValue: null | number;
+        };
+        /**
+         * @description Which direction is good.
+         * @enum {unknown}
+         */
+        MetricPolarity: "Neutral" | "HigherIsBetter" | "LowerIsBetter";
+        /**
+         * @description What the number is, so a client knows how to render it.
+         * @enum {unknown}
+         */
+        MetricUnit: "Count" | "Money" | "Ratio";
+        /** @description One number, with everything needed to render it honestly. */
+        MetricValue: {
+            comparison: null | components["schemas"]["MetricComparison"];
+            /** @description The register id. */
+            id: string;
+            /** @description Why there is no number. InsufficientDataReason.None when there is one. */
+            insufficientData: components["schemas"]["InsufficientDataReason"];
+            /**
+             * @description The value is knowably incomplete and will move — a churn cohort inside its 30-day grace
+             *     (ADR-0037), an attribution whose unlimited term has not closed (ADR-0066). Always wrong in a
+             *     stated direction, never in an unknown one.
+             */
+            isProvisional: boolean;
+            /** @description From the register. Server-owned (ADR-0065). */
+            polarity: components["schemas"]["MetricPolarity"];
+            /** @description From the register. */
+            unit: components["schemas"]["MetricUnit"];
+            /**
+             * Format: double
+             * @description The number, or `null` when InsufficientData says why there
+             *     isn't one.
+             */
+            value: null | number;
         };
         MoveStageBody: {
             /** @description Optional. Recorded on the transition. */
@@ -4924,6 +5097,29 @@ export interface components {
             /** @description Every entry in the catalog, exactly once, in the new order. */
             orderedEntryIds: string[];
         };
+        /** @description The reports screen. */
+        ReportView: {
+            /**
+             * Format: double
+             * @description Studio revenue in the window that no coach's `SessionShare` accounts for — a member who paid
+             *     and never attended, or attended with nothing covering the day.
+             */
+            attributionResidual: number;
+            /** @description One row per class definition with sessions in the window. */
+            classes: components["schemas"]["ClassRow"][];
+            /** @description Joins per point. */
+            membersJoinedTrend: components["schemas"]["TrendPoint"][];
+            /** @description Lapses per point. Plotted beside joins, never netted into them. */
+            membersLapsedTrend: components["schemas"]["TrendPoint"][];
+            /** @description The organization headline numbers. */
+            metrics: components["schemas"]["MetricValue"][];
+            /** @description Collections per point across the trailing window. */
+            revenueTrend: components["schemas"]["TrendPoint"][];
+            /** @description One row per coach with sessions in the window. */
+            trainers: components["schemas"]["TrainerRow"][];
+            /** @description The days covered and the days compared against. */
+            window: components["schemas"]["AnalyticsWindow"];
+        };
         ResendVerificationRequest: {
             /** @description The address to re-send to. */
             email: string;
@@ -5225,6 +5421,36 @@ export interface components {
             /** @description Administrative detail, not sensitive. */
             taxOffice: null | string;
         };
+        /** @description One coach's row on the report. */
+        TrainerRow: {
+            /** @description Resolved at read time, never stored beside the fact. */
+            fullName: string;
+            /** @description Their values, from the trainer section of the register. */
+            metrics: components["schemas"]["MetricValue"][];
+            /**
+             * Format: uuid
+             * @description Roster id (ADR-0016).
+             */
+            staffMemberId: string;
+        };
+        /** @description One point on a trend line. */
+        TrendPoint: {
+            /**
+             * Format: date
+             * @description First day the point covers.
+             */
+            from: string;
+            /**
+             * Format: date
+             * @description Last day the point covers.
+             */
+            through: string;
+            /**
+             * Format: double
+             * @description The metric's value over those days, or null where nothing was rolled up.
+             */
+            value: null | number;
+        };
         VerifyEmailRequest: {
             /** @description The handle from the verification link. */
             token: string;
@@ -5242,6 +5468,86 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    GetDashboard: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardView"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReports: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportView"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetCatalogs: {
         parameters: {
             query?: never;

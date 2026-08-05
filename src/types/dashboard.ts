@@ -3,8 +3,14 @@ import type { ComponentProps } from 'react';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export type DashboardPeriod = 'today' | 'week' | 'month';
-
+/**
+ * A tile showing a count derived from a list already on the screen.
+ *
+ * <b>Not a metric.</b> Anything from the metric register goes through `MetricCard`, which carries a
+ * definition, a polarity and a statement of when the number is incomplete — see
+ * `docs/contracts/metrics.md` in the backend. This is for "42 aktif ders" beside the class table:
+ * a count of rows the user can see, with nothing to define.
+ */
 export interface KpiItem {
   id: string;
   title: string;
@@ -12,52 +18,6 @@ export interface KpiItem {
   change?: string;
   icon: IconName;
   href?: string;
-}
-
-export interface ScheduleItem {
-  id: string;
-  time: string;
-  title: string;
-  trainer: string;
-  booked: number;
-  capacity: number;
-}
-
-export interface FunnelItem {
-  id: string;
-  label: string;
-  count: number;
-  percentage: number;
-}
-
-export interface RenewalItem {
-  id: string;
-  memberName: string;
-  packageName: string;
-  remainingDays: number;
-  renewalDate: string;
-  avatarInitials: string;
-}
-
-export interface CollectionSummary {
-  outstanding: number;
-  overdue: number;
-  collectedThisMonth: number;
-  collectionRate: number;
-}
-
-export interface OccupancyDayPoint {
-  day: string;
-  occupancyRate: number;
-  noShowRate: number;
-}
-
-export interface TrainerPerformance {
-  id: string;
-  name: string;
-  attendanceRate: number;
-  rating: number;
-  avatarInitials: string;
 }
 
 export interface QuickAction {

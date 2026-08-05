@@ -1,23 +1,23 @@
 import { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
-import { KpiCard } from '@/components/dashboard/KpiCard';
+import { MetricCard } from '@/components/dashboard/MetricCard';
 import { DailyScheduleCard } from '@/components/dashboard/DailyScheduleCard';
 import { ProspectFunnelCard } from '@/components/dashboard/ProspectFunnelCard';
 import { PackageRenewalsCard } from '@/components/dashboard/PackageRenewalsCard';
 import { CollectionStatusCard } from '@/components/dashboard/CollectionStatusCard';
-import { OccupancyChartCard } from '@/components/dashboard/OccupancyChartCard';
-import { TrainerPerformanceCard } from '@/components/dashboard/TrainerPerformanceCard';
+import { OccupancyCard } from '@/components/dashboard/OccupancyCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { DateRangePickerModal } from '@/components/dashboard/DateRangePickerModal';
-import { spacing } from '@/theme';
-import { kpiItemsByPeriod } from '@/mock/dashboard';
-import type { DashboardPeriod, QuickAction } from '@/types/dashboard';
+import { useDashboard } from '@/hooks/useAnalytics';
+import { colors, spacing, typography } from '@/theme';
+import { METRIC } from '@/api/analytics';
+import type { AnalyticsPeriod } from '@/api/analytics';
+import type { IconName, QuickAction } from '@/types/dashboard';
 
 const QUICK_ACTION_ROUTES: Record<string, string> = {
   'qa-new-member': '/uyeler',
@@ -27,16 +27,41 @@ const QUICK_ACTION_ROUTES: Record<string, string> = {
   'qa-send-message': '/mesajlar',
 };
 
+/**
+ * Which tiles get a place at the top, and where they lead.
+ *
+ * <b>The order is fixed here; the presence is not.</b> A tile appears only if the server returned
+ * that metric, so a coach's dashboard is four cards and a manager's is six without either screen
+ * hiding anything — hiding is a decision a debugger can undo.
+ */
+const TILES: { id: string; icon: IconName; href?: string }[] = [
+  { id: METRIC.activeMembers, icon: 'people-outline', href: '/uyeler' },
+  { id: METRIC.membersJoined, icon: 'person-add-outline', href: '/uyeler' },
+  { id: METRIC.sessionsHeld, icon: 'barbell-outline', href: '/takvim' },
+  { id: METRIC.bookedOccupancyRate, icon: 'pie-chart-outline', href: '/dersler' },
+  { id: METRIC.leadsCreated, icon: 'sparkles-outline', href: '/musteri-adaylari' },
+  { id: METRIC.revenueCollected, icon: 'wallet-outline', href: '/odemeler' },
+];
+
 export default function OverviewScreen() {
-  const [period, setPeriod] = useState<DashboardPeriod>('today');
-  const [dateRangeVisible, setDateRangeVisible] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<{ start: string; end: string } | null>(null);
+  const [period, setPeriod] = useState<AnalyticsPeriod>('Today');
   const { isMobile, isTablet } = useResponsiveLayout();
   const { message, visible, show } = useToast();
   const router = useRouter();
 
+  const { view, status } = useDashboard(period);
+
   const kpiBasis = isMobile ? '47%' : isTablet ? '31%' : '15.2%';
-  const kpiItems = kpiItemsByPeriod[period];
+
+  const metrics = view?.metrics ?? [];
+  const tiles = TILES.map((tile) => ({
+    ...tile,
+    metric: metrics.find((entry) => entry.id === tile.id),
+  })).filter((tile) => tile.metric !== undefined);
+
+  // `Own` is a coach looking at their own teaching. Saying so is not decoration: the same four
+  // numbers presented as the studio's would be wrong, and the panel had no way to tell them apart.
+  const isOwnScope = view?.scope === 'Own';
 
   const handleQuickAction = (action: QuickAction) => {
     const route = QUICK_ACTION_ROUTES[action.id];
@@ -51,17 +76,27 @@ export default function OverviewScreen() {
     <AppShell activeId="overview">
       <DashboardHeader
         title="Stüdyo Dashboard"
-        subtitle="Merhaba Selin, stüdyonda neler oluyor bakalım. 👋"
+        subtitle={
+          isOwnScope
+            ? 'Kendi derslerinin özeti. Stüdyo geneli için yöneticine sor.'
+            : 'Stüdyonda neler oluyor bakalım. 👋'
+        }
         period={period}
         onPeriodChange={setPeriod}
-        onCalendarPress={() => setDateRangeVisible(true)}
-        selectedRangeLabel={selectedRange ? `${selectedRange.start} – ${selectedRange.end}` : undefined}
       />
 
+      {status === 'error' ? (
+        <Text style={styles.notice}>Özet yüklenemedi. Sayfayı yenilemeyi dene.</Text>
+      ) : null}
+
+      {status === 'loading' && tiles.length === 0 ? (
+        <Text style={styles.notice}>Yükleniyor…</Text>
+      ) : null}
+
       <View style={styles.kpiGrid}>
-        {kpiItems.map((item) => (
-          <View key={item.id} style={[styles.kpiItem, { flexBasis: kpiBasis }]}>
-            <KpiCard item={item} />
+        {tiles.map((tile) => (
+          <View key={tile.id} style={[styles.kpiItem, { flexBasis: kpiBasis }]}>
+            <MetricCard metric={tile.metric!} icon={tile.icon} href={tile.href} />
           </View>
         ))}
       </View>
@@ -69,61 +104,48 @@ export default function OverviewScreen() {
       {isMobile ? (
         <View style={styles.stack}>
           <DailyScheduleCard />
-          <ProspectFunnelCard />
+          {!isOwnScope && <ProspectFunnelCard funnel={view?.funnel ?? []} metrics={metrics} />}
           <PackageRenewalsCard />
         </View>
       ) : isTablet ? (
         <View style={styles.stack}>
           <View style={styles.row}>
             <View style={styles.flexEqual}><DailyScheduleCard /></View>
-            <View style={styles.flexEqual}><ProspectFunnelCard /></View>
+            {!isOwnScope && (
+              <View style={styles.flexEqual}>
+                <ProspectFunnelCard funnel={view?.funnel ?? []} metrics={metrics} />
+              </View>
+            )}
           </View>
           <PackageRenewalsCard />
         </View>
       ) : (
         <View style={styles.row}>
           <View style={styles.flex34}><DailyScheduleCard /></View>
-          <View style={styles.flex32}><ProspectFunnelCard /></View>
+          {!isOwnScope && (
+            <View style={styles.flex32}>
+              <ProspectFunnelCard funnel={view?.funnel ?? []} metrics={metrics} />
+            </View>
+          )}
           <View style={styles.flex34}><PackageRenewalsCard /></View>
         </View>
       )}
 
       {isMobile ? (
         <View style={styles.stack}>
-          <CollectionStatusCard />
-          <OccupancyChartCard />
-          <TrainerPerformanceCard />
+          {!isOwnScope && <CollectionStatusCard metrics={metrics} />}
+          <OccupancyCard metrics={metrics} />
           <QuickActionsCard onActionPress={handleQuickAction} />
-        </View>
-      ) : isTablet ? (
-        <View style={styles.stack}>
-          <View style={styles.row}>
-            <View style={styles.flexEqual}><CollectionStatusCard /></View>
-            <View style={styles.flexEqual}><OccupancyChartCard /></View>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.flexEqual}><TrainerPerformanceCard /></View>
-            <View style={styles.flexEqual}><QuickActionsCard onActionPress={handleQuickAction} /></View>
-          </View>
         </View>
       ) : (
         <View style={styles.row}>
-          <View style={styles.flex21}><CollectionStatusCard /></View>
-          <View style={styles.flex29}><OccupancyChartCard /></View>
-          <View style={styles.flex29}><TrainerPerformanceCard /></View>
+          {!isOwnScope && (
+            <View style={styles.flex29}><CollectionStatusCard metrics={metrics} /></View>
+          )}
+          <View style={styles.flex29}><OccupancyCard metrics={metrics} /></View>
           <View style={styles.flex21}><QuickActionsCard onActionPress={handleQuickAction} /></View>
         </View>
       )}
-
-      <DateRangePickerModal
-        visible={dateRangeVisible}
-        onClose={() => setDateRangeVisible(false)}
-        onApply={(range) => {
-          setSelectedRange(range);
-          setDateRangeVisible(false);
-          show(`Tarih aralığı uygulandı: ${range.start} – ${range.end}`);
-        }}
-      />
 
       <Toast message={message} visible={visible} />
     </AppShell>
@@ -131,6 +153,10 @@ export default function OverviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  notice: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

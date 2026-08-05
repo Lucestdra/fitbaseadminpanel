@@ -3,19 +3,22 @@ import { AppIcon } from '@/components/ui/AppIcon';
 import { SegmentedControl, type SegmentOption } from '@/components/ui/SegmentedControl';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import type { DashboardPeriod } from '@/types/dashboard';
+import type { AnalyticsPeriod } from '@/api/analytics';
 
-const periodOptions: SegmentOption<DashboardPeriod>[] = [
-  { value: 'today', label: 'Bugün' },
-  { value: 'week', label: 'Bu Hafta' },
-  { value: 'month', label: 'Bu Ay' },
+// The wire values, labelled here. ADR-0012 puts English enums on the wire and Turkish in this
+// adapter, so a period is one token end to end rather than 'today' in the client and 'Today' on
+// the server with a mapping table between them for somebody to get wrong.
+const periodOptions: SegmentOption<AnalyticsPeriod>[] = [
+  { value: 'Today', label: 'Bugün' },
+  { value: 'Week', label: 'Bu Hafta' },
+  { value: 'Month', label: 'Bu Ay' },
 ];
 
 interface DashboardHeaderProps {
   title: string;
   subtitle: string;
-  period: DashboardPeriod;
-  onPeriodChange: (period: DashboardPeriod) => void;
+  period: AnalyticsPeriod;
+  onPeriodChange: (period: AnalyticsPeriod) => void;
   onCalendarPress?: () => void;
   selectedRangeLabel?: string;
 }
