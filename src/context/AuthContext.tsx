@@ -10,7 +10,7 @@ import {
 import * as api from '@/api/session';
 import { refreshSession, setSessionLostHandler } from '@/api/client';
 import { clearTokens } from '@/api/tokens';
-import { ROLE_LABEL, toTeamRole, type AuthUser } from '@/types/auth';
+import { ROLE_LABEL, type AuthUser } from '@/types/auth';
 
 /** Where the bootstrap got to. Rendering the tree before this settles is what causes a flash. */
 export type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: me ? toAuthUser(me) : null,
       studioName: me?.organization.name ?? '',
       timeZoneId: me?.organization.timeZoneId ?? '',
-      roleLabel: me ? ROLE_LABEL[toTeamRole(me.staffMember.role)] : '',
+      roleLabel: me ? ROLE_LABEL[me.staffMember.role] : '',
       allowedNavIds: navigation.map((entry) => entry.id),
 
       // The server's first entry, not a client-side role map. A caller whose permissions change
@@ -157,15 +157,9 @@ function toAuthUser(me: api.MeResponse): AuthUser {
   return {
     id: me.staffMember.id,
     name: me.staffMember.fullName,
-    role: toTeamRole(me.staffMember.role),
+    role: me.staffMember.role,
     avatarInitials: initialsOf(me.staffMember.fullName),
     email: me.user.email,
-
-    // Not on `/me` yet: the roster's phone number and specialty arrive with the settings surface
-    // in Phase 2.1. Empty rather than invented, so a blank field reads as "not loaded" rather than
-    // as "the studio never filled this in".
-    phone: '',
-    specialty: null,
   };
 }
 

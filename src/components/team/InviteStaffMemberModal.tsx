@@ -3,45 +3,50 @@ import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
 import { colors, spacing, typography, radii } from '@/theme';
-import type { TeamRole } from '@/types/team';
+import { ROLE_META } from '@/utils/staff';
+import type { InviteStaffMemberBody, StaffRole } from '@/api/staff';
 
-export interface NewTeamMemberInput {
-  name: string;
-  role: TeamRole;
-  specialty: string;
-  email: string;
-  phone: string;
-}
-
-interface NewTeamMemberModalProps {
+interface InviteStaffMemberModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreate: (input: NewTeamMemberInput) => void;
+  onInvite: (body: InviteStaffMemberBody) => Promise<void>;
 }
 
-const ROLE_OPTIONS: { id: TeamRole; label: string }[] = [
-  { id: 'yonetici', label: 'Yönetici' },
-  { id: 'egitmen', label: 'Eğitmen' },
-  { id: 'satis', label: 'Satış' },
-];
+const ROLE_OPTIONS = (Object.keys(ROLE_META) as StaffRole[]).map((role) => ({
+  id: role,
+  label: ROLE_META[role].label,
+}));
 
-export function NewTeamMemberModal({ visible, onClose, onCreate }: NewTeamMemberModalProps) {
+/**
+ * Invites somebody onto the roster.
+ *
+ * <b>An invitation, not a row.</b> The panel's version built a team member in local state with a
+ * `Date.now()` id — never emailed, never persisted, gone on refresh, and unable to sign in. This
+ * sends the invitation the server owns; the person appears on the roster at once, marked
+ * "Davet Bekliyor", and becomes active when they accept.
+ *
+ * <b>Speciality is gone.</b> `staff_member` has no such column and inventing one in the client
+ * would produce a field that survives until the next reload.
+ */
+export function InviteStaffMemberModal({ visible, onClose, onInvite }: InviteStaffMemberModalProps) {
   const [name, setName] = useState('');
-  const [role, setRole] = useState<TeamRole>('egitmen');
-  const [specialty, setSpecialty] = useState('');
+  const [role, setRole] = useState<StaffRole>('Coach');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0 && email.trim().length > 0;
+  const canSubmit = name.trim().length > 0 && email.trim().length > 0 && !submitting;
 
   const resetState = () => {
     setName('');
-    setRole('egitmen');
-    setSpecialty('');
+    setRole('Coach');
     setEmail('');
     setPhone('');
     setRoleDropdownOpen(false);
+    setSubmitting(false);
+    setError(null);
   };
 
   const handleClose = () => {
@@ -49,10 +54,27 @@ export function NewTeamMemberModal({ visible, onClose, onCreate }: NewTeamMember
     onClose();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    onCreate({ name: name.trim(), role, specialty: specialty.trim(), email: email.trim(), phone: phone.trim() });
-    handleClose();
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await onInvite({
+        fullName: name.trim(),
+        email: email.trim(),
+        role,
+        phoneNumber: phone.trim() || null,
+      });
+
+      handleClose();
+    } catch (cause) {
+      // The modal stays open holding what was typed. A duplicate email is the common refusal and
+      // it is recoverable — closing on failure would make them type it all again to find out.
+      setSubmitting(false);
+      setError(cause instanceof Error ? cause.message : 'Davet gönderilemedi.');
+    }
   };
 
   return (
@@ -61,7 +83,7 @@ export function NewTeamMemberModal({ visible, onClose, onCreate }: NewTeamMember
         <Pressable style={styles.overlayDismiss} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Kapat" />
         <View style={styles.panel}>
           <View style={styles.header}>
-            <Text style={styles.title}>Yeni Ekip Üyesi</Text>
+            <Text style={styles.title}>Ekibe Davet Et</Text>
             <Pressable
               onPress={handleClose}
               accessibilityRole="button"
@@ -90,21 +112,11 @@ export function NewTeamMemberModal({ visible, onClose, onCreate }: NewTeamMember
               options={ROLE_OPTIONS.map((option) => ({ id: option.id, label: option.label }))}
               selectedId={role}
               onSelect={(id) => {
-                setRole((id as TeamRole) ?? 'egitmen');
+                setRole((id as StaffRole) ?? 'Coach');
                 setRoleDropdownOpen(false);
               }}
               open={roleDropdownOpen}
               onToggle={() => setRoleDropdownOpen((current) => !current)}
-            />
-
-            <Text style={styles.fieldLabel}>Uzmanlık (opsiyonel)</Text>
-            <TextInput
-              value={specialty}
-              onChangeText={setSpecialty}
-              placeholder="Ör. Reformer Pilates"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-              accessibilityLabel="Uzmanlık"
             />
 
             <Text style={styles.fieldLabel}>E-posta</Text>
@@ -131,18 +143,20 @@ export function NewTeamMemberModal({ visible, onClose, onCreate }: NewTeamMember
             />
           </ScrollView>
 
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
           <Pressable
-            onPress={handleSubmit}
+            onPress={() => void handleSubmit()}
             disabled={!canSubmit}
             accessibilityRole="button"
-            accessibilityLabel="Ekip üyesini kaydet"
+            accessibilityLabel="Daveti gönder"
             style={({ pressed }) => [
               styles.submitButton,
               !canSubmit && styles.submitButtonDisabled,
               pressed && canSubmit && styles.submitButtonPressed,
             ]}
           >
-            <Text style={styles.submitLabel}>Kaydet</Text>
+            <Text style={styles.submitLabel}>{submitting ? 'Gönderiliyor…' : 'Davet Gönder'}</Text>
           </Pressable>
         </View>
       </View>
@@ -190,6 +204,10 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: spacing.sm,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.critical,
   },
   fieldLabel: {
     ...typography.captionStrong,

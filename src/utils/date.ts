@@ -125,3 +125,32 @@ export function generateTimeOptions(startHour = 6, endHour = 22, stepMinutes = 3
   }
   return options;
 }
+
+/**
+ * The organization-local date an instant falls on, as `YYYY-MM-DD`.
+ *
+ * <b>Not `instant.slice(0, 10)`.</b> That is the UTC date, and for a studio three hours east it is
+ * the wrong day for three hours out of every twenty-four — which is exactly when somebody checks
+ * whether an invitation expires today.
+ *
+ * The same fallback as `todayIn`: a wrong-by-hours answer beats a crash while rendering a list.
+ */
+export function localDateOf(instant: string, timeZoneId: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZoneId,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date(instant));
+
+    const find = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+
+    const [year, month, day] = [find('year'), find('month'), find('day')];
+
+    return year && month && day ? `${year}-${month}-${day}` : instant.slice(0, 10);
+  } catch {
+    return instant.slice(0, 10);
+  }
+}

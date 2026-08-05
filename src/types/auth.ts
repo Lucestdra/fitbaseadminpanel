@@ -1,14 +1,12 @@
 import type { StaffRole } from '@/api/session';
-import type { TeamRole } from './team';
 
 export interface AuthUser {
   id: string;
   name: string;
-  role: TeamRole;
+  /** The wire role. There is no second client-side role vocabulary to keep in step. */
+  role: StaffRole;
   avatarInitials: string;
   email: string;
-  phone: string;
-  specialty: string | null;
 }
 
 /** What the registration form collects. */
@@ -28,26 +26,20 @@ export interface SignUpInput {
   acceptedKvkkNotice: boolean;
 }
 
-export const ROLE_LABEL: Record<TeamRole, string> = {
-  yonetici: 'Stüdyo Yöneticisi',
-  satis: 'Satış Danışmanı',
-  egitmen: 'Eğitmen',
-};
-
 /**
- * Wire role → this app's role.
+ * The long form of each role, for a profile line.
  *
- * ADR-0012 puts English `PascalCase` on the wire and the Turkish vocabulary in the client. The
- * mapping is exhaustive over `StaffRole`, so adding a role to the backend's enum regenerates
- * `schema.d.ts` and fails this file to compile — which is the point: a new role that silently fell
- * through to `egitmen` would grant somebody a coach's screens.
+ * <b>Exhaustive over `StaffRole`</b>, so a role added to the backend regenerates `schema.d.ts` and
+ * fails this file to compile. That is the point: a new role silently falling through to "Eğitmen"
+ * would print somebody the wrong job title, and the previous version of this file had a second
+ * client-side role vocabulary that could drift from the wire one without anything noticing.
+ *
+ * Distinct from `ROLE_META` in `utils/staff`, which carries the short badge label. "Stüdyo
+ * Yöneticisi" under a name and "Yönetici" in a 60-pixel pill are different jobs for different
+ * strings, not a duplication.
  */
-const TEAM_ROLE: Record<StaffRole, TeamRole> = {
-  OrganizationManager: 'yonetici',
-  SalesFinanceConsultant: 'satis',
-  Coach: 'egitmen',
+export const ROLE_LABEL: Record<StaffRole, string> = {
+  OrganizationManager: 'Stüdyo Yöneticisi',
+  SalesFinanceConsultant: 'Satış Danışmanı',
+  Coach: 'Eğitmen',
 };
-
-export function toTeamRole(role: StaffRole): TeamRole {
-  return TEAM_ROLE[role];
-}

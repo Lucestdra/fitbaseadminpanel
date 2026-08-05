@@ -78,17 +78,6 @@ export function UserProfileModal({ visible, user, roleLabel, onClose, onSave }: 
             accessibilityLabel="E-posta"
           />
 
-          <Text style={styles.fieldLabel}>Cep Telefonu</Text>
-          <TextInput
-            value={draft.phone}
-            onChangeText={(value) => setDraft({ ...draft, phone: value })}
-            placeholder="+90 5xx xxx xx xx"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="phone-pad"
-            style={styles.input}
-            accessibilityLabel="Cep Telefonu"
-          />
-
           <Text style={styles.fieldLabel}>Rol</Text>
           <View style={styles.roleField}>
             <Text style={styles.roleFieldText}>{roleLabel}</Text>

@@ -33,3 +33,47 @@ export function coachesAmong(roster: StaffMemberSummary[]): StaffMemberSummary[]
     (member) => member.role === 'Coach' || member.role === 'OrganizationManager',
   );
 }
+
+export type PendingInvitation = components['schemas']['PendingInvitation'];
+export type InvitationResponse = components['schemas']['InvitationResponse'];
+export type InviteStaffMemberBody = components['schemas']['InviteStaffMemberBody'];
+
+/**
+ * Invitations that have neither been accepted nor withdrawn.
+ *
+ * <b>A section the panel had no concept of.</b> Its Ekip screen created a row in local state with a
+ * `Date.now()` id and called it a team member — so somebody "added" on Monday was gone on Tuesday,
+ * had never been emailed, and could not sign in. On the server an invitation is a real row with an
+ * expiry, and the roster entry it creates sits at `Invited` until the person accepts.
+ */
+export async function listInvitations(): Promise<PendingInvitation[]> {
+  return withAuth(() => client.GET('/api/v1/staff/invitations', {}));
+}
+
+/** Invites somebody onto the roster and mails them a link. */
+export async function invite(body: InviteStaffMemberBody): Promise<void> {
+  await withAuth(() => client.POST('/api/v1/staff/invitations', { body }));
+}
+
+/**
+ * Issues a fresh link, invalidating the previous one.
+ *
+ * The old link stops working the moment this returns, which is the point: a link that was
+ * forwarded, or sat in an inbox for three weeks, should not still open a door.
+ */
+export async function resendInvitation(invitationId: string): Promise<InvitationResponse> {
+  return withAuth(() =>
+    client.POST('/api/v1/staff/invitations/{invitationId}/resend', {
+      params: { path: { invitationId } },
+    }),
+  );
+}
+
+/** Withdraws an invitation and removes the roster row it created. */
+export async function revokeInvitation(invitationId: string): Promise<void> {
+  await withAuth(() =>
+    client.DELETE('/api/v1/staff/invitations/{invitationId}', {
+      params: { path: { invitationId } },
+    }),
+  );
+}
