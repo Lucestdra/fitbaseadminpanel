@@ -18,6 +18,7 @@ import {
 import { PaymentDetailModal } from '@/components/payments/PaymentDetailModal';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
+import { useExport } from '@/hooks/useExport';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { usePayments, useReceivables } from '@/hooks/usePayments';
 import { useAuth } from '@/context/AuthContext';
@@ -50,6 +51,7 @@ export default function PaymentsScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const { timeZoneId, permissions } = useAuth();
   const { message, visible, show } = useToast();
+  const { exporting, download } = useExport(show);
 
   const [tab, setTab] = useState<Tab>('payments');
   const [search, setSearch] = useState('');
@@ -153,6 +155,28 @@ export default function PaymentsScreen() {
 
       <View style={styles.tabRow}>
         <SegmentedControl options={tabOptions} value={tab} onChange={setTab} />
+
+        {/* Receivables have their own CSV, and it is a different question from the payment report:
+            what is owed, by whom, as of today — not what moved over a range. `Receivables` has been
+            a registered export kind with no way to ask for it, which is a feature that exists only
+            in the contract. No date range, because the list has none: an instalment is outstanding
+            now or it is not (ADR-0033). */}
+        {tab === 'receivables' ? (
+          <Pressable
+            onPress={() => void download('Receivables', null, null)}
+            disabled={exporting || receivables.items.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Alacakları indir"
+            accessibilityState={{ disabled: exporting || receivables.items.length === 0 }}
+            style={({ pressed }) => [
+              styles.chargeButton,
+              pressed && styles.chargePressed,
+              (exporting || receivables.items.length === 0) && styles.disabledButton,
+            ]}
+          >
+            <Text style={styles.chargeLabel}>{exporting ? 'Hazırlanıyor...' : 'CSV İndir'}</Text>
+          </Pressable>
+        ) : null}
 
         {/* The action the panel has no equivalent of. Without a way to raise a charge, a
             receivables list is permanently empty and the whole model is unreachable from the UI. */}
@@ -293,6 +317,9 @@ const styles = StyleSheet.create({
   },
   chargePressed: {
     backgroundColor: colors.mintLight,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   chargeLabel: {
     ...typography.captionStrong,

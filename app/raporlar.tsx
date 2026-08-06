@@ -25,10 +25,16 @@ const TILES: { id: string; icon: IconName }[] = [
 /**
  * The reports screen.
  *
- * <b>Export is not here.</b> The panel's four quick actions — PDF, Excel, scheduled report, share —
- * every one of them showed a toast saying the feature was coming. Buttons that do nothing are worse
- * than absent ones: they teach a studio that the product is unreliable rather than incomplete.
- * Export is Phase 2.5 work still blocked on a licence decision (plan decision D24).
+ * <b>Export is not here, and the reason is narrower than it used to say.</b> The panel's four quick
+ * actions — PDF, Excel, scheduled report, share — every one of them showed a toast saying the
+ * feature was coming. Buttons that do nothing are worse than absent ones: they teach a studio that
+ * the product is unreliable rather than incomplete.
+ *
+ * What exists server-side is `Payments` and `Receivables` as CSV, and both are reachable from
+ * `/odemeler`, which is where that data lives. There is no export kind for the figures on this
+ * screen — a rollup is a number, not a row list — so this is a gap in the contract rather than a
+ * button somebody removed. PDF is separately blocked on plan decision D24, which is a licence
+ * question; that blocks the format, not export as a whole.
  */
 export default function ReportsScreen() {
   const [period, setPeriod] = useState<AnalyticsPeriod>('Month');

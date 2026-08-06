@@ -7,10 +7,9 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Linking,
-  Platform,
 } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
+import { useExport } from '@/hooks/useExport';
 import { colors, spacing, typography, radii } from '@/theme';
 import { TURKISH_MONTHS, formatDateLabel } from '@/utils/date';
 import { formatMoney } from '@/utils/money';
@@ -57,69 +56,19 @@ export function PaymentReportModal({ visible, onClose, onNotify }: PaymentReport
   const [report, setReport] = useState<FinanceRangeReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
-  /**
-   * Asks for a file, and waits for it when the server says it queued one.
-   *
-   * <b>Two shapes from one call.</b> At or under two thousand rows the server renders inline and
-   * hands back a link; above it the work moved to a job and this polls (ADR-0041). The client
-   * cannot know which side of the cap it is on before asking, so it handles both.
-   *
-   * This replaces `window.print()` and a toast claiming a PDF was downloading — the panel generated
-   * nothing and downloaded nothing.
-   */
+  // The polling, the give-up and the pre-signed download all live in useExport now. This modal had
+  // the only copy until the receivables tab needed the same thing; the shared version is that copy,
+  // moved rather than rewritten. It replaced `window.print()` and a toast claiming a PDF was
+  // downloading — the panel generated nothing and downloaded nothing.
+  const { exporting, download } = useExport(onNotify);
+
   const downloadExport = () => {
     if (!start || !end || exporting) return;
 
-    setExporting(true);
-
-    void (async () => {
-      try {
-        let ticket = await financeApi.requestExport({
-          kind: 'Payments',
-          format: 'Csv',
-          from: toIsoDay(start),
-          to: toIsoDay(end),
-          memberId: null,
-        });
-
-        // Bounded, and it gives up rather than polling forever. A studio told "still working" after
-        // half a minute is better served by being told to check back than by a spinner that never
-        // resolves — the row is durable and the export is still coming.
-        for (let attempt = 0; attempt < 15 && ticket.status !== 'Completed'; attempt++) {
-          if (ticket.status === 'Failed') break;
-
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          ticket = await financeApi.getExport(ticket.exportId);
-        }
-
-        if (ticket.status === 'Failed') {
-          onNotify('Dosya hazırlanamadı. Tekrar dene.');
-          return;
-        }
-
-        if (ticket.status !== 'Completed' || !ticket.downloadUrl) {
-          onNotify('Dosya hazırlanıyor. Birazdan tekrar dene.');
-          return;
-        }
-
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          // The link is pre-signed and short-lived, so opening it is the download. Nothing is
-          // fetched into memory here: a year of payments is a file, not a string.
-          window.open(ticket.downloadUrl, '_blank', 'noopener');
-        } else {
-          await Linking.openURL(ticket.downloadUrl);
-        }
-
-        onNotify(`${ticket.rowCount} satır indiriliyor.`);
-        onClose();
-      } catch (error) {
-        onNotify(error instanceof Error ? error.message : 'Dosya indirilemedi.');
-      } finally {
-        setExporting(false);
-      }
-    })();
+    void download('Payments', toIsoDay(start), toIsoDay(end)).then((ok) => {
+      if (ok) onClose();
+    });
   };
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
