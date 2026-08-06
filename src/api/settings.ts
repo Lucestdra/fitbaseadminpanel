@@ -10,6 +10,7 @@ export type BusinessClosurePeriod = components['schemas']['BusinessClosurePeriod
 export type NotificationPreference = components['schemas']['NotificationPreference'];
 export type NotificationTopic = components['schemas']['NotificationTopic'];
 export type NotificationChannel = components['schemas']['NotificationChannel'];
+export type ReceivablesPolicy = components['schemas']['ReceivablesPolicy'];
 export type OrganizationSettingsSummary = components['schemas']['OrganizationSettingsSummary'];
 
 export async function getSettings(): Promise<OrganizationSettings> {
@@ -56,6 +57,22 @@ export async function updateTaxProfile(body: {
   billingAddress: string | null;
 }): Promise<TaxProfileSummary> {
   return withAuth(() => client.PUT('/api/v1/organization/settings/tax', { body }));
+}
+
+/**
+ * Sets how long an unpaid instalment has before it reads as late.
+ *
+ * <b>One number, and it decides what the word "gecikti" means on two screens.</b> Overdue is derived
+ * at read time rather than stored (backend ADR-0033), so this changes the receivables list and the
+ * overdue KPI on the next read — there is no job to run and nothing to backfill. Seven days is the
+ * default and plan decision D10; the server accepts 0 to 90.
+ */
+export async function updateReceivablesPolicy(
+  overdueGraceDays: number,
+): Promise<ReceivablesPolicy> {
+  return withAuth(() =>
+    client.PUT('/api/v1/organization/settings/receivables', { body: { overdueGraceDays } }),
+  );
 }
 
 /** Replaces the whole week. Anything omitted is deleted, so send every interval. */

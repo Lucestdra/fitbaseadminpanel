@@ -17,6 +17,7 @@ import { InvoiceHistoryModal } from '@/components/settings/InvoiceHistoryModal';
 import { WorkingHoursCard } from '@/components/settings/WorkingHoursCard';
 import { ClosuresCard } from '@/components/settings/ClosuresCard';
 import { LocalizationCard } from '@/components/settings/LocalizationCard';
+import { ReceivablesPolicyCard } from '@/components/settings/ReceivablesPolicyCard';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 import { SettingsTile } from '@/components/settings/SettingsTile';
 import { SettingsSectionModal } from '@/components/settings/SettingsSectionModal';
@@ -37,6 +38,7 @@ type SectionId =
   | 'hours'
   | 'closures'
   | 'localization'
+  | 'receivables'
   | 'subscription'
   | 'packages'
   | 'gifts'
@@ -284,6 +286,18 @@ export default function SettingsScreen() {
           icon: 'globe-outline',
         },
         {
+          // The setting decides what "gecikti" means on the receivables list and the dashboard's
+          // overdue tile. It has been settable through the API since Phase 2.5 and reachable from
+          // nowhere, so the summary shows the value a studio has been on without choosing.
+          id: 'receivables',
+          title: 'Gecikme Süresi',
+          summary:
+            settings.receivables.overdueGraceDays === 0
+              ? 'Vade günü sonrası gecikmiş'
+              : `${settings.receivables.overdueGraceDays} gün sonra gecikmiş`,
+          icon: 'hourglass-outline',
+        },
+        {
           id: 'subscription',
           title: 'Abonelik',
           summary: `${subscriptionInfo.planName} · ${subscriptionInfo.price}`,
@@ -522,6 +536,23 @@ export default function SettingsScreen() {
               run(async () => {
                 await settingsApi.updateLocalization(localization);
               }, 'Bölge ayarları kaydedildi.')
+            }
+          />
+        ) : null}
+      </SettingsSectionModal>
+
+      <SettingsSectionModal
+        visible={openSection === 'receivables'}
+        onClose={() => setOpenSection(null)}
+      >
+        {openSection === 'receivables' ? (
+          <ReceivablesPolicyCard
+            receivables={settings.receivables}
+            busy={busy}
+            onSave={(overdueGraceDays) =>
+              run(async () => {
+                await settingsApi.updateReceivablesPolicy(overdueGraceDays);
+              }, 'Gecikme süresi kaydedildi.')
             }
           />
         ) : null}
