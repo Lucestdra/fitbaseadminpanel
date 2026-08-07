@@ -2011,6 +2011,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/realtime/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A single-use handle for opening the notification hub. */
+        post: operations["IssueRealtimeTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scheduling/bookings/{bookingId}": {
         parameters: {
             query?: never;
@@ -4992,6 +5009,17 @@ export interface components {
              * @description 1–6. Six is how many calendar weeks a month can touch.
              */
             weekNumber: number;
+        };
+        /** @description What the client connects with. */
+        RealtimeTicketResponse: {
+            /**
+             * Format: date-time
+             * @description So a client that was backgrounded between issue and connect can ask again rather than
+             *     discovering the expiry as a failed connection it will then retry with the same dead handle.
+             */
+            expiresAt: string;
+            /** @description Goes in the hub URL's `ticket` parameter. Single use: a reconnect asks for a new one. */
+            ticket: string;
         };
         /** @description One thing a studio is owed. */
         ReceivableItem: {
@@ -8600,6 +8628,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberProgramDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    IssueRealtimeTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeTicketResponse"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

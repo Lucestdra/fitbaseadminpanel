@@ -44,6 +44,13 @@ const ALLOWED = new Map([
     'Answers 501 until Phase 5, and is blocked on plan decision D21 (VUK retention versus KVKK '
       + 'erasure), which is a legal answer rather than an engineering one.',
   ],
+  [
+    'POST /api/v1/realtime/ticket',
+    'Works, and there is nothing yet to receive. It mints the handle for the notification hub, '
+      + 'whose first publisher is the messaging domain in Phase 3.3. Calling it now would open a '
+      + 'connection that never delivers anything — a reconnect loop in every client, for no '
+      + 'feature. The panel starts using it in the same change that gives the hub something to say.',
+  ],
 ]);
 
 const spec = JSON.parse(readFileSync(join(ROOT, 'contracts', 'openapi.v1.json'), 'utf8'));
