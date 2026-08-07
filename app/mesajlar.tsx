@@ -9,7 +9,7 @@ import { ChannelConnectionCard } from '@/components/messaging/ChannelConnectionC
 import { ConnectedChannelIcon } from '@/components/messaging/ConnectedChannelIcon';
 import { ChannelDetailModal } from '@/components/messaging/ChannelDetailModal';
 import { AutomationInfoCard } from '@/components/messaging/AutomationInfoCard';
-import { QrConnectModal } from '@/components/messaging/QrConnectModal';
+import { ChannelConnectNotice } from '@/components/messaging/ChannelConnectNotice';
 import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatThread } from '@/components/messaging/ChatThread';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -23,7 +23,7 @@ export default function MessagesScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const [channels, setChannels] = useState<ChannelConnection[]>(initialChannels);
   const [automationEnabled, setAutomationEnabled] = useState(true);
-  const [qrChannel, setQrChannel] = useState<ChannelConnection | null>(null);
+  const [connectNoticeChannel, setConnectNoticeChannel] = useState<ChannelConnection | null>(null);
   const [detailChannel, setDetailChannel] = useState<ChannelConnection | null>(null);
   const [conversations, setConversations] = useState(initialConversations);
   const [messagesByConversation, setMessagesByConversation] = useState(initialMessages);
@@ -39,15 +39,14 @@ export default function MessagesScreen() {
     show(`${channel.label} bağlantısı kesildi.`);
   };
 
+  // Opens an explanation, not a connection. The previous version showed a QR code and a
+  // "Bağlantı Kuruldu" button that flipped a local boolean — a WhatsApp Web pairing flow the
+  // backend forbids (§11.1/§35) plus a connection the studio declared for itself. Connection
+  // status is server-computed; the real flow is Embedded Signup in Phase 3.2.
+  //
+  // forbidden-integration-check: discusses the prohibition.
   const handleConnect = (channel: ChannelConnection) => {
-    setQrChannel(channel);
-  };
-
-  const handleConfirmConnect = () => {
-    if (!qrChannel) return;
-    setChannels((current) => current.map((item) => (item.id === qrChannel.id ? { ...item, connected: true } : item)));
-    show(`${qrChannel.label} hesabı bağlandı.`);
-    setQrChannel(null);
+    setConnectNoticeChannel(channel);
   };
 
   const handleSelectConversation = (id: string) => {
@@ -141,11 +140,10 @@ export default function MessagesScreen() {
         </View>
       </Card>
 
-      <QrConnectModal
-        channel={qrChannel}
-        visible={qrChannel !== null}
-        onClose={() => setQrChannel(null)}
-        onConfirm={handleConfirmConnect}
+      <ChannelConnectNotice
+        channel={connectNoticeChannel}
+        visible={connectNoticeChannel !== null}
+        onClose={() => setConnectNoticeChannel(null)}
       />
 
       <ChannelDetailModal

@@ -48,6 +48,13 @@ jobs:
       - name: Every route is called or explained
         run: npm run check:api
 
+      # A compliance rule, not a quality one. CLAUDE.md §11.1/§35 forbid QR-session and
+      # WhatsApp Web integrations, and one shipped here for months looking like an unfinished
+      # feature — the backend's own architecture tests cannot see this repository, and the panel
+      # is where such a flow is actually put in front of a person.
+      - name: No forbidden provider-integration patterns
+        run: npm run check:integrations
+
       # The committed types must be what the committed contract generates. Catches two things a
       # typecheck cannot: a hand-edit to src/api/schema.d.ts, and a contract synced from the
       # backend without regenerating — which would leave the app compiling against an API shape
