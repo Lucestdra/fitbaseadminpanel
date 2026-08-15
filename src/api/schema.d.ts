@@ -1172,6 +1172,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of the inbox with the counters above it, under one filter. */
+        get: operations["ListConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One conversation's header, including whether a free-form reply is still allowed. */
+        get: operations["GetConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gives a conversation an owner, or removes one. */
+        post: operations["AssignConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of one thread's messages, newest first, paged on the thread sequence. */
+        get: operations["ListConversationMessages"];
+        put?: never;
+        /** Queues an outbound message. Does not call the provider inline. */
+        post: operations["SendConversationMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clears the unread badge. Does not send a read receipt to the contact. */
+        post: operations["MarkConversationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Moves a conversation to another state. */
+        post: operations["SetConversationStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/exports": {
         parameters: {
             query?: never;
@@ -2973,6 +3076,158 @@ export interface components {
              */
             startsOn: string;
         };
+        /** @description The request body for an assignment. */
+        ConversationAssignmentBody: {
+            /**
+             * Format: uuid
+             * @description Null unassigns. A body rather than a DELETE on a sub-resource, because unassigning and
+             *     reassigning are the same act with different arguments and a client should not have to pick
+             *     between two verbs to express it.
+             */
+            staffMemberId: null | string;
+        };
+        /** @description The counters above the inbox, computed from the same predicate as the list. */
+        ConversationCounters: {
+            /**
+             * Format: int32
+             * @description Threads that are somebody's move — `New`, `Open` or `Pending`.
+             */
+            open: number;
+            /**
+             * Format: int32
+             * @description Open threads nobody owns.
+             */
+            unassigned: number;
+            /**
+             * Format: int32
+             * @description Threads with at least one unread inbound message.
+             */
+            unread: number;
+            /**
+             * Format: int32
+             * @description Threads where the studio has replied and is waiting.
+             */
+            waitingForCustomer: number;
+        };
+        /** @description One conversation's header, without its messages. */
+        ConversationDetail: {
+            /**
+             * Format: uuid
+             * @description Who has it.
+             */
+            assignedStaffMemberId: null | string;
+            /**
+             * @description Whether an ordinary message may be sent right now, or the provider's window has closed and a
+             *     template is required.
+             */
+            canSendFreeForm: boolean;
+            /**
+             * Format: uuid
+             * @description Which connection.
+             */
+            channelConnectionId: string;
+            /**
+             * Format: uuid
+             * @description Who with.
+             */
+            contactId: string;
+            /**
+             * Format: date-time
+             * @description When the window shuts. Null when it is already shut or when the provider has no window.
+             *     <b>Shown to the studio</b>, because "you have four hours to reply for free" is the single most
+             *     consequential fact about a WhatsApp thread and it is invisible without being said.
+             */
+            freeFormWindowClosesAt: null | string;
+            /**
+             * Format: uuid
+             * @description The thread.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Newest inbound.
+             */
+            lastInboundAt: null | string;
+            /**
+             * Format: date-time
+             * @description Newest movement.
+             */
+            lastMessageAt: string;
+            /** @description The channel. */
+            provider: string;
+            /** @description Where it is. */
+            status: components["schemas"]["ConversationStatus"];
+            /**
+             * Format: int32
+             * @description Unread inbound count.
+             */
+            unreadCount: number;
+        };
+        /** @description A page of conversations with the counters that describe the same set. */
+        ConversationList: {
+            counters: components["schemas"]["ConversationCounters"];
+            page: components["schemas"]["PageOfConversationListItem"];
+        };
+        /** @description A conversation as the inbox list renders it. */
+        ConversationListItem: {
+            /**
+             * Format: uuid
+             * @description Who is dealing with it, or null.
+             */
+            assignedStaffMemberId: null | string;
+            /**
+             * Format: uuid
+             * @description Which connection it arrived on.
+             */
+            channelConnectionId: string;
+            /**
+             * Format: uuid
+             * @description Who it is with. The client resolves the name; this module stores no names.
+             */
+            contactId: string;
+            /**
+             * Format: uuid
+             * @description The thread.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Newest message from the contact, or null if they have never written.
+             */
+            lastInboundAt: null | string;
+            /**
+             * Format: date-time
+             * @description Newest message either way. The list's sort key.
+             */
+            lastMessageAt: string;
+            /**
+             * @description The newest message's text, truncated. Null when the newest message has no text — an image with
+             *     no caption previews as its type, which the client renders, rather than as an empty string.
+             */
+            preview: null | string;
+            /** @description Which way the newest message went, for the "siz:" prefix. */
+            previewDirection: components["schemas"]["MessageDirection"];
+            /** @description What the newest message is, so a preview-less row still says something. */
+            previewType: components["schemas"]["MessageType"];
+            /** @description The channel, as the wire value. */
+            provider: string;
+            /** @description Where it is in its life. */
+            status: components["schemas"]["ConversationStatus"];
+            /**
+             * Format: int32
+             * @description Inbound messages nobody has read.
+             */
+            unreadCount: number;
+        };
+        /**
+         * @description Where a conversation is in its life.
+         * @enum {unknown}
+         */
+        ConversationStatus: "New" | "Open" | "Pending" | "WaitingForCustomer" | "Resolved" | "Closed" | "Spam";
+        /** @description The request body for a status change. */
+        ConversationStatusBody: {
+            status: components["schemas"]["ConversationStatus"];
+        };
         /** @description The dashboard. */
         DashboardView: {
             /** @description The lead funnel for the window's cohort, or empty at `Own` scope. */
@@ -4165,6 +4420,62 @@ export interface components {
             /** @description Where it is in its life. */
             state: components["schemas"]["MembershipState"];
         };
+        /**
+         * @description Which way a message went.
+         * @enum {unknown}
+         */
+        MessageDirection: "Inbound" | "Outbound";
+        /** @description One message, as a bubble. */
+        MessageItem: {
+            /** @description The text, or null. */
+            body: null | string;
+            /** @description Which way it went. */
+            direction: components["schemas"]["MessageDirection"];
+            /** @description The provider's own code, when it refused. */
+            failureCode: null | string;
+            /**
+             * Format: uuid
+             * @description The message.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When. Rendered in the studio's zone by the client.
+             */
+            occurredAt: string;
+            /**
+             * Format: uuid
+             * @description What it replies to, where the provider models replies.
+             */
+            replyToMessageId: null | string;
+            /**
+             * Format: uuid
+             * @description Who sent it, for outbound.
+             */
+            sentByStaffMemberId: null | string;
+            /**
+             * Format: int64
+             * @description Its position in the thread. What the client sorts and pages on.
+             */
+            sequence: number;
+            /**
+             * @description Where it got to. <b>An Instagram message stops at `Sent`</b> — the provider reports no
+             *     delivery receipt, and the client must not draw a tick nobody sent (CLAUDE.md §16).
+             */
+            status: components["schemas"]["MessageStatus"];
+            /** @description What it is. */
+            type: components["schemas"]["MessageType"];
+        };
+        /**
+         * @description Where a message got to.
+         * @enum {unknown}
+         */
+        MessageStatus: "Pending" | "Queued" | "Sending" | "Sent" | "Delivered" | "Read" | "Failed" | "Cancelled";
+        /**
+         * @description What a message is.
+         * @enum {unknown}
+         */
+        MessageType: "Text" | "Image" | "Video" | "Audio" | "Voice" | "Document" | "Location" | "Contact" | "Sticker" | "Interactive" | "Template" | "System" | "Unsupported";
         MethodTotal: {
             /**
              * Format: double
@@ -4490,6 +4801,17 @@ export interface components {
             status: components["schemas"]["LifecycleStatus"];
         };
         /** @description One page of a collection, with an opaque cursor to the next. */
+        PageOfConversationListItem: {
+            /** @description The rows, in the requested order. */
+            items: components["schemas"]["ConversationListItem"][];
+            /**
+             * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
+             *     contents are this server's business, and a client that parses it is one that breaks when the
+             *     sort changes.
+             */
+            nextCursor: null | string;
+        };
+        /** @description One page of a collection, with an opaque cursor to the next. */
         PageOfLeadListItem: {
             /** @description The rows, in the requested order. */
             items: components["schemas"]["LeadListItem"][];
@@ -4504,6 +4826,17 @@ export interface components {
         PageOfMemberListItem: {
             /** @description The rows, in the requested order. */
             items: components["schemas"]["MemberListItem"][];
+            /**
+             * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
+             *     contents are this server's business, and a client that parses it is one that breaks when the
+             *     sort changes.
+             */
+            nextCursor: null | string;
+        };
+        /** @description One page of a collection, with an opaque cursor to the next. */
+        PageOfMessageItem: {
+            /** @description The rows, in the requested order. */
+            items: components["schemas"]["MessageItem"][];
             /**
              * @description Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its
              *     contents are this server's business, and a client that parses it is one that breaks when the
@@ -5216,6 +5549,17 @@ export interface components {
              * @description Defaults to the studio's today.
              */
             startsOn: null | string;
+        };
+        /** @description The request body for a send. */
+        SendMessageBody: {
+            /** @description The text. */
+            body: string;
+            /**
+             * Format: uuid
+             * @description What it answers, where the provider models replies.
+             */
+            replyToMessageId: null | string;
+            type: null | components["schemas"]["MessageType"];
         };
         SessionCancellation: {
             /**
@@ -6329,6 +6673,307 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListConversations: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ConversationStatus"][];
+                channelConnectionId?: string;
+                assignedTo?: string[];
+                unassignedOnly?: boolean;
+                unreadOnly?: boolean;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationList"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AssignConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationAssignmentBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListConversationMessages: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfMessageItem"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SendConversationMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageItem"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MarkConversationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetConversationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationStatusBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

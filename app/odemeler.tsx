@@ -16,8 +16,7 @@ import {
   type PaymentFilters,
 } from '@/components/payments/PaymentFilterModal';
 import { PaymentDetailModal } from '@/components/payments/PaymentDetailModal';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useExport } from '@/hooks/useExport';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { usePayments, useReceivables } from '@/hooks/usePayments';
@@ -50,7 +49,7 @@ const tabOptions: SegmentOption<Tab>[] = [
 export default function PaymentsScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const { timeZoneId, permissions } = useAuth();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
   const { exporting, download } = useExport(show);
 
   const [tab, setTab] = useState<Tab>('payments');
@@ -284,7 +283,6 @@ export default function PaymentsScreen() {
         onError={show}
       />
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

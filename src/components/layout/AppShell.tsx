@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StudioSidebar } from './StudioSidebar';
 import { MobileHeader } from './MobileHeader';
+import { ToastViewport } from '@/components/ui/Toast';
 import { colors, spacing } from '@/theme';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useAuth } from '@/context/AuthContext';
@@ -74,6 +75,11 @@ export function AppShell({ activeId, children }: AppShellProps) {
             />
           </View>
         </Modal>
+
+        {/* Outside the ScrollView, deliberately. Inside it a notice is positioned against the page
+            content, so on a long list it appears wherever the person has scrolled to — which is
+            usually nowhere they can see. */}
+        <ToastViewport />
       </SafeAreaView>
     );
   }
@@ -92,6 +98,8 @@ export function AppShell({ activeId, children }: AppShellProps) {
       >
         {children}
       </ScrollView>
+
+      <ToastViewport />
     </SafeAreaView>
   );
 }

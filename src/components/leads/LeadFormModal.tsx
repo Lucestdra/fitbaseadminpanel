@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
+import { PhoneField } from '@/components/ui/PhoneField';
 import { useCatalogs } from '@/context/CatalogsContext';
 import { useStaffRoster } from '@/hooks/useStaffRoster';
 import * as leadsApi from '@/api/leads';
@@ -117,13 +118,10 @@ export function LeadFormModal({ editing, onClose, onSaved, onError }: LeadFormMo
 
             <View style={styles.field}>
               <Text style={styles.label}>Telefon</Text>
-              <TextInput
+              <PhoneField
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="0532 111 22 33"
-                placeholderTextColor={colors.textSecondary}
-                inputMode="tel"
-                style={styles.input}
+                onChange={(next) => setPhoneNumber(next ?? '')}
+                accessibilityLabel="Telefon"
               />
               {/*
                 Said out loud because it changes what happens later: conversion matches on the

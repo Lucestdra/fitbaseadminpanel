@@ -6,8 +6,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useStaffRoster } from '@/hooks/useStaffRoster';
 import { usePrograms } from '@/hooks/usePrograms';
@@ -37,7 +36,7 @@ const UNASSIGNED = 'unassigned';
 export default function TrainersScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const { timeZoneId, permissions } = useAuth();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   const [month, setMonth] = useState<{ year: number; month: number } | null>(null);
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
@@ -271,7 +270,6 @@ export default function TrainersScreen() {
         onError={show}
       />
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

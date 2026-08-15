@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { AppShell } from '@/components/layout/AppShell';
 import { StudioProfileCard } from '@/components/settings/StudioProfileCard';
 import { TaxBillingCard } from '@/components/settings/TaxBillingCard';
@@ -21,8 +22,7 @@ import { ReceivablesPolicyCard } from '@/components/settings/ReceivablesPolicyCa
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 import { SettingsTile } from '@/components/settings/SettingsTile';
 import { SettingsSectionModal } from '@/components/settings/SettingsSectionModal';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useCatalogs } from '@/context/CatalogsContext';
 import { colors, spacing, typography } from '@/theme';
@@ -30,23 +30,10 @@ import { subscriptionInfo, invoices } from '@/mock/settings';
 import * as catalogsApi from '@/api/catalogs';
 import * as settingsApi from '@/api/settings';
 import { ApiError, describeProblem } from '@/api/problem';
+import { toSettingsSection, type SettingsSectionId } from '@/utils/settingsLinks';
 import type { IconName } from '@/types/dashboard';
 
-type SectionId =
-  | 'studio'
-  | 'tax'
-  | 'hours'
-  | 'closures'
-  | 'localization'
-  | 'receivables'
-  | 'subscription'
-  | 'packages'
-  | 'gifts'
-  | 'stages'
-  | 'sources'
-  | 'interests'
-  | 'categories'
-  | 'notifications';
+type SectionId = SettingsSectionId;
 
 /** The settings screen's two reads, which always arrive and fail together. */
 interface LoadedSettings {
@@ -98,13 +85,17 @@ export default function SettingsScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const { stages, leadSources, interests, classCategories, packages, gifts, status, refresh } =
     useCatalogs();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   const [settings, setSettings] = useState<settingsApi.OrganizationSettings | null>(null);
   const [summary, setSummary] = useState<settingsApi.OrganizationSettingsSummary | null>(null);
   const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
-  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  // `?bolum=packages` opens that section straight away, so an empty state elsewhere in the app can
+  // send somebody to the thing they are missing rather than to the settings index to hunt for it.
+  const { bolum } = useLocalSearchParams<{ bolum?: string }>();
+
+  const [openSection, setOpenSection] = useState<SectionId | null>(() => toSettingsSection(bolum));
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
   const [packageForm, setPackageForm] = useState<{
     open: boolean;
@@ -751,7 +742,6 @@ export default function SettingsScreen() {
         onDownload={(invoice) => show(`${invoice.fileName} indiriliyor...`)}
       />
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

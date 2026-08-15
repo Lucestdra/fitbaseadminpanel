@@ -9,8 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { TeamTable } from '@/components/team/TeamTable';
 import { InviteStaffMemberModal } from '@/components/team/InviteStaffMemberModal';
 import { EditStaffMemberModal } from '@/components/team/EditStaffMemberModal';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTeam } from '@/hooks/useTeam';
 import { useAuth } from '@/context/AuthContext';
@@ -42,7 +41,7 @@ export default function TeamScreen() {
   const [search, setSearch] = useState('');
   const [inviteVisible, setInviteVisible] = useState(false);
   const [editing, setEditing] = useState<StaffMemberSummary | null>(null);
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   const { timeZoneId, permissions } = useAuth();
 
@@ -221,7 +220,6 @@ export default function TeamScreen() {
         onSave={handleUpdate}
       />
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

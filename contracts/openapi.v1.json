@@ -1175,6 +1175,259 @@
         ],
         "type": "object"
       },
+      "ConversationAssignmentBody": {
+        "description": "The request body for an assignment.",
+        "properties": {
+          "staffMemberId": {
+            "description": "Null unassigns. A body rather than a DELETE on a sub-resource, because unassigning and\r\nreassigning are the same act with different arguments and a client should not have to pick\r\nbetween two verbs to express it.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "staffMemberId"
+        ],
+        "type": "object"
+      },
+      "ConversationCounters": {
+        "description": "The counters above the inbox, computed from the same predicate as the list.",
+        "properties": {
+          "open": {
+            "description": "Threads that are somebody's move — `New`, `Open` or `Pending`.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "unassigned": {
+            "description": "Open threads nobody owns.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "unread": {
+            "description": "Threads with at least one unread inbound message.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "waitingForCustomer": {
+            "description": "Threads where the studio has replied and is waiting.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open",
+          "unread",
+          "unassigned",
+          "waitingForCustomer"
+        ],
+        "type": "object"
+      },
+      "ConversationDetail": {
+        "description": "One conversation's header, without its messages.",
+        "properties": {
+          "assignedStaffMemberId": {
+            "description": "Who has it.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "canSendFreeForm": {
+            "description": "Whether an ordinary message may be sent right now, or the provider's window has closed and a\r\ntemplate is required.",
+            "type": "boolean"
+          },
+          "channelConnectionId": {
+            "description": "Which connection.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "contactId": {
+            "description": "Who with.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "freeFormWindowClosesAt": {
+            "description": "When the window shuts. Null when it is already shut or when the provider has no window.\r\n<b>Shown to the studio</b>, because \"you have four hours to reply for free\" is the single most\r\nconsequential fact about a WhatsApp thread and it is invisible without being said.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The thread.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastInboundAt": {
+            "description": "Newest inbound.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastMessageAt": {
+            "description": "Newest movement.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "provider": {
+            "description": "The channel.",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConversationStatus",
+            "description": "Where it is."
+          },
+          "unreadCount": {
+            "description": "Unread inbound count.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "channelConnectionId",
+          "provider",
+          "contactId",
+          "status",
+          "assignedStaffMemberId",
+          "lastMessageAt",
+          "lastInboundAt",
+          "unreadCount",
+          "canSendFreeForm",
+          "freeFormWindowClosesAt"
+        ],
+        "type": "object"
+      },
+      "ConversationList": {
+        "description": "A page of conversations with the counters that describe the same set.",
+        "properties": {
+          "counters": {
+            "$ref": "#/components/schemas/ConversationCounters"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageOfConversationListItem"
+          }
+        },
+        "required": [
+          "page",
+          "counters"
+        ],
+        "type": "object"
+      },
+      "ConversationListItem": {
+        "description": "A conversation as the inbox list renders it.",
+        "properties": {
+          "assignedStaffMemberId": {
+            "description": "Who is dealing with it, or null.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "channelConnectionId": {
+            "description": "Which connection it arrived on.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "contactId": {
+            "description": "Who it is with. The client resolves the name; this module stores no names.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "description": "The thread.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastInboundAt": {
+            "description": "Newest message from the contact, or null if they have never written.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastMessageAt": {
+            "description": "Newest message either way. The list's sort key.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "preview": {
+            "description": "The newest message's text, truncated. Null when the newest message has no text — an image with\r\nno caption previews as its type, which the client renders, rather than as an empty string.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "previewDirection": {
+            "$ref": "#/components/schemas/MessageDirection",
+            "description": "Which way the newest message went, for the \"siz:\" prefix."
+          },
+          "previewType": {
+            "$ref": "#/components/schemas/MessageType",
+            "description": "What the newest message is, so a preview-less row still says something."
+          },
+          "provider": {
+            "description": "The channel, as the wire value.",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConversationStatus",
+            "description": "Where it is in its life."
+          },
+          "unreadCount": {
+            "description": "Inbound messages nobody has read.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "channelConnectionId",
+          "provider",
+          "contactId",
+          "status",
+          "assignedStaffMemberId",
+          "lastMessageAt",
+          "lastInboundAt",
+          "unreadCount",
+          "preview",
+          "previewType",
+          "previewDirection"
+        ],
+        "type": "object"
+      },
+      "ConversationStatus": {
+        "description": "Where a conversation is in its life.",
+        "enum": [
+          "New",
+          "Open",
+          "Pending",
+          "WaitingForCustomer",
+          "Resolved",
+          "Closed",
+          "Spam"
+        ]
+      },
+      "ConversationStatusBody": {
+        "description": "The request body for a status change.",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ConversationStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
       "DashboardView": {
         "description": "The dashboard.",
         "properties": {
@@ -3509,6 +3762,119 @@
         ],
         "type": "object"
       },
+      "MessageDirection": {
+        "description": "Which way a message went.",
+        "enum": [
+          "Inbound",
+          "Outbound"
+        ]
+      },
+      "MessageItem": {
+        "description": "One message, as a bubble.",
+        "properties": {
+          "body": {
+            "description": "The text, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "direction": {
+            "$ref": "#/components/schemas/MessageDirection",
+            "description": "Which way it went."
+          },
+          "failureCode": {
+            "description": "The provider's own code, when it refused.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The message.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "occurredAt": {
+            "description": "When. Rendered in the studio's zone by the client.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "replyToMessageId": {
+            "description": "What it replies to, where the provider models replies.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sentByStaffMemberId": {
+            "description": "Who sent it, for outbound.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sequence": {
+            "description": "Its position in the thread. What the client sorts and pages on.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MessageStatus",
+            "description": "Where it got to. <b>An Instagram message stops at `Sent`</b> — the provider reports no\r\ndelivery receipt, and the client must not draw a tick nobody sent (CLAUDE.md §16)."
+          },
+          "type": {
+            "$ref": "#/components/schemas/MessageType",
+            "description": "What it is."
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "direction",
+          "type",
+          "body",
+          "status",
+          "occurredAt",
+          "sentByStaffMemberId",
+          "failureCode",
+          "replyToMessageId"
+        ],
+        "type": "object"
+      },
+      "MessageStatus": {
+        "description": "Where a message got to.",
+        "enum": [
+          "Pending",
+          "Queued",
+          "Sending",
+          "Sent",
+          "Delivered",
+          "Read",
+          "Failed",
+          "Cancelled"
+        ]
+      },
+      "MessageType": {
+        "description": "What a message is.",
+        "enum": [
+          "Text",
+          "Image",
+          "Video",
+          "Audio",
+          "Voice",
+          "Document",
+          "Location",
+          "Contact",
+          "Sticker",
+          "Interactive",
+          "Template",
+          "System",
+          "Unsupported"
+        ]
+      },
       "MethodTotal": {
         "properties": {
           "amount": {
@@ -4099,6 +4465,30 @@
         ],
         "type": "object"
       },
+      "PageOfConversationListItem": {
+        "description": "One page of a collection, with an opaque cursor to the next.",
+        "properties": {
+          "items": {
+            "description": "The rows, in the requested order.",
+            "items": {
+              "$ref": "#/components/schemas/ConversationListItem"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its\r\ncontents are this server's business, and a client that parses it is one that breaks when the\r\nsort changes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
       "PageOfLeadListItem": {
         "description": "One page of a collection, with an opaque cursor to the next.",
         "properties": {
@@ -4130,6 +4520,30 @@
             "description": "The rows, in the requested order.",
             "items": {
               "$ref": "#/components/schemas/MemberListItem"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back to get the following page, or null when this is the last one. <b>Opaque</b> — its\r\ncontents are this server's business, and a client that parses it is one that breaks when the\r\nsort changes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "PageOfMessageItem": {
+        "description": "One page of a collection, with an opaque cursor to the next.",
+        "properties": {
+          "items": {
+            "description": "The rows, in the requested order.",
+            "items": {
+              "$ref": "#/components/schemas/MessageItem"
             },
             "type": "array"
           },
@@ -5512,6 +5926,40 @@
           "packageTemplateId",
           "startsOn",
           "priceOverride"
+        ],
+        "type": "object"
+      },
+      "SendMessageBody": {
+        "description": "The request body for a send.",
+        "properties": {
+          "body": {
+            "description": "The text.",
+            "type": "string"
+          },
+          "replyToMessageId": {
+            "description": "What it answers, where the provider models replies.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MessageType",
+                "description": "Text today; other types are refused rather than stored unsendable."
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "body",
+          "replyToMessageId"
         ],
         "type": "object"
       },
@@ -8053,6 +8501,497 @@
         "summary": "What is pointing at an entry. Asked before offering a delete.",
         "tags": [
           "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/conversations": {
+      "get": {
+        "operationId": "ListConversations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/ConversationStatus"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channelConnectionId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignedTo",
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unassignedOnly",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unreadOnly",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "A page of the inbox with the counters above it, under one filter.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}": {
+      "get": {
+        "operationId": "GetConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One conversation's header, including whether a free-form reply is still allowed.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}/assignment": {
+      "post": {
+        "operationId": "AssignConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationAssignmentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Gives a conversation an owner, or removes one.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}/messages": {
+      "get": {
+        "operationId": "ListConversationMessages",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfMessageItem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "A page of one thread's messages, newest first, paged on the thread sequence.",
+        "tags": [
+          "Conversations"
+        ]
+      },
+      "post": {
+        "operationId": "SendConversationMessage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageItem"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Queues an outbound message. Does not call the provider inline.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}/read": {
+      "post": {
+        "operationId": "MarkConversationRead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Clears the unread badge. Does not send a read receipt to the contact.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}/status": {
+      "post": {
+        "operationId": "SetConversationStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationStatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Moves a conversation to another state.",
+        "tags": [
+          "Conversations"
         ]
       }
     },
@@ -12830,6 +13769,9 @@
     },
     {
       "name": "Programs"
+    },
+    {
+      "name": "Conversations"
     },
     {
       "name": "Analytics"

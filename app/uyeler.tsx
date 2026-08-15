@@ -5,14 +5,14 @@ import { ListPageHeader } from '@/components/shared/ListPageHeader';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { MemberTable } from '@/components/members/MemberTable';
-import { MemberFormModal } from '@/components/members/MemberFormModal';
+import { MemberFormModal, type MemberOnboarding } from '@/components/members/MemberFormModal';
 import { MemberDetailDrawer } from '@/components/members/MemberDetailDrawer';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useMemberList } from '@/hooks/useMemberList';
 import { useAuth } from '@/context/AuthContext';
 import * as membersApi from '@/api/members';
+import * as financeApi from '@/api/finance';
 import { ApiError } from '@/api/problem';
 import { colors, spacing, typography, radii } from '@/theme';
 import { MEMBERSHIP_STATE_LABELS } from '@/api/enums';
@@ -89,7 +89,7 @@ const TILES: {
  */
 export default function MembersScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
   const { timeZoneId } = useAuth();
 
   const [search, setSearch] = useState('');
@@ -120,25 +120,91 @@ export default function MembersScreen() {
 
   const kpiBasis = isMobile ? '47%' : isTablet ? '31%' : '18.4%';
 
-  const createMember = async (body: MemberBody) => {
+  /**
+   * Creates the member, and — when the form asked for one — the membership and the money behind it.
+   *
+   * <b>Three writes, in order, reported by name.</b> There is no endpoint that does all three: the
+   * person belongs to members, the sale to memberships, the debt and the collection to finance.
+   * Running them here rather than pretending it is one call means the failure modes stay legible —
+   * a member created whose package did not sell is a sentence somebody can act on, and the member
+   * is on the list either way with the drawer able to finish the job.
+   *
+   * Only the first failure is fatal to the form. Past that the member exists, so the dialog closes
+   * and what went wrong is said in a notice instead of held in a field nobody can now edit.
+   */
+  const createMember = async (body: MemberBody, onboarding: MemberOnboarding | null) => {
     setSaving(true);
     setSaveError(null);
 
+    let created: Awaited<ReturnType<typeof membersApi.createMember>>;
+
     try {
-      const created = await membersApi.createMember(body);
-
-      setCreating(false);
-
-      // Re-read rather than splice. The new member has to land in the right place under the
-      // current sort and move the counters above the list, and only the server knows both.
-      reload();
-      show(`${created.fullName} eklendi.`);
+      created = await membersApi.createMember(body);
     } catch (error) {
       // Kept in the form, not thrown at a toast. A duplicate phone number or a rejected field is
       // something to fix in the box it came from, and a toast takes the typing away with it.
       setSaveError(error instanceof ApiError ? error.message : 'Üye kaydedilemedi.');
+      setSaving(false);
+      return;
+    }
+
+    setCreating(false);
+
+    if (onboarding === null) {
+      setSaving(false);
+
+      // Re-read rather than splice. The new member has to land in the right place under the
+      // current sort and move the counters above the list, and only the server knows both.
+      reload();
+      show(`${created.fullName} eklendi.`, 'success');
+      return;
+    }
+
+    try {
+      const membership = await membersApi.sellMembership(created.id, {
+        packageTemplateId: onboarding.packageTemplateId,
+        startsOn: onboarding.startsOn,
+        priceOverride: onboarding.priceOverride,
+      });
+
+      const price = membership.price;
+
+      // The debt, then the money against it. Selling a membership does not raise a charge — the
+      // finance module is where "owed" lives — so without this the studio has a member on a
+      // package and a receivables list that says they owe nothing.
+      if (price !== null && price > 0) {
+        await financeApi.createPaymentPlan({
+          memberId: created.id,
+          membershipId: membership.id,
+          description: membership.packageName,
+          discountAmount: null,
+          currency: membership.currency,
+          installments: [{ amount: price, dueOn: onboarding.startsOn }],
+        });
+      }
+
+      if (onboarding.payment !== null) {
+        await financeApi.recordPayment({
+          memberId: created.id,
+          amount: onboarding.payment.amount,
+          currency: membership.currency,
+          method: onboarding.payment.method,
+          paidAt: null,
+          reference: null,
+          note: null,
+
+          // Null settles the oldest debt first, which here is the instalment just raised.
+          allocations: null,
+        });
+      }
+
+      show(`${created.fullName} eklendi · ${membership.packageName} başlatıldı.`, 'success');
+    } catch (error) {
+      const reason = error instanceof ApiError ? error.message : 'İşlem tamamlanamadı.';
+      show(`${created.fullName} eklendi, ancak üyelik tamamlanamadı: ${reason}`, 'critical');
     } finally {
       setSaving(false);
+      reload();
     }
   };
 
@@ -276,7 +342,6 @@ export default function MembersScreen() {
         />
       ) : null}
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

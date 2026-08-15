@@ -14,8 +14,7 @@ import {
   countLeadFilters,
   type LeadFilters,
 } from '@/components/leads/LeadFilterSheet';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/context/AuthContext';
@@ -45,7 +44,7 @@ const viewOptions: SegmentOption<ViewMode>[] = [
 export default function LeadsScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
   const { timeZoneId, permissions } = useAuth();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -224,7 +223,6 @@ export default function LeadsScreen() {
         />
       ) : null}
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

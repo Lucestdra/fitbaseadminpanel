@@ -3,7 +3,13 @@ import { Card } from '@/components/ui/Card';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { Badge } from '@/components/ui/Badge';
 import { colors, spacing, typography, radii } from '@/theme';
-import { CHANNEL_META, type ChannelConnection } from '@/types/messaging';
+import {
+  CHANNEL_META,
+  CHANNEL_STATUS_LABELS,
+  CHANNEL_STATUS_REMEDIES,
+  CHANNEL_STATUS_TONES,
+  type ChannelConnection,
+} from '@/types/messaging';
 
 interface ChannelConnectionCardProps {
   channel: ChannelConnection;
@@ -11,8 +17,29 @@ interface ChannelConnectionCardProps {
   onConnect: (channel: ChannelConnection) => void;
 }
 
-export function ChannelConnectionCard({ channel, onDisconnect, onConnect }: ChannelConnectionCardProps) {
+/** The statuses that mean messages are flowing, or would be but for a transient fault. */
+const LIVE: ChannelConnection['status'][] = ['Active', 'Degraded'];
+
+/**
+ * One channel, and what a studio can do about it.
+ *
+ * <b>Reads a status, not a boolean.</b> The version this replaces rendered `connected ? 'Bağlı' :
+ * 'Bağlı Değil'`, which collapsed an expired token, a suspended connection and a studio that never
+ * authorized into one label with one button. Each of those needs a different sentence and two of
+ * them need a different action, which is why `ChannelConnectionStatus` has eight values.
+ */
+export function ChannelConnectionCard({
+  channel,
+  onDisconnect,
+  onConnect,
+}: ChannelConnectionCardProps) {
   const meta = CHANNEL_META[channel.id];
+  const live = LIVE.includes(channel.status);
+  const remedy = CHANNEL_STATUS_REMEDIES[channel.status];
+
+  // Re-authorizing is connecting again, not disconnecting first. Offering "Bağlantıyı Kes" to
+  // somebody whose token expired would ask them to throw away the connection to fix it.
+  const primaryIsConnect = !live;
 
   return (
     <Card style={styles.card}>
@@ -21,52 +48,78 @@ export function ChannelConnectionCard({ channel, onDisconnect, onConnect }: Chan
           <View style={[styles.iconCircle, { backgroundColor: meta.backgroundColor }]}>
             <AppIcon name={meta.icon} size={20} color={meta.color} />
           </View>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.title}>{channel.label}</Text>
-            <Text style={styles.accountName} numberOfLines={1}>{channel.accountName}</Text>
+            <Text style={styles.accountName} numberOfLines={1}>
+              {channel.accountName ?? meta.flowSummary}
+            </Text>
           </View>
         </View>
-        <Badge label={channel.connected ? 'Bağlı' : 'Bağlı Değil'} tone={channel.connected ? 'mint' : 'neutral'} />
+        <Badge
+          label={CHANNEL_STATUS_LABELS[channel.status]}
+          tone={CHANNEL_STATUS_TONES[channel.status]}
+        />
       </View>
 
-      {channel.connected ? (
+      {remedy ? (
+        <View style={styles.remedy}>
+          <AppIcon name="alert-circle-outline" size={15} color={colors.warning} />
+          <Text style={styles.remedyText}>{remedy}</Text>
+        </View>
+      ) : null}
+
+      {live ? (
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Bağlantı Tarihi</Text>
-            <Text style={styles.statValue}>{channel.connectedSince}</Text>
+            <Text style={styles.statValue}>{channel.connectedSince ?? '—'}</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Son Senkron</Text>
-            <Text style={styles.statValue}>{channel.lastSync}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Oluşan Müşteri Adayı</Text>
-            <Text style={styles.statValue}>{channel.leadsGenerated}</Text>
+            <Text style={styles.statLabel}>Son Gelen Mesaj</Text>
+            {/* Null on a live connection is worth showing rather than hiding: it is either a quiet
+                studio or a subscription that stopped delivering, and only one of those is fine. */}
+            <Text style={styles.statValue}>{channel.lastInboundAt ?? 'Henüz yok'}</Text>
           </View>
         </View>
       ) : (
         <Text style={styles.disconnectedText}>
-          Bu kanalı bağlayarak gelen mesajlardan otomatik müşteri adayı oluşturmaya başla.
+          Bağladığında bu kanaldan gelen mesajları buradan okuyup yanıtlarsın.
         </Text>
       )}
 
       <Pressable
-        onPress={() => (channel.connected ? onDisconnect(channel) : onConnect(channel))}
+        onPress={() => (primaryIsConnect ? onConnect(channel) : onDisconnect(channel))}
         accessibilityRole="button"
-        accessibilityLabel={channel.connected ? `${channel.label} bağlantısını kes` : `${channel.label} hesabını bağla`}
+        accessibilityLabel={
+          primaryIsConnect
+            ? `${channel.label} hesabını bağla`
+            : `${channel.label} bağlantısını kes`
+        }
         style={({ pressed }) => [
           styles.actionButton,
-          channel.connected ? styles.actionButtonOutline : styles.actionButtonPrimary,
-          pressed && (channel.connected ? styles.actionButtonOutlinePressed : styles.actionButtonPrimaryPressed),
+          primaryIsConnect ? styles.actionButtonPrimary : styles.actionButtonOutline,
+          pressed &&
+            (primaryIsConnect
+              ? styles.actionButtonPrimaryPressed
+              : styles.actionButtonOutlinePressed),
         ]}
       >
         <AppIcon
-          name={channel.connected ? 'unlink-outline' : 'link-outline'}
+          name={primaryIsConnect ? 'link-outline' : 'unlink-outline'}
           size={16}
-          color={channel.connected ? colors.textSecondary : colors.white}
+          color={primaryIsConnect ? colors.white : colors.textSecondary}
         />
-        <Text style={[styles.actionLabel, { color: channel.connected ? colors.textSecondary : colors.white }]}>
-          {channel.connected ? 'Bağlantıyı Kes' : 'Hesabı Bağla'}
+        <Text
+          style={[
+            styles.actionLabel,
+            { color: primaryIsConnect ? colors.white : colors.textSecondary },
+          ]}
+        >
+          {channel.status === 'ReauthorizationRequired'
+            ? 'Yeniden Yetkilendir'
+            : primaryIsConnect
+              ? 'Hesabı Bağla'
+              : 'Bağlantıyı Kes'}
         </Text>
       </Pressable>
     </Card>
@@ -90,6 +143,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     flexShrink: 1,
   },
+  headerText: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
   iconCircle: {
     width: 44,
     height: 44,
@@ -104,6 +161,19 @@ const styles = StyleSheet.create({
   accountName: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  remedy: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.warningLight,
+  },
+  remedyText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flexShrink: 1,
   },
   statsRow: {
     flexDirection: 'row',

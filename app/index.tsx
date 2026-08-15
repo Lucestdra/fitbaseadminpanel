@@ -10,8 +10,7 @@ import { PackageRenewalsCard } from '@/components/dashboard/PackageRenewalsCard'
 import { CollectionStatusCard } from '@/components/dashboard/CollectionStatusCard';
 import { OccupancyCard } from '@/components/dashboard/OccupancyCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useDashboard } from '@/hooks/useAnalytics';
 import { colors, spacing, typography } from '@/theme';
@@ -46,7 +45,7 @@ const TILES: { id: string; icon: IconName; href?: string }[] = [
 export default function OverviewScreen() {
   const [period, setPeriod] = useState<AnalyticsPeriod>('Today');
   const { isMobile, isTablet } = useResponsiveLayout();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
   const router = useRouter();
 
   const { view, status } = useDashboard(period);
@@ -151,7 +150,6 @@ export default function OverviewScreen() {
         </View>
       )}
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

@@ -9,8 +9,7 @@ import { MonthCalendarBoard } from '@/components/calendar/MonthCalendarBoard';
 import { DayAgendaBoard } from '@/components/calendar/DayAgendaBoard';
 import { SessionDetailDrawer } from '@/components/calendar/SessionDetailDrawer';
 import { NewSessionModal } from '@/components/calendar/NewSessionModal';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCalendar } from '@/hooks/useCalendar';
 import { useStaffRoster } from '@/hooks/useStaffRoster';
@@ -44,7 +43,7 @@ const viewOptions: SegmentOption<ViewMode>[] = [
  */
 export default function CalendarScreen() {
   const { timeZoneId, permissions } = useAuth();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
   const { roster } = useStaffRoster();
 
   // The studio's today, not the device's. An owner checking the timetable from London would
@@ -234,7 +233,6 @@ export default function CalendarScreen() {
         />
       ) : null}
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

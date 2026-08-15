@@ -8,9 +8,12 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
+import { EmptyStateNotice } from '@/components/ui/EmptyStateNotice';
 import { SingleDatePickerModal } from '@/components/ui/SingleDatePickerModal';
+import { useClasses } from '@/hooks/useClasses';
 import { colors, spacing, typography, radii } from '@/theme';
 import { fromIsoDate, generateTimeOptions, toIsoDate } from '@/utils/date';
 import { formatDayLabel, toInstant } from '@/utils/calendar';
@@ -30,10 +33,18 @@ interface NewSessionModalProps {
 
 const TIME_OPTIONS = generateTimeOptions();
 
-type DropdownField = 'coach' | 'time' | null;
+type DropdownField = 'class' | 'coach' | 'time' | null;
 
 /**
  * Adds one session to the calendar.
+ *
+ * <b>It now starts from the timetable.</b> The studio defines Pilates once — its length, its seats,
+ * who normally teaches it — and every calendar entry retyped all three as free text, so the class
+ * definitions were a list nothing read and the sessions they should have produced carried
+ * `classDefinitionId: null`. Choosing the class fills the terms and files the session under it,
+ * which is what makes "bu ders bu ay kaç kere yapıldı" answerable at all.
+ *
+ * The free-text path stays: a one-to-one with a member is not a class and never will be.
  *
  * <b>Replaces a form that wrote to React state.</b> The version this supersedes collected a weekday
  * and a time, pushed a row into a context, and lost it on reload — it also picked a trainer from
@@ -58,6 +69,7 @@ export function NewSessionModal({
   onError,
 }: NewSessionModalProps) {
   const [title, setTitle] = useState('');
+  const [classId, setClassId] = useState<string | null>(null);
   const [coachId, setCoachId] = useState<string | null>(null);
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState('09:00');
@@ -67,9 +79,37 @@ export function NewSessionModal({
   const [pickingDate, setPickingDate] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const router = useRouter();
+  const { classes, status: classesStatus } = useClasses();
+
+  // Only what is still offered. A retired class keeps the sessions it produced but must not appear
+  // here, or retiring it would be a label change rather than a decision.
+  const offeredClasses = classes.filter((entry) => entry.isActive);
+  const selectedClass = offeredClasses.find((entry) => entry.id === classId) ?? null;
+
   // Only people currently working. A session cannot be assigned to somebody who has left, though
   // the roster carries them so existing assignments still render a name.
   const active = staff.filter((member) => member.status !== 'Inactive');
+
+  /**
+   * Applies a class's terms to the form.
+   *
+   * Copied into the fields rather than read from the class at submit, because the whole point of a
+   * one-off is that one of them can be changed — a Pilates class run with fifteen seats this once
+   * is still that class.
+   */
+  const chooseClass = (id: string | null) => {
+    setClassId(id);
+    setOpenDropdown(null);
+
+    const definition = offeredClasses.find((entry) => entry.id === id);
+    if (!definition) return;
+
+    setTitle(definition.name);
+    setDuration(String(definition.defaultDurationMinutes));
+    setCapacity(String(definition.defaultCapacity));
+    setCoachId(definition.defaultCoachStaffMemberId);
+  };
 
   const durationMinutes = Number.parseInt(duration, 10);
   const seats = Number.parseInt(capacity, 10);
@@ -95,7 +135,7 @@ export function NewSessionModal({
           durationMinutes,
           capacity: seats,
           coachStaffMemberId: coachId,
-          classDefinitionId: null,
+          classDefinitionId: classId,
           notes: null,
         });
 
@@ -121,6 +161,37 @@ export function NewSessionModal({
           </View>
 
           <View style={styles.field}>
+            <Text style={styles.label}>Ders</Text>
+
+            {classesStatus === 'error' ? (
+              <Text style={styles.hint}>
+                Ders listesi yüklenemedi. Başlığı elle yazarak devam edebilirsin.
+              </Text>
+            ) : offeredClasses.length === 0 && classesStatus === 'ready' ? (
+              <EmptyStateNotice
+                message="Tanımlı ders yok. Ders tanımlarsan kontenjan, süre ve eğitmen buraya hazır gelir."
+                actionLabel="Ders Tanımla"
+                onAction={() => router.push('/dersler' as never)}
+                icon="barbell-outline"
+              />
+            ) : (
+              <DropdownSelect
+                placeholder={classesStatus === 'loading' ? 'Yükleniyor…' : 'Ders seç'}
+                clearLabel="Özel ders (serbest başlık)"
+                selectedId={classId}
+                options={offeredClasses.map((entry) => ({
+                  id: entry.id,
+                  label: entry.name,
+                  meta: `${entry.defaultCapacity} kişi · ${entry.defaultDurationMinutes} dk`,
+                }))}
+                open={openDropdown === 'class'}
+                onToggle={() => setOpenDropdown(openDropdown === 'class' ? null : 'class')}
+                onSelect={chooseClass}
+              />
+            )}
+          </View>
+
+          <View style={styles.field}>
             <Text style={styles.label}>Başlık</Text>
             <TextInput
               value={title}
@@ -129,6 +200,11 @@ export function NewSessionModal({
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
+            {selectedClass ? (
+              <Text style={styles.hint}>
+                {selectedClass.name} dersinden dolduruldu. Bu seans için değiştirebilirsin.
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.field}>
@@ -266,6 +342,10 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.captionStrong,
+    color: colors.textSecondary,
+  },
+  hint: {
+    ...typography.caption,
     color: colors.textSecondary,
   },
   input: {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
+import { PhoneField } from '@/components/ui/PhoneField';
 import { colors, spacing, typography, radii } from '@/theme';
 import { ROLE_META } from '@/utils/staff';
 import type { InviteStaffMemberBody, StaffRole } from '@/api/staff';
@@ -132,13 +133,9 @@ export function InviteStaffMemberModal({ visible, onClose, onInvite }: InviteSta
             />
 
             <Text style={styles.fieldLabel}>Cep Telefonu (opsiyonel)</Text>
-            <TextInput
+            <PhoneField
               value={phone}
-              onChangeText={setPhone}
-              placeholder="+90 5xx xxx xx xx"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="phone-pad"
-              style={styles.input}
+              onChange={(next) => setPhone(next ?? '')}
               accessibilityLabel="Cep Telefonu"
             />
           </ScrollView>

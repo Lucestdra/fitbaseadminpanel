@@ -6,8 +6,7 @@ import { DistributionCard } from '@/components/shared/DistributionCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ClassTable } from '@/components/classes/ClassTable';
 import { ClassFormModal } from '@/components/classes/ClassFormModal';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useClasses } from '@/hooks/useClasses';
 import { useStaffRoster } from '@/hooks/useStaffRoster';
@@ -40,7 +39,7 @@ export default function ClassesScreen() {
   const { classes, status, reload } = useClasses();
   const { roster } = useStaffRoster();
   const { classCategories } = useCatalogs();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<ClassSummary | null>(null);
@@ -206,7 +205,6 @@ export default function ClassesScreen() {
         />
       ) : null}
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

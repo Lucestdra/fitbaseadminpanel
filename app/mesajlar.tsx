@@ -3,8 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { AppShell } from '@/components/layout/AppShell';
 import { Card } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { ChannelConnectionCard } from '@/components/messaging/ChannelConnectionCard';
 import { ConnectedChannelIcon } from '@/components/messaging/ConnectedChannelIcon';
 import { ChannelDetailModal } from '@/components/messaging/ChannelDetailModal';
@@ -14,14 +13,21 @@ import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatThread } from '@/components/messaging/ChatThread';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { colors, spacing, typography } from '@/theme';
-import { channelConnections as initialChannels } from '@/mock/messaging';
+import { AVAILABLE_CHANNELS } from '@/config/channels';
 import { conversations as initialConversations, messagesByConversation as initialMessages } from '@/mock/inbox';
 import type { ChannelConnection } from '@/types/messaging';
 import type { ChatMessage } from '@/types/inbox';
 
+/** The statuses that mean the channel is carrying traffic. */
+const LIVE: ChannelConnection['status'][] = ['Active', 'Degraded'];
+
 export default function MessagesScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
-  const [channels, setChannels] = useState<ChannelConnection[]>(initialChannels);
+
+  // The catalogue of channels the product offers, all `Disconnected` until authorization opens
+  // (ADR-0043 §5). `mergeChannelConnections` overlays the studio's real rows the moment
+  // `/api/v1/integrations/channels` exists; nothing else on this screen changes when it does.
+  const [channels, setChannels] = useState<ChannelConnection[]>(AVAILABLE_CHANNELS);
   const [automationEnabled, setAutomationEnabled] = useState(true);
   const [connectNoticeChannel, setConnectNoticeChannel] = useState<ChannelConnection | null>(null);
   const [detailChannel, setDetailChannel] = useState<ChannelConnection | null>(null);
@@ -29,13 +35,19 @@ export default function MessagesScreen() {
   const [messagesByConversation, setMessagesByConversation] = useState(initialMessages);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(initialConversations[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null;
   const activeMessages = activeConversationId ? messagesByConversation[activeConversationId] ?? [] : [];
 
   const handleDisconnect = (channel: ChannelConnection) => {
-    setChannels((current) => current.map((item) => (item.id === channel.id ? { ...item, connected: false } : item)));
+    setChannels((current) =>
+      current.map((item) =>
+        item.id === channel.id
+          ? { ...item, status: 'Disconnected', accountName: null, connectedSince: null }
+          : item,
+      ),
+    );
     show(`${channel.label} bağlantısı kesildi.`);
   };
 
@@ -77,8 +89,8 @@ export default function MessagesScreen() {
 
   const showInboxList = !isMobile || mobileView === 'list';
   const showInboxThread = !isMobile || mobileView === 'thread';
-  const connectedChannels = channels.filter((channel) => channel.connected);
-  const disconnectedChannels = channels.filter((channel) => !channel.connected);
+  const connectedChannels = channels.filter((channel) => LIVE.includes(channel.status));
+  const disconnectedChannels = channels.filter((channel) => !LIVE.includes(channel.status));
 
   return (
     <AppShell activeId="messages">
@@ -86,7 +98,7 @@ export default function MessagesScreen() {
         <View style={styles.headerTextGroup}>
           <Text style={styles.title}>Mesajlar</Text>
           <Text style={styles.subtitle}>
-            WhatsApp ve Instagram işletme hesaplarını bağla, gelen mesajlardan otomatik müşteri adayı oluştur.
+            WhatsApp, Instagram ve Messenger hesaplarını bağla; gelen mesajları buradan oku ve yanıtla.
           </Text>
         </View>
         {connectedChannels.length > 0 && (
@@ -153,7 +165,6 @@ export default function MessagesScreen() {
         onDisconnect={handleDisconnect}
       />
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

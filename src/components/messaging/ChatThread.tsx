@@ -4,9 +4,8 @@ import { AvatarWithBadge } from './AvatarWithBadge';
 import { MessageBubble } from './MessageBubble';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
+import { CHANNEL_LABELS } from '@/types/messaging';
 import type { Conversation, ChatMessage } from '@/types/inbox';
-
-const CHANNEL_LABEL = { whatsapp: 'WhatsApp', instagram: 'Instagram' } as const;
 
 interface ChatThreadProps {
   conversation: Conversation;
@@ -50,7 +49,7 @@ export function ChatThread({
         <AvatarWithBadge initials={conversation.avatarInitials} channel={conversation.channel} size={36} />
         <View style={styles.headerTextGroup}>
           <Text style={styles.headerName} numberOfLines={1}>{conversation.contactName}</Text>
-          <Text style={styles.headerChannel}>{CHANNEL_LABEL[conversation.channel]}</Text>
+          <Text style={styles.headerChannel}>{CHANNEL_LABELS[conversation.channel]}</Text>
         </View>
       </View>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Badge } from '@/components/ui/Badge';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
+import { EmptyStateNotice } from '@/components/ui/EmptyStateNotice';
 import { SingleDatePickerModal } from '@/components/ui/SingleDatePickerModal';
 import { useCatalogs, activeOnly } from '@/context/CatalogsContext';
 import * as membersApi from '@/api/members';
@@ -241,9 +242,11 @@ function SellDialog({
   return (
     <Dialog title="Paket Sat" onClose={onClose}>
       {offered.length === 0 ? (
-        <Text style={styles.hint}>
-          Satılabilir paket yok. Ayarlar ekranından paket tanımlayabilirsin.
-        </Text>
+        <EmptyStateNotice
+          message="Satılabilir paket yok. Üyelik başlatmak için önce bir paket tanımla."
+          actionLabel="Paket Tanımla"
+          actionSection="packages"
+        />
       ) : (
         <>
           <Text style={styles.fieldLabel}>Paket</Text>
@@ -397,7 +400,10 @@ function FreezeDialog({
         onPress={() => onSubmit({ startsOn, endsOn, reason: reason.trim() || null })}
       />
 
+      {/* Keyed, so switching from the start field to the end field re-seeds the calendar on the
+          end date rather than leaving it wherever the start left it. */}
       <SingleDatePickerModal
+        key={picking ?? 'closed'}
         visible={picking !== null}
         title={picking === 'startsOn' ? 'Dondurma Başlangıcı' : 'Beklenen Bitiş'}
         initialDate={fromIsoDate(picking === 'startsOn' ? startsOn : endsOn) ?? undefined}

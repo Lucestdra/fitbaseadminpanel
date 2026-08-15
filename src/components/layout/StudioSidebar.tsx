@@ -4,9 +4,8 @@ import { useRouter } from 'expo-router';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { Avatar } from '@/components/ui/Avatar';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { Toast } from '@/components/ui/Toast';
 import { UserProfileModal } from '@/components/layout/UserProfileModal';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import * as sessionApi from '@/api/session';
 import { canAccess } from '@/utils/permissions';
@@ -62,7 +61,7 @@ function SidebarNavItem({
 
 export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggleCollapse }: StudioSidebarProps) {
   const router = useRouter();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
   const { user, studioName, studioAddress, roleLabel, allowedNavIds, signOut, refresh } = useAuth();
 
   /**
@@ -185,7 +184,6 @@ export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggl
         onSave={handleProfileSave}
       />
 
-      <Toast message={message} visible={visible} />
     </View>
   );
 }

@@ -2,8 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { colors, spacing, typography, radii } from '@/theme';
 import type { QuickAction } from '@/types/dashboard';
 
@@ -26,7 +25,7 @@ interface QuickActionsCardProps {
 }
 
 export function QuickActionsCard({ onActionPress }: QuickActionsCardProps) {
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   return (
     <Card style={styles.card}>
@@ -47,7 +46,6 @@ export function QuickActionsCard({ onActionPress }: QuickActionsCardProps) {
         ))}
       </View>
 
-      <Toast message={message} visible={visible} />
     </Card>
   );
 }

@@ -5,8 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { AppIcon } from '@/components/ui/AppIcon';
-import { Toast } from '@/components/ui/Toast';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { MemberProgramModal } from '@/components/trainers/MemberProgramModal';
 import { useAuth } from '@/context/AuthContext';
@@ -33,7 +32,7 @@ import { colors, spacing, typography, radii } from '@/theme';
 export default function TrainerProgramScreen() {
   const { isMobile } = useResponsiveLayout();
   const { timeZoneId, permissions } = useAuth();
-  const { message, visible, show } = useToast();
+  const { show } = useToast();
 
   // Null means "the studio's current month", answered by the server. Stepping away from it produces
   // an explicit month; stepping back to it does not restore the null, and that is fine — the
@@ -286,7 +285,6 @@ export default function TrainerProgramScreen() {
         onError={show}
       />
 
-      <Toast message={message} visible={visible} />
     </AppShell>
   );
 }

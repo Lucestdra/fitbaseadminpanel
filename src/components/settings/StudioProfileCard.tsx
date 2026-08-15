@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { FormField } from '@/components/ui/FormField';
+import { PhoneField } from '@/components/ui/PhoneField';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
 import type { OrganizationProfile } from '@/api/settings';
@@ -81,13 +82,14 @@ export function StudioProfileCard({ profile, onSave, onUploadLogo, busy }: Studi
           onChangeText={setContactPerson}
           placeholder="İlgili kişi"
         />
-        <FormField
-          label="İletişim Numarası"
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="+90 5xx xxx xx xx"
-          keyboardType="phone-pad"
-        />
+        <View style={styles.phoneField}>
+          <Text style={styles.phoneLabel}>İletişim Numarası</Text>
+          <PhoneField
+            value={phone}
+            onChange={(next) => setPhone(next ?? '')}
+            accessibilityLabel="İletişim Numarası"
+          />
+        </View>
         <FormField
           label="Adres"
           value={address}
@@ -112,6 +114,17 @@ export function StudioProfileCard({ profile, onSave, onUploadLogo, busy }: Studi
 const styles = StyleSheet.create({
   card: {
     gap: spacing.xl,
+  },
+  // Matches FormField's own container so the phone field keeps its place in the two-up grid.
+  phoneField: {
+    gap: spacing.xs,
+    flexBasis: '47%',
+    flexGrow: 1,
+    minWidth: 200,
+  },
+  phoneLabel: {
+    ...typography.captionStrong,
+    color: colors.textSecondary,
   },
   logoRow: {
     flexDirection: 'row',

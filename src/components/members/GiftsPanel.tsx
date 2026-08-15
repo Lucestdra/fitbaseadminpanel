@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { DropdownSelect } from '@/components/ui/DropdownSelect';
+import { EmptyStateNotice } from '@/components/ui/EmptyStateNotice';
 import { useCatalogs, activeOnly } from '@/context/CatalogsContext';
 import * as membersApi from '@/api/members';
 import { ApiError } from '@/api/problem';
@@ -57,28 +58,34 @@ export function GiftsPanel({ memberId, gifts, onChanged, onNotify }: GiftsPanelP
 
   return (
     <View style={styles.container}>
-      <Pressable
-        onPress={() => setGranting(true)}
-        disabled={offered.length === 0}
-        accessibilityRole="button"
-        accessibilityLabel="Hediye ver"
-        style={({ pressed }) => [
-          styles.grantButton,
-          offered.length === 0 && styles.grantDisabled,
-          pressed && styles.grantPressed,
-        ]}
-      >
-        <Text style={styles.grantLabel}>Hediye Ver</Text>
-      </Pressable>
-
+      {/* No disabled "Hediye Ver" above an explanation of why it is disabled. With no templates
+          the only useful action is defining one, and that is the button the panel shows. */}
       {offered.length === 0 ? (
-        <Text style={styles.hint}>
-          Tanımlı hediye yok. Ayarlar ekranından hediye tanımlayabilirsin.
-        </Text>
-      ) : null}
+        <EmptyStateNotice
+          message="Tanımlı hediye yok. Hediye verebilmek için önce bir hediye tanımla."
+          actionLabel="Hediye Tanımla"
+          actionSection="gifts"
+        />
+      ) : (
+        <Pressable
+          onPress={() => setGranting(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Hediye ver"
+          style={({ pressed }) => [styles.grantButton, pressed && styles.grantPressed]}
+        >
+          <Text style={styles.grantLabel}>Hediye Ver</Text>
+        </Pressable>
+      )}
 
       {gifts.length === 0 ? (
-        <Text style={styles.hint}>Bu üyeye henüz hediye verilmemiş.</Text>
+        offered.length > 0 ? (
+          <EmptyStateNotice
+            message="Bu üyeye henüz hediye verilmemiş."
+            actionLabel="Hediye Ver"
+            onAction={() => setGranting(true)}
+            icon="gift-outline"
+          />
+        ) : null
       ) : (
         gifts.map((gift) => (
           <View key={gift.id} style={styles.row}>
@@ -207,9 +214,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
-  },
-  grantDisabled: {
-    opacity: 0.5,
   },
   grantPressed: {
     backgroundColor: colors.pageBackground,

@@ -2,7 +2,12 @@ import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { Badge } from '@/components/ui/Badge';
 import { colors, spacing, typography, radii } from '@/theme';
-import { CHANNEL_META, type ChannelConnection } from '@/types/messaging';
+import {
+  CHANNEL_META,
+  CHANNEL_STATUS_LABELS,
+  CHANNEL_STATUS_TONES,
+  type ChannelConnection,
+} from '@/types/messaging';
 
 interface ChannelDetailModalProps {
   channel: ChannelConnection | null;
@@ -26,25 +31,30 @@ export function ChannelDetailModal({ channel, visible, onClose, onDisconnect }: 
             </View>
             <View style={styles.headerTextGroup}>
               <Text style={styles.title}>{channel.label}</Text>
-              <Text style={styles.accountName} numberOfLines={1}>{channel.accountName}</Text>
+              <Text style={styles.accountName} numberOfLines={1}>
+                {channel.accountName ?? '—'}
+              </Text>
             </View>
-            <Badge label="Bağlı" tone="mint" />
+            <Badge
+              label={CHANNEL_STATUS_LABELS[channel.status]}
+              tone={CHANNEL_STATUS_TONES[channel.status]}
+            />
           </View>
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Bağlantı Tarihi</Text>
-              <Text style={styles.statValue}>{channel.connectedSince}</Text>
+              <Text style={styles.statValue}>{channel.connectedSince ?? '—'}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Son Senkron</Text>
-              <Text style={styles.statValue}>{channel.lastSync}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Oluşan Müşteri Adayı</Text>
-              <Text style={styles.statValue}>{channel.leadsGenerated}</Text>
+              <Text style={styles.statLabel}>Son Gelen Mesaj</Text>
+              <Text style={styles.statValue}>{channel.lastInboundAt ?? 'Henüz yok'}</Text>
             </View>
           </View>
+
+          {/* "Oluşan Müşteri Adayı" was here, as a mock count. Leads are not created from
+              conversations automatically (ADR-0073) — promotion is a deliberate action — so the
+              number was describing a behaviour the product does not have. */}
 
           <Pressable
             onPress={() => {
