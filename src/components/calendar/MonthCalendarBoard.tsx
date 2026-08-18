@@ -117,61 +117,84 @@ export function MonthCalendarBoard({
           const ungenerated = isBeyondGenerated(cell.isoDate, materializedThrough);
 
           return (
-            <Pressable
+            <View
               key={cell.isoDate}
-              onPress={() => onSelectDay(cell.isoDate)}
-              accessibilityRole="button"
-              accessibilityLabel={`${cell.dayOfMonth} ${TURKISH_MONTHS[month]}, ${daySessions.length} ders`}
               style={[
                 styles.dayCell,
                 !cell.inMonth && styles.dayCellOutside,
                 cell.isoDate === today && styles.dayCellToday,
               ]}
             >
-              <Text
-                style={[
-                  styles.dayNumber,
-                  !cell.inMonth && styles.dayNumberOutside,
-                  cell.isoDate === today && styles.dayNumberToday,
-                ]}
-              >
-                {cell.dayOfMonth}
-              </Text>
+              {/*
+                The day's own target, behind the content rather than around it.
 
-              <View style={styles.sessionList}>
-                {visible.map((session) => (
-                  <Pressable
-                    key={session.id}
-                    onPress={() => onSelectSession(session.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${session.title} detayları`}
-                    style={styles.sessionChip}
-                  >
-                    <View style={[styles.sessionDot, { backgroundColor: stateColor(session) }]} />
-                    <Text
-                      style={[
-                        styles.sessionText,
-                        session.state === 'Cancelled' && styles.sessionTextCancelled,
-                      ]}
-                      numberOfLines={1}
+                <b>It used to wrap the cell, and a session chip is a button too.</b> That nests one
+                button inside another — invalid HTML, which React says so about, and worse than a
+                warning: a click on a chip bubbles to the cell, so opening a session also selected
+                its day. Every tap did two things and only one of them was asked for.
+
+                Absolutely positioned and first, so it fills the cell and paints underneath. The
+                content above it is `box-none`, which lets a click land here everywhere except on a
+                chip — so "tap the empty part of a day to open it" still works, and the chips are
+                siblings in the DOM rather than children.
+              */}
+              <Pressable
+                onPress={() => onSelectDay(cell.isoDate)}
+                accessibilityRole="button"
+                accessibilityLabel={`${cell.dayOfMonth} ${TURKISH_MONTHS[month]}, ${daySessions.length} ders`}
+                style={({ pressed }) => [StyleSheet.absoluteFill, pressed && styles.dayCellPressed]}
+              />
+
+              <View style={styles.dayContent}>
+                <Text
+                  style={[
+                    styles.dayNumber,
+                    !cell.inMonth && styles.dayNumberOutside,
+                    cell.isoDate === today && styles.dayNumberToday,
+                  ]}
+                >
+                  {cell.dayOfMonth}
+                </Text>
+
+                {/* `box-none` again: the list's own bounds are wider than its chips, and without it
+                    the gaps between them would swallow the day's click. */}
+                <View style={styles.sessionList}>
+                  {visible.map((session) => (
+                    <Pressable
+                      key={session.id}
+                      onPress={() => onSelectSession(session.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${session.title} detayları`}
+                      style={styles.sessionChip}
                     >
-                      {formatTimeIn(session.startsAt, timeZoneId)} {session.title}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <View style={[styles.sessionDot, { backgroundColor: stateColor(session) }]} />
+                      <Text
+                        style={[
+                          styles.sessionText,
+                          session.state === 'Cancelled' && styles.sessionTextCancelled,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {formatTimeIn(session.startsAt, timeZoneId)} {session.title}
+                      </Text>
+                    </Pressable>
+                  ))}
 
-                {extra > 0 ? <Text style={styles.moreText}>+{extra} daha</Text> : null}
+                  {/* Not pressable, and reached by the day's target underneath — which is right:
+                      "+2 daha" means "there is more here", and the day view is where the rest is. */}
+                  {extra > 0 ? <Text style={styles.moreText}>+{extra} daha</Text> : null}
 
-                {/*
-                  Only where there is nothing to show. A day past the horizon that somehow holds a
-                  one-off session is not ungenerated in any sense the person cares about — one-offs
-                  are written directly and never wait for the materialiser.
-                */}
-                {ungenerated && daySessions.length === 0 ? (
-                  <Text style={styles.ungeneratedText}>oluşturulmadı</Text>
-                ) : null}
+                  {/*
+                    Only where there is nothing to show. A day past the horizon that somehow holds a
+                    one-off session is not ungenerated in any sense the person cares about — one-offs
+                    are written directly and never wait for the materialiser.
+                  */}
+                  {ungenerated && daySessions.length === 0 ? (
+                    <Text style={styles.ungeneratedText}>oluşturulmadı</Text>
+                  ) : null}
+                </View>
               </View>
-            </Pressable>
+            </View>
           );
         })}
       </View>
@@ -220,16 +243,30 @@ const styles = StyleSheet.create({
   dayCell: {
     width: `${100 / 7}%`,
     minHeight: 96,
-    padding: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 4,
   },
   dayCellOutside: {
     backgroundColor: colors.pageBackground,
   },
   dayCellToday: {
     backgroundColor: colors.mintLight,
+  },
+  // The only signal that a day is clickable, now that the whole cell is no longer a button. Without
+  // it the target is invisible and silent.
+  dayCellPressed: {
+    backgroundColor: colors.pageBackground,
+  },
+  // The padding moved here from the cell: the day's target is absolutely positioned and would
+  // otherwise inset by it, leaving a dead border a few pixels wide all the way round.
+  dayContent: {
+    flex: 1,
+    padding: spacing.xs,
+    gap: 4,
+
+    // In the style rather than as a prop: React Native deprecated `pointerEvents` as a prop, and
+    // the runtime says so on every render.
+    pointerEvents: 'box-none',
   },
   dayNumber: {
     ...typography.captionStrong,
@@ -243,6 +280,10 @@ const styles = StyleSheet.create({
   },
   sessionList: {
     gap: 2,
+
+    // The list's bounds are wider than its chips; without this the gaps between them would swallow
+    // the day's click instead of passing it to the target underneath.
+    pointerEvents: 'box-none',
   },
   sessionChip: {
     flexDirection: 'row',

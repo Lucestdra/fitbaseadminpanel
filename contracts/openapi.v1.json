@@ -825,6 +825,12 @@
             },
             "type": "array"
           },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciseEntry"
+            },
+            "type": "array"
+          },
           "giftTemplates": {
             "description": "What a studio gives away, with structured effects.",
             "items": {
@@ -867,7 +873,8 @@
           "interests",
           "classCategories",
           "packageTemplates",
-          "giftTemplates"
+          "giftTemplates",
+          "exercises"
         ],
         "type": "object"
       },
@@ -1172,6 +1179,239 @@
           "startsOn",
           "endsOn",
           "reason"
+        ],
+        "type": "object"
+      },
+      "ContactDetail": {
+        "description": "One contact, with everything the studio knows about who they are.",
+        "properties": {
+          "displayName": {
+            "description": "Best known name, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The contact.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "identities": {
+            "description": "Every channel account known to be this person.",
+            "items": {
+              "$ref": "#/components/schemas/ContactIdentityView"
+            },
+            "type": "array"
+          },
+          "links": {
+            "description": "What they are in the pipeline and on the roster.",
+            "items": {
+              "$ref": "#/components/schemas/ContactLinkView"
+            },
+            "type": "array"
+          },
+          "mergedIntoContactId": {
+            "description": "Set when this is a tombstone. Act on the target instead.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "merges": {
+            "description": "What was folded into them, and what was undone.",
+            "items": {
+              "$ref": "#/components/schemas/ContactMergeView"
+            },
+            "type": "array"
+          },
+          "primaryEmail": {
+            "description": "Same.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "primaryPhone": {
+            "description": "Normalised, and only ever set from a verified source.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "primaryPhone",
+          "primaryEmail",
+          "mergedIntoContactId",
+          "identities",
+          "links",
+          "merges"
+        ],
+        "type": "object"
+      },
+      "ContactIdentityView": {
+        "description": "One account on one channel, as the drawer renders it.",
+        "properties": {
+          "displayName": {
+            "description": "What the provider calls them.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "description": "As the provider gave it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "emailVerified": {
+            "description": "Same.",
+            "type": "boolean"
+          },
+          "firstSeenAt": {
+            "description": "When the studio first heard from this account.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "The identity row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "description": "And most recently.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "description": "As the provider gave it.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneVerified": {
+            "description": "Whether the provider vouches for it — and so whether it may match.",
+            "type": "boolean"
+          },
+          "provider": {
+            "description": "The channel.",
+            "type": "string"
+          },
+          "username": {
+            "description": "The handle, where there is one.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "displayName",
+          "username",
+          "phoneNumber",
+          "phoneVerified",
+          "email",
+          "emailVerified",
+          "firstSeenAt",
+          "lastSeenAt"
+        ],
+        "type": "object"
+      },
+      "ContactLinkKind": {
+        "description": "What a contact is linked to elsewhere in the studio.",
+        "enum": [
+          "Lead",
+          "Member"
+        ]
+      },
+      "ContactLinkView": {
+        "description": "What a contact is elsewhere in the studio.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ContactLinkKind",
+            "description": "Lead or member."
+          },
+          "linkedAt": {
+            "description": "When the link was made.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "subjectId": {
+            "description": "The row in that module.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "subjectId",
+          "linkedAt"
+        ],
+        "type": "object"
+      },
+      "ContactMergeReason": {
+        "description": "Why two contacts were joined.",
+        "enum": [
+          "VerifiedPhone",
+          "VerifiedEmail",
+          "Manual"
+        ]
+      },
+      "ContactMergeView": {
+        "description": "A merge that happened, and whether it still stands.",
+        "properties": {
+          "id": {
+            "description": "The merge.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "mergedAt": {
+            "description": "When.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "mergedByStaffMemberId": {
+            "description": "Who decided, or null for an automatic match.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ContactMergeReason",
+            "description": "Why. <b>An automatic match is visibly distinguishable from a decision</b> — which matters most\r\nwhen the automatic one turns out to be wrong."
+          },
+          "reversedAt": {
+            "description": "When it was undone, or null.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceContactId": {
+            "description": "The contact that became a tombstone.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sourceContactId",
+          "reason",
+          "mergedByStaffMemberId",
+          "mergedAt",
+          "reversedAt"
         ],
         "type": "object"
       },
@@ -1536,6 +1776,170 @@
           "SelfReported",
           "PlatformConfirmed"
         ]
+      },
+      "Equipment": {
+        "description": "What an exercise needs to be performed.",
+        "enum": [
+          "Bodyweight",
+          "Barbell",
+          "Dumbbell",
+          "Kettlebell",
+          "Machine",
+          "Cable",
+          "SmithMachine",
+          "ResistanceBand",
+          "MedicineBall",
+          "StabilityBall",
+          "TRX",
+          "Reformer",
+          "Mat",
+          "Bench",
+          "PullUpBar",
+          "Cardio",
+          "Other"
+        ]
+      },
+      "ExerciseBody": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/ExerciseCategory",
+            "description": "What kind of work it is."
+          },
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment",
+            "description": "What it needs."
+          },
+          "instructions": {
+            "description": "Optional free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "primaryMuscle": {
+            "$ref": "#/components/schemas/MuscleGroup",
+            "description": "What it mainly works."
+          },
+          "secondaryMuscles": {
+            "description": "What else it works. Null is the same as empty; the server drops duplicates and anything equal to\r\nthe primary, so a client may send whatever the person ticked.",
+            "items": {
+              "$ref": "#/components/schemas/MuscleGroup"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "primaryMuscle",
+          "secondaryMuscles",
+          "equipment",
+          "category",
+          "instructions"
+        ],
+        "type": "object"
+      },
+      "ExerciseCategory": {
+        "description": "What kind of work an exercise is.",
+        "enum": [
+          "Strength",
+          "Hypertrophy",
+          "Cardio",
+          "Mobility",
+          "Stretching",
+          "Balance",
+          "Core",
+          "Warmup",
+          "Cooldown",
+          "Rehabilitation",
+          "Pilates",
+          "Yoga"
+        ]
+      },
+      "ExerciseEntry": {
+        "description": "One movement a coach can put in a programme.",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/ExerciseCategory",
+            "description": "What kind of work it is."
+          },
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment",
+            "description": "What it needs."
+          },
+          "id": {
+            "description": "The reference key. <b>Every other module stores this</b>, never the key or the label.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "instructions": {
+            "description": "How to perform it. Free text, shown to the coach, never parsed.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isSystem": {
+            "description": "Whether the entry is load-bearing. System entries can be renamed and reordered but never\r\ndeleted or deactivated, because code resolves them.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "            The stable, server-transliterated, <b>immutable</b> identifier.\r\n            Immutable because it is what a support engineer, a seed script and a bug report all name an\r\nentry by; a key that follows a rename is a key that means something different in yesterday's\r\nlogs. Renaming the label is free and changes no key.",
+            "type": "string"
+          },
+          "mediaObjectKey": {
+            "description": "An illustration in shared, platform-owned object storage. <b>Not copied per organization</b>\r\n— a diagram of a squat is not tenant data, and duplicating it a hundred times is the one\r\ngenuinely wasteful part of copying the library.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Display text.",
+            "type": "string"
+          },
+          "primaryMuscle": {
+            "$ref": "#/components/schemas/MuscleGroup",
+            "description": "What it mainly works. Drives the body map's highlight."
+          },
+          "secondaryMuscles": {
+            "description": "What else it works. A PostgreSQL array of the enum, <b>not JSONB</b> — it is queried\r\n(`'Quadriceps' = ANY(secondary_muscles)`), and §18 keeps business-critical values out of\r\ndocuments.",
+            "items": {
+              "$ref": "#/components/schemas/MuscleGroup"
+            },
+            "type": "array"
+          },
+          "sortOrder": {
+            "description": "Explicit position. The panel derives order from array position and then resolves stages by\r\n`indexOf`, so reordering the list changes behaviour — this replaces both.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LifecycleStatus",
+            "description": "Whether it is offered for new work."
+          }
+        },
+        "required": [
+          "name",
+          "primaryMuscle",
+          "secondaryMuscles",
+          "equipment",
+          "category",
+          "instructions",
+          "mediaObjectKey",
+          "id",
+          "key",
+          "sortOrder",
+          "isSystem",
+          "status"
+        ],
+        "type": "object"
       },
       "ExportBody": {
         "properties": {
@@ -2908,6 +3312,24 @@
           "Inactive"
         ]
       },
+      "LinkBody": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ContactLinkKind",
+            "description": "Lead or member."
+          },
+          "subjectId": {
+            "description": "The row in that module.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "subjectId"
+        ],
+        "type": "object"
+      },
       "LocalizationBody": {
         "properties": {
           "currency": {
@@ -3762,6 +4184,19 @@
         ],
         "type": "object"
       },
+      "MergeBody": {
+        "properties": {
+          "sourceContactId": {
+            "description": "The contact that becomes a tombstone.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceContactId"
+        ],
+        "type": "object"
+      },
       "MessageDirection": {
         "description": "Which way a message went.",
         "enum": [
@@ -4026,6 +4461,29 @@
           "reason"
         ],
         "type": "object"
+      },
+      "MuscleGroup": {
+        "description": "The muscles an exercise works.",
+        "enum": [
+          "Chest",
+          "UpperBack",
+          "Lats",
+          "Trapezius",
+          "Shoulders",
+          "Biceps",
+          "Triceps",
+          "Forearms",
+          "Abdominals",
+          "Obliques",
+          "LowerBack",
+          "Glutes",
+          "Quadriceps",
+          "Hamstrings",
+          "Adductors",
+          "Abductors",
+          "Calves",
+          "FullBody"
+        ]
       },
       "NoteBody": {
         "properties": {
@@ -5485,12 +5943,54 @@
       "ProgramWeek": {
         "description": "One week of a programme.",
         "properties": {
+          "items": {
+            "description": "The prescribed exercises, in order. Empty for a prose-only week.",
+            "items": {
+              "$ref": "#/components/schemas/ProgramWeekItem"
+            },
+            "type": "array"
+          },
           "plan": {
-            "description": "What the member does. Empty is not stored — the week is simply absent.",
-            "type": "string"
+            "description": "Prose, or null. <b>Every programme written before ADR-0072 is prose and stays that way</b> —\r\nparsing \"Bench 3 set, son set drop\" into items would be a guess dressed as data, so the two\r\ncontent models coexist and a week may carry either or both.",
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "weekNumber": {
-            "description": "1–6. Six is how many calendar weeks a month can touch.",
+            "description": "1–6.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekNumber",
+          "plan",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ProgramWeekBody": {
+        "properties": {
+          "items": {
+            "description": "The prescribed exercises, in order. <b>Order is position</b> — the client does not send one.",
+            "items": {
+              "$ref": "#/components/schemas/ProgramWeekItemBody"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "plan": {
+            "description": "Prose, or null. A week may carry prose, exercises, or both.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "weekNumber": {
+            "description": "1–6.",
             "format": "int32",
             "type": "integer"
           }
@@ -5501,24 +6001,171 @@
         ],
         "type": "object"
       },
-      "ProgramWeekBody": {
+      "ProgramWeekItem": {
+        "description": "One prescribed exercise, as it is read back.",
         "properties": {
-          "plan": {
-            "description": "Blank deletes the week rather than storing an empty one.",
+          "exerciseId": {
+            "description": "The catalog entry it points at.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "exerciseName": {
+            "description": "What it was called when it was prescribed. <b>Snapshotted</b>, so a studio renaming an exercise\r\nnext year does not rewrite what a coach wrote last March (ADR-0035's reasoning, ADR-0072's row).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The item.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "description": "Anything else, for this member this week.",
             "type": [
               "null",
               "string"
             ]
           },
-          "weekNumber": {
-            "description": "1–6. Six is how many calendar weeks a month can touch.",
+          "position": {
+            "description": "Order within the week, dense from zero.",
             "format": "int32",
             "type": "integer"
+          },
+          "repsMax": {
+            "description": "Top of it. Equal to RepsMin for a fixed count.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "repsMin": {
+            "description": "Bottom of the rep range.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "restSeconds": {
+            "description": "Rest between sets, or null.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sets": {
+            "description": "How many.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "tempo": {
+            "description": "Tempo notation. Free text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "weight": {
+            "description": "The load, or null when the coach has not decided one.",
+            "format": "double",
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "weightUnit": {
+            "$ref": "#/components/schemas/WeightUnit",
+            "description": "How the load is expressed. `BodyWeight` with a null weight is \"no external load,\r\ndeliberately\" — a different statement from an undecided one."
           }
         },
         "required": [
-          "weekNumber",
-          "plan"
+          "id",
+          "exerciseId",
+          "exerciseName",
+          "position",
+          "sets",
+          "repsMin",
+          "repsMax",
+          "weight",
+          "weightUnit",
+          "restSeconds",
+          "tempo",
+          "notes"
+        ],
+        "type": "object"
+      },
+      "ProgramWeekItemBody": {
+        "properties": {
+          "exerciseId": {
+            "description": "A movement from the studio's own library.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "description": "Optional.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repsMax": {
+            "description": "Null for a fixed count, which is the common case.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "repsMin": {
+            "description": "At least one.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "restSeconds": {
+            "description": "Optional, 0–3600.",
+            "format": "int32",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "sets": {
+            "description": "1–20.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "tempo": {
+            "description": "Optional, such as `3-1-1-0`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "weight": {
+            "description": "Optional. Never negative.",
+            "format": "double",
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "weightUnit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WeightUnit",
+                "description": "Defaults to kilograms."
+              }
+            ]
+          }
+        },
+        "required": [
+          "exerciseId",
+          "sets",
+          "repsMin",
+          "repsMax",
+          "weight",
+          "weightUnit",
+          "restSeconds",
+          "tempo",
+          "notes"
         ],
         "type": "object"
       },
@@ -6637,6 +7284,15 @@
           "reason"
         ],
         "type": "object"
+      },
+      "WeightUnit": {
+        "description": "How a prescribed load is expressed.",
+        "enum": [
+          "Kilograms",
+          "Pounds",
+          "BodyWeight",
+          "Band"
+        ]
       }
     },
     "securitySchemes": {
@@ -7631,6 +8287,129 @@
         ]
       }
     },
+    "/api/v1/catalogs/exercises": {
+      "post": {
+        "operationId": "CreateExercise",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExerciseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseEntry"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Adds an exercise to the studio's library.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/catalogs/exercises/{entryId}": {
+      "put": {
+        "operationId": "UpdateExercise",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExerciseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edits an exercise. The key does not move, whatever the name does.",
+        "tags": [
+          "Catalogs"
+        ]
+      }
+    },
     "/api/v1/catalogs/gift-templates": {
       "post": {
         "operationId": "CreateGiftTemplate",
@@ -8501,6 +9280,254 @@
         "summary": "What is pointing at an entry. Asked before offering a delete.",
         "tags": [
           "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/contacts/merges/{mergeId}": {
+      "delete": {
+        "operationId": "UnmergeContacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mergeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Undoes one merge, moving back exactly what it moved.",
+        "tags": [
+          "Contacts"
+        ]
+      }
+    },
+    "/api/v1/contacts/{contactId}": {
+      "get": {
+        "operationId": "GetContact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One contact, with its channel identities, links and merge history.",
+        "tags": [
+          "Contacts"
+        ]
+      }
+    },
+    "/api/v1/contacts/{contactId}/links": {
+      "put": {
+        "operationId": "LinkContact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Points a lead or a member at this contact.",
+        "tags": [
+          "Contacts"
+        ]
+      }
+    },
+    "/api/v1/contacts/{contactId}/merges": {
+      "post": {
+        "operationId": "MergeContacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Folds another contact into this one. Reversible.",
+        "tags": [
+          "Contacts"
         ]
       }
     },
@@ -13772,6 +14799,9 @@
     },
     {
       "name": "Conversations"
+    },
+    {
+      "name": "Contacts"
     },
     {
       "name": "Analytics"

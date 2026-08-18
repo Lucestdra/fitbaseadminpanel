@@ -3,6 +3,7 @@ import type { components } from './schema';
 
 export type ProgramMonth = components['schemas']['ProgramMonth'];
 export type ProgramWeek = components['schemas']['ProgramWeek'];
+export type ProgramWeekItem = components['schemas']['ProgramWeekItem'];
 export type ProgramRoster = components['schemas']['ProgramRoster'];
 export type ProgramRosterEntry = components['schemas']['ProgramRosterEntry'];
 export type ProgramCounters = components['schemas']['ProgramCounters'];

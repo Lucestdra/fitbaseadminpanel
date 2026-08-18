@@ -934,6 +934,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalogs/exercises": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adds an exercise to the studio's library. */
+        post: operations["CreateExercise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/exercises/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edits an exercise. The key does not move, whatever the name does. */
+        put: operations["UpdateExercise"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/catalogs/gift-templates": {
         parameters: {
             query?: never;
@@ -1166,6 +1200,74 @@ export interface paths {
         get: operations["GetCatalogEntryUsage"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contacts/merges/{mergeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Undoes one merge, moving back exactly what it moved. */
+        delete: operations["UnmergeContacts"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contacts/{contactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One contact, with its channel identities, links and merge history. */
+        get: operations["GetContact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contacts/{contactId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Points a lead or a member at this contact. */
+        put: operations["LinkContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contacts/{contactId}/merges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Folds another contact into this one. Reversible. */
+        post: operations["MergeContacts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2910,6 +3012,7 @@ export interface components {
         CatalogSnapshot: {
             /** @description How classes are grouped. */
             classCategories: components["schemas"]["LabelledEntry"][];
+            exercises: components["schemas"]["ExerciseEntry"][];
             /** @description What a studio gives away, with structured effects. */
             giftTemplates: components["schemas"]["GiftTemplateEntry"][];
             /** @description What leads and members are interested in. */
@@ -3075,6 +3178,121 @@ export interface components {
              * @description Inclusive.
              */
             startsOn: string;
+        };
+        /** @description One contact, with everything the studio knows about who they are. */
+        ContactDetail: {
+            /** @description Best known name, or null. */
+            displayName: null | string;
+            /**
+             * Format: uuid
+             * @description The contact.
+             */
+            id: string;
+            /** @description Every channel account known to be this person. */
+            identities: components["schemas"]["ContactIdentityView"][];
+            /** @description What they are in the pipeline and on the roster. */
+            links: components["schemas"]["ContactLinkView"][];
+            /**
+             * Format: uuid
+             * @description Set when this is a tombstone. Act on the target instead.
+             */
+            mergedIntoContactId: null | string;
+            /** @description What was folded into them, and what was undone. */
+            merges: components["schemas"]["ContactMergeView"][];
+            /** @description Same. */
+            primaryEmail: null | string;
+            /** @description Normalised, and only ever set from a verified source. */
+            primaryPhone: null | string;
+        };
+        /** @description One account on one channel, as the drawer renders it. */
+        ContactIdentityView: {
+            /** @description What the provider calls them. */
+            displayName: null | string;
+            /** @description As the provider gave it. */
+            email: null | string;
+            /** @description Same. */
+            emailVerified: boolean;
+            /**
+             * Format: date-time
+             * @description When the studio first heard from this account.
+             */
+            firstSeenAt: string;
+            /**
+             * Format: uuid
+             * @description The identity row.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description And most recently.
+             */
+            lastSeenAt: string;
+            /** @description As the provider gave it. */
+            phoneNumber: null | string;
+            /** @description Whether the provider vouches for it — and so whether it may match. */
+            phoneVerified: boolean;
+            /** @description The channel. */
+            provider: string;
+            /** @description The handle, where there is one. */
+            username: null | string;
+        };
+        /**
+         * @description What a contact is linked to elsewhere in the studio.
+         * @enum {unknown}
+         */
+        ContactLinkKind: "Lead" | "Member";
+        /** @description What a contact is elsewhere in the studio. */
+        ContactLinkView: {
+            /** @description Lead or member. */
+            kind: components["schemas"]["ContactLinkKind"];
+            /**
+             * Format: date-time
+             * @description When the link was made.
+             */
+            linkedAt: string;
+            /**
+             * Format: uuid
+             * @description The row in that module.
+             */
+            subjectId: string;
+        };
+        /**
+         * @description Why two contacts were joined.
+         * @enum {unknown}
+         */
+        ContactMergeReason: "VerifiedPhone" | "VerifiedEmail" | "Manual";
+        /** @description A merge that happened, and whether it still stands. */
+        ContactMergeView: {
+            /**
+             * Format: uuid
+             * @description The merge.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When.
+             */
+            mergedAt: string;
+            /**
+             * Format: uuid
+             * @description Who decided, or null for an automatic match.
+             */
+            mergedByStaffMemberId: null | string;
+            /**
+             * @description Why. <b>An automatic match is visibly distinguishable from a decision</b> — which matters most
+             *     when the automatic one turns out to be wrong.
+             */
+            reason: components["schemas"]["ContactMergeReason"];
+            /**
+             * Format: date-time
+             * @description When it was undone, or null.
+             */
+            reversedAt: null | string;
+            /**
+             * Format: uuid
+             * @description The contact that became a tombstone.
+             */
+            sourceContactId: string;
         };
         /** @description The request body for an assignment. */
         ConversationAssignmentBody: {
@@ -3268,6 +3486,83 @@ export interface components {
          * @enum {unknown}
          */
         DeliveryEvidence: "SelfReported" | "PlatformConfirmed";
+        /**
+         * @description What an exercise needs to be performed.
+         * @enum {unknown}
+         */
+        Equipment: "Bodyweight" | "Barbell" | "Dumbbell" | "Kettlebell" | "Machine" | "Cable" | "SmithMachine" | "ResistanceBand" | "MedicineBall" | "StabilityBall" | "TRX" | "Reformer" | "Mat" | "Bench" | "PullUpBar" | "Cardio" | "Other";
+        ExerciseBody: {
+            /** @description What kind of work it is. */
+            category: components["schemas"]["ExerciseCategory"];
+            /** @description What it needs. */
+            equipment: components["schemas"]["Equipment"];
+            /** @description Optional free text. */
+            instructions: null | string;
+            /** @description Display text. */
+            name: string;
+            /** @description What it mainly works. */
+            primaryMuscle: components["schemas"]["MuscleGroup"];
+            /**
+             * @description What else it works. Null is the same as empty; the server drops duplicates and anything equal to
+             *     the primary, so a client may send whatever the person ticked.
+             */
+            secondaryMuscles: null | components["schemas"]["MuscleGroup"][];
+        };
+        /**
+         * @description What kind of work an exercise is.
+         * @enum {unknown}
+         */
+        ExerciseCategory: "Strength" | "Hypertrophy" | "Cardio" | "Mobility" | "Stretching" | "Balance" | "Core" | "Warmup" | "Cooldown" | "Rehabilitation" | "Pilates" | "Yoga";
+        /** @description One movement a coach can put in a programme. */
+        ExerciseEntry: {
+            /** @description What kind of work it is. */
+            category: components["schemas"]["ExerciseCategory"];
+            /** @description What it needs. */
+            equipment: components["schemas"]["Equipment"];
+            /**
+             * Format: uuid
+             * @description The reference key. <b>Every other module stores this</b>, never the key or the label.
+             */
+            id: string;
+            /** @description How to perform it. Free text, shown to the coach, never parsed. */
+            instructions: null | string;
+            /**
+             * @description Whether the entry is load-bearing. System entries can be renamed and reordered but never
+             *     deleted or deactivated, because code resolves them.
+             */
+            isSystem: boolean;
+            /**
+             * @description The stable, server-transliterated, <b>immutable</b> identifier.
+             *                 Immutable because it is what a support engineer, a seed script and a bug report all name an
+             *     entry by; a key that follows a rename is a key that means something different in yesterday's
+             *     logs. Renaming the label is free and changes no key.
+             */
+            key: string;
+            /**
+             * @description An illustration in shared, platform-owned object storage. <b>Not copied per organization</b>
+             *     — a diagram of a squat is not tenant data, and duplicating it a hundred times is the one
+             *     genuinely wasteful part of copying the library.
+             */
+            mediaObjectKey: null | string;
+            /** @description Display text. */
+            name: string;
+            /** @description What it mainly works. Drives the body map's highlight. */
+            primaryMuscle: components["schemas"]["MuscleGroup"];
+            /**
+             * @description What else it works. A PostgreSQL array of the enum, <b>not JSONB</b> — it is queried
+             *     (`'Quadriceps' = ANY(secondary_muscles)`), and §18 keeps business-critical values out of
+             *     documents.
+             */
+            secondaryMuscles: components["schemas"]["MuscleGroup"][];
+            /**
+             * Format: int32
+             * @description Explicit position. The panel derives order from array position and then resolves stages by
+             *     `indexOf`, so reordering the list changes behaviour — this replaces both.
+             */
+            sortOrder: number;
+            /** @description Whether it is offered for new work. */
+            status: components["schemas"]["LifecycleStatus"];
+        };
         ExportBody: {
             /**
              * @description What the file should be. `Xlsx` and `Pdf` are registered and refused with
@@ -3994,6 +4289,15 @@ export interface components {
          * @enum {unknown}
          */
         LifecycleStatus: "Active" | "Inactive";
+        LinkBody: {
+            /** @description Lead or member. */
+            kind: components["schemas"]["ContactLinkKind"];
+            /**
+             * Format: uuid
+             * @description The row in that module.
+             */
+            subjectId: string;
+        };
         LocalizationBody: {
             /** @description ISO 4217. Only TRY in v1. */
             currency: string;
@@ -4420,6 +4724,13 @@ export interface components {
             /** @description Where it is in its life. */
             state: components["schemas"]["MembershipState"];
         };
+        MergeBody: {
+            /**
+             * Format: uuid
+             * @description The contact that becomes a tombstone.
+             */
+            sourceContactId: string;
+        };
         /**
          * @description Which way a message went.
          * @enum {unknown}
@@ -4558,6 +4869,11 @@ export interface components {
              */
             stageId: string;
         };
+        /**
+         * @description The muscles an exercise works.
+         * @enum {unknown}
+         */
+        MuscleGroup: "Chest" | "UpperBack" | "Lats" | "Trapezius" | "Shoulders" | "Biceps" | "Triceps" | "Forearms" | "Abdominals" | "Obliques" | "LowerBack" | "Glutes" | "Quadriceps" | "Hamstrings" | "Adductors" | "Abductors" | "Calves" | "FullBody";
         NoteBody: {
             /** @description Required. */
             text: string;
@@ -5326,22 +5642,124 @@ export interface components {
         };
         /** @description One week of a programme. */
         ProgramWeek: {
-            /** @description What the member does. Empty is not stored — the week is simply absent. */
-            plan: string;
+            /** @description The prescribed exercises, in order. Empty for a prose-only week. */
+            items: components["schemas"]["ProgramWeekItem"][];
+            /**
+             * @description Prose, or null. <b>Every programme written before ADR-0072 is prose and stays that way</b> —
+             *     parsing "Bench 3 set, son set drop" into items would be a guess dressed as data, so the two
+             *     content models coexist and a week may carry either or both.
+             */
+            plan: null | string;
             /**
              * Format: int32
-             * @description 1–6. Six is how many calendar weeks a month can touch.
+             * @description 1–6.
              */
             weekNumber: number;
         };
         ProgramWeekBody: {
-            /** @description Blank deletes the week rather than storing an empty one. */
+            /** @description The prescribed exercises, in order. <b>Order is position</b> — the client does not send one. */
+            items?: null | components["schemas"]["ProgramWeekItemBody"][];
+            /** @description Prose, or null. A week may carry prose, exercises, or both. */
             plan: null | string;
             /**
              * Format: int32
-             * @description 1–6. Six is how many calendar weeks a month can touch.
+             * @description 1–6.
              */
             weekNumber: number;
+        };
+        /** @description One prescribed exercise, as it is read back. */
+        ProgramWeekItem: {
+            /**
+             * Format: uuid
+             * @description The catalog entry it points at.
+             */
+            exerciseId: string;
+            /**
+             * @description What it was called when it was prescribed. <b>Snapshotted</b>, so a studio renaming an exercise
+             *     next year does not rewrite what a coach wrote last March (ADR-0035's reasoning, ADR-0072's row).
+             */
+            exerciseName: string;
+            /**
+             * Format: uuid
+             * @description The item.
+             */
+            id: string;
+            /** @description Anything else, for this member this week. */
+            notes: null | string;
+            /**
+             * Format: int32
+             * @description Order within the week, dense from zero.
+             */
+            position: number;
+            /**
+             * Format: int32
+             * @description Top of it. Equal to RepsMin for a fixed count.
+             */
+            repsMax: number;
+            /**
+             * Format: int32
+             * @description Bottom of the rep range.
+             */
+            repsMin: number;
+            /**
+             * Format: int32
+             * @description Rest between sets, or null.
+             */
+            restSeconds: null | number;
+            /**
+             * Format: int32
+             * @description How many.
+             */
+            sets: number;
+            /** @description Tempo notation. Free text. */
+            tempo: null | string;
+            /**
+             * Format: double
+             * @description The load, or null when the coach has not decided one.
+             */
+            weight: null | number;
+            /**
+             * @description How the load is expressed. `BodyWeight` with a null weight is "no external load,
+             *     deliberately" — a different statement from an undecided one.
+             */
+            weightUnit: components["schemas"]["WeightUnit"];
+        };
+        ProgramWeekItemBody: {
+            /**
+             * Format: uuid
+             * @description A movement from the studio's own library.
+             */
+            exerciseId: string;
+            /** @description Optional. */
+            notes: null | string;
+            /**
+             * Format: int32
+             * @description Null for a fixed count, which is the common case.
+             */
+            repsMax: null | number;
+            /**
+             * Format: int32
+             * @description At least one.
+             */
+            repsMin: number;
+            /**
+             * Format: int32
+             * @description Optional, 0–3600.
+             */
+            restSeconds: null | number;
+            /**
+             * Format: int32
+             * @description 1–20.
+             */
+            sets: number;
+            /** @description Optional, such as `3-1-1-0`. */
+            tempo: null | string;
+            /**
+             * Format: double
+             * @description Optional. Never negative.
+             */
+            weight: null | number;
+            weightUnit: null | components["schemas"]["WeightUnit"];
         };
         /** @description What the client connects with. */
         RealtimeTicketResponse: {
@@ -5885,6 +6303,11 @@ export interface components {
             /** @description Why it was withdrawn. "İki kere girildi". */
             reason: null | string;
         };
+        /**
+         * @description How a prescribed load is expressed.
+         * @enum {unknown}
+         */
+        WeightUnit: "Kilograms" | "Pounds" | "BodyWeight" | "Band";
     };
     responses: never;
     parameters: never;
@@ -6076,6 +6499,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LabelledEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseEntry"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseEntry"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */
@@ -6673,6 +7182,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UnmergeContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mergeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LinkContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactDetail"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MergeContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactDetail"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

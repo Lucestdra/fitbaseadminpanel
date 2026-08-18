@@ -7,6 +7,10 @@ export type LeadSourceEntry = components['schemas']['LeadSourceEntry'];
 export type LabelledEntry = components['schemas']['LabelledEntry'];
 export type PackageTemplateEntry = components['schemas']['PackageTemplateEntry'];
 export type GiftTemplateEntry = components['schemas']['GiftTemplateEntry'];
+export type ExerciseEntry = components['schemas']['ExerciseEntry'];
+export type MuscleGroup = components['schemas']['MuscleGroup'];
+export type Equipment = components['schemas']['Equipment'];
+export type ExerciseCategory = components['schemas']['ExerciseCategory'];
 export type CatalogEntryUsage = components['schemas']['CatalogEntryUsage'];
 export type CatalogReference = components['schemas']['CatalogReference'];
 export type GiftEffectType = components['schemas']['GiftEffectType'];
@@ -231,6 +235,46 @@ export async function deleteCatalogEntry(
         path: { kind, entryId },
         query: reassignTo ? { reassignTo } : undefined,
       },
+    }),
+  );
+}
+
+/** What an exercise is made of, as the API takes it. */
+export interface ExerciseBody {
+  name: string;
+  primaryMuscle: NonNullable<MuscleGroup>;
+  /** Duplicates and anything equal to the primary are dropped server-side. */
+  secondaryMuscles: NonNullable<MuscleGroup>[];
+  equipment: NonNullable<Equipment>;
+  category: NonNullable<ExerciseCategory>;
+  instructions: string | null;
+}
+
+/**
+ * Adds a movement to the studio's library.
+ *
+ * <b>The library is copied per studio</b> (backend ADR-0072), so this adds a row nobody else sees —
+ * and renaming a seeded exercise is an edit, not a fork.
+ */
+export async function createExercise(body: ExerciseBody): Promise<ExerciseEntry> {
+  return withAuth(() => client.POST('/api/v1/catalogs/exercises', { body }));
+}
+
+/**
+ * Edits one.
+ *
+ * <b>Programmes already written keep the name they were written with.</b> Each prescribed item
+ * snapshots it, for the same reason a membership snapshots its package name — so tidying the
+ * library never rewrites what a coach wrote months ago.
+ */
+export async function updateExercise(
+  entryId: string,
+  body: ExerciseBody,
+): Promise<ExerciseEntry> {
+  return withAuth(() =>
+    client.PUT('/api/v1/catalogs/exercises/{entryId}', {
+      params: { path: { entryId } },
+      body,
     }),
   );
 }

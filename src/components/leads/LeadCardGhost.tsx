@@ -20,7 +20,7 @@ export function LeadCardGhost({ lead, tone, x, y, width }: LeadCardGhostProps) {
   const source = leadSources.find((entry) => entry.id === lead.sourceId);
 
   return (
-    <View pointerEvents="none" style={[styles.card, { left: x - width / 2, top: y - 40, width }]}>
+    <View style={[styles.card, { left: x - width / 2, top: y - 40, width }]}>
       <Text style={styles.name} numberOfLines={1}>{lead.fullName}</Text>
       {source ? (
         <View style={styles.metaRow}>
@@ -41,6 +41,8 @@ export function LeadCardGhost({ lead, tone, x, y, width }: LeadCardGhostProps) {
 
 const styles = StyleSheet.create({
   card: {
+    // Decoration that follows the pointer; it must never be a drop target itself.
+    pointerEvents: 'none',
     position: 'absolute',
     backgroundColor: colors.cardBackground,
     borderRadius: radii.lg,

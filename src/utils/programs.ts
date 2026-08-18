@@ -1,4 +1,4 @@
-import type { ProgramWeek } from '@/api/programs';
+import type { ProgramWeek, ProgramWeekItem } from '@/api/programs';
 
 /**
  * The programme as plain text, for the coach to copy.
@@ -15,9 +15,13 @@ export function buildProgramMessage(
 ): string {
   const lines = [`Merhaba ${memberName},`, '', `${monthLabel} antrenman programın:`, ''];
 
+  // A week is prose, exercises, or both (backend ADR-0072). The message renders whichever it has,
+  // and skips a week that somehow has neither — which the server does not store, but a client that
+  // assumed prose was always there is exactly what broke when the column became nullable.
   weeks
-    .filter((week) => week.plan.trim().length > 0)
-    .forEach((week) => lines.push(`Hafta ${week.weekNumber}: ${week.plan.trim()}`));
+    .map((week) => ({ number: week.weekNumber, text: describeWeek(week) }))
+    .filter((week) => week.text.length > 0)
+    .forEach((week) => lines.push(`Hafta ${week.number}: ${week.text}`));
 
   lines.push('', 'Sorularında bana yazabilirsin. İyi antrenmanlar!');
   return lines.join('\n');
@@ -68,4 +72,30 @@ export function shiftProgramMonth(
   // Zero-based arithmetic so December → January carries the year without a special case.
   const zeroBased = month.year * 12 + (month.month - 1) + delta;
   return { year: Math.floor(zeroBased / 12), month: (zeroBased % 12) + 1 };
+}
+
+/**
+ * One week as a line of a WhatsApp message.
+ *
+ * <b>Prose first, then the exercises.</b> A coach who wrote both meant both, and dropping either
+ * would send the member a programme missing the half the coach thought they were sending.
+ */
+function describeWeek(week: ProgramWeek): string {
+  const prose = week.plan?.trim() ?? '';
+
+  const exercises = (week.items ?? []).map((item) => {
+    const reps = item.repsMin === item.repsMax ? `${item.repsMin}` : `${item.repsMin}-${item.repsMax}`;
+    const load = item.weight === null ? '' : ` @ ${item.weight}${weightSuffix(item.weightUnit)}`;
+
+    return `${item.exerciseName} ${item.sets}x${reps}${load}`;
+  });
+
+  return [prose, ...exercises].filter((part) => part.length > 0).join(' · ');
+}
+
+/** How a load reads beside a number. Body weight and band carry no number at all. */
+function weightSuffix(unit: ProgramWeekItem['weightUnit']): string {
+  if (unit === 'Kilograms') return ' kg';
+  if (unit === 'Pounds') return ' lb';
+  return '';
 }

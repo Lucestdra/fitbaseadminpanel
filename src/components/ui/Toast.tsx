@@ -36,7 +36,6 @@ export function ToastViewport() {
 
   return (
     <View
-      pointerEvents="box-none"
       style={[styles.viewport, isMobile && styles.viewportMobile]}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
@@ -92,6 +91,10 @@ function ToastCard({ toast, onDismiss }: { toast: ToastEntry; onDismiss: () => v
 const styles = StyleSheet.create({
   viewport: {
     position: 'absolute',
+
+    // The container never takes a touch — a notice sitting over a button must not swallow the
+    // press. The card inside it does, to dismiss early.
+    pointerEvents: 'box-none',
     right: spacing.xl,
     bottom: spacing.xl,
     alignItems: 'flex-end',

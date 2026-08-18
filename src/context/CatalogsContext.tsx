@@ -55,6 +55,7 @@ const EMPTY: api.CatalogSnapshot = {
   classCategories: [],
   packageTemplates: [],
   giftTemplates: [],
+  exercises: [],
 };
 
 /**
