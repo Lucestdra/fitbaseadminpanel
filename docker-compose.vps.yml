@@ -1,0 +1,67 @@
+# The panel on the VPS, alongside the backend stack rather than inside it.
+#
+#   docker compose -f docker-compose.vps.yml up -d --build
+#
+# <b>A separate stack because it is a separate repository.</b> The backend's compose builds from
+# /opt/fitbase; this builds from wherever this repository is checked out. Folding the panel into
+# the backend's file would mean that stack could not be brought up without a checkout of a repo it
+# has no other relationship with — and a panel rebuild would restart the API for no reason.
+#
+# What joins them is web-net and nothing else. The panel never speaks to the API container: the
+# browser does, over the public internet, from admin.fitbase.com.tr to api.fitbase.com.tr.
+
+name: fitbase-panel
+
+services:
+  panel:
+    build:
+      context: .
+      target: panel
+      args:
+        # Compiled into the bundle. Not a runtime setting — see the Dockerfile. Overridable so a
+        # staging host can point at its own API without editing this file.
+        EXPO_PUBLIC_API_BASE_URL: ${FITBASE_PANEL_API_BASE_URL:-https://api.fitbase.com.tr}
+
+    # Unique across the host, because that is the name the shared Caddy proxies to. Compose also
+    # registers the service name `panel` as an alias on every network the container joins, and a
+    # neighbouring stack calling something `panel` would then be a coin toss over which one the
+    # edge reaches. The backend's overlay documents the same trap for `api`.
+    container_name: fitbase-panel
+
+    restart: unless-stopped
+
+    # No ports. Nothing on the host needs to reach this directly — public traffic arrives on 443 at
+    # the incumbent Caddy and crosses web-net. Publishing a port here would open the panel on the
+    # server's public IP as a second, un-TLS'd copy of itself.
+
+    # A file server needs no more than this, and a cap is what turns a runaway into a restart
+    # rather than into a host with no memory left for PostgreSQL.
+    mem_limit: 128m
+
+    # Read-only: everything served is baked into the image, and Caddy needs somewhere to put its
+    # own state. Nothing here should ever be written to disk by a request.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /config
+      - /data
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - web-net
+
+networks:
+  # The same external network the backend's overlay joins, created outside both stacks and shared
+  # with shelif-caddy. External, so Compose fails with "network web-net not found" rather than
+  # creating an empty one of its own that Caddy is not on — which would answer every request 502
+  # with the container perfectly healthy.
+  web-net:
+    external: true

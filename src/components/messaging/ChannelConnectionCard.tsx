@@ -13,6 +13,14 @@ import {
 
 interface ChannelConnectionCardProps {
   channel: ChannelConnection;
+  /**
+   * Whether this caller holds `integrations.manage`.
+   *
+   * False hides the action rather than disabling it. A greyed-out button invites somebody to keep
+   * pressing it; the sentence that replaces it says who can, which is the thing a coach actually
+   * needs in order to get the channel connected.
+   */
+  canManage: boolean;
   onDisconnect: (channel: ChannelConnection) => void;
   onConnect: (channel: ChannelConnection) => void;
 }
@@ -30,6 +38,7 @@ const LIVE: ChannelConnection['status'][] = ['Active', 'Degraded'];
  */
 export function ChannelConnectionCard({
   channel,
+  canManage,
   onDisconnect,
   onConnect,
 }: ChannelConnectionCardProps) {
@@ -87,41 +96,47 @@ export function ChannelConnectionCard({
         </Text>
       )}
 
-      <Pressable
-        onPress={() => (primaryIsConnect ? onConnect(channel) : onDisconnect(channel))}
-        accessibilityRole="button"
-        accessibilityLabel={
-          primaryIsConnect
-            ? `${channel.label} hesabını bağla`
-            : `${channel.label} bağlantısını kes`
-        }
-        style={({ pressed }) => [
-          styles.actionButton,
-          primaryIsConnect ? styles.actionButtonPrimary : styles.actionButtonOutline,
-          pressed &&
-            (primaryIsConnect
-              ? styles.actionButtonPrimaryPressed
-              : styles.actionButtonOutlinePressed),
-        ]}
-      >
-        <AppIcon
-          name={primaryIsConnect ? 'link-outline' : 'unlink-outline'}
-          size={16}
-          color={primaryIsConnect ? colors.white : colors.textSecondary}
-        />
-        <Text
-          style={[
-            styles.actionLabel,
-            { color: primaryIsConnect ? colors.white : colors.textSecondary },
+      {!canManage ? (
+        <Text style={styles.noPermission}>
+          Kanal bağlantılarını yalnızca stüdyo yöneticisi yönetebilir.
+        </Text>
+      ) : (
+        <Pressable
+          onPress={() => (primaryIsConnect ? onConnect(channel) : onDisconnect(channel))}
+          accessibilityRole="button"
+          accessibilityLabel={
+            primaryIsConnect
+              ? `${channel.label} hesabını bağla`
+              : `${channel.label} bağlantısını kes`
+          }
+          style={({ pressed }) => [
+            styles.actionButton,
+            primaryIsConnect ? styles.actionButtonPrimary : styles.actionButtonOutline,
+            pressed &&
+              (primaryIsConnect
+                ? styles.actionButtonPrimaryPressed
+                : styles.actionButtonOutlinePressed),
           ]}
         >
-          {channel.status === 'ReauthorizationRequired'
-            ? 'Yeniden Yetkilendir'
-            : primaryIsConnect
-              ? 'Hesabı Bağla'
-              : 'Bağlantıyı Kes'}
-        </Text>
-      </Pressable>
+          <AppIcon
+            name={primaryIsConnect ? 'link-outline' : 'unlink-outline'}
+            size={16}
+            color={primaryIsConnect ? colors.white : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.actionLabel,
+              { color: primaryIsConnect ? colors.white : colors.textSecondary },
+            ]}
+          >
+            {channel.status === 'ReauthorizationRequired'
+              ? 'Yeniden Yetkilendir'
+              : primaryIsConnect
+                ? 'Hesabı Bağla'
+                : 'Bağlantıyı Kes'}
+          </Text>
+        </Pressable>
+      )}
     </Card>
   );
 }
@@ -220,5 +235,9 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     ...typography.button,
+  },
+  noPermission: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 });

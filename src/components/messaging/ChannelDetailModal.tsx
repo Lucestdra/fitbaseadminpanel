@@ -12,11 +12,19 @@ import {
 interface ChannelDetailModalProps {
   channel: ChannelConnection | null;
   visible: boolean;
+  /** Whether this caller holds `integrations.manage`. False leaves the panel read-only. */
+  canManage: boolean;
   onClose: () => void;
   onDisconnect: (channel: ChannelConnection) => void;
 }
 
-export function ChannelDetailModal({ channel, visible, onClose, onDisconnect }: ChannelDetailModalProps) {
+export function ChannelDetailModal({
+  channel,
+  visible,
+  canManage,
+  onClose,
+  onDisconnect,
+}: ChannelDetailModalProps) {
   if (!channel) return null;
   const meta = CHANNEL_META[channel.id];
 
@@ -56,18 +64,22 @@ export function ChannelDetailModal({ channel, visible, onClose, onDisconnect }: 
               conversations automatically (ADR-0073) — promotion is a deliberate action — so the
               number was describing a behaviour the product does not have. */}
 
-          <Pressable
-            onPress={() => {
-              onDisconnect(channel);
-              onClose();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`${channel.label} bağlantısını kes`}
-            style={({ pressed }) => [styles.disconnectButton, pressed && styles.disconnectButtonPressed]}
-          >
-            <AppIcon name="unlink-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.disconnectLabel}>Bağlantıyı Kes</Text>
-          </Pressable>
+          {/* A coach reads this panel to see whether the channel is healthy; ending a connection
+              stops every conversation on it, and that is `integrations.manage`. */}
+          {canManage && (
+            <Pressable
+              onPress={() => {
+                onDisconnect(channel);
+                onClose();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${channel.label} bağlantısını kes`}
+              style={({ pressed }) => [styles.disconnectButton, pressed && styles.disconnectButtonPressed]}
+            >
+              <AppIcon name="unlink-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.disconnectLabel}>Bağlantıyı Kes</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </Modal>

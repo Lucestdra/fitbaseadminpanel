@@ -826,6 +826,7 @@
             "type": "array"
           },
           "exercises": {
+            "description": "The movement library a programme is built from.",
             "items": {
               "$ref": "#/components/schemas/ExerciseEntry"
             },
@@ -894,6 +895,100 @@
           "newPassword"
         ],
         "type": "object"
+      },
+      "ChannelConnectStart": {
+        "description": "Where to send the studio, and the session that will recognise them coming back.",
+        "properties": {
+          "authorizationUrl": {
+            "description": "The provider's own surface. Opened by the panel, never fetched by it.",
+            "format": "uri",
+            "type": "string"
+          },
+          "state": {
+            "description": "Ours, single-use and short-lived (§34, ADR-0044). The panel carries it to the callback so the\r\nserver can prove the person returning is the person who left.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorizationUrl",
+          "state"
+        ],
+        "type": "object"
+      },
+      "ChannelConnectionStatus": {
+        "description": "Where a connection is in its life.",
+        "enum": [
+          "PendingAuthorization",
+          "PendingConfiguration",
+          "Active",
+          "Degraded",
+          "ReauthorizationRequired",
+          "Suspended",
+          "Disconnected",
+          "Failed"
+        ]
+      },
+      "ChannelConnectionSummary": {
+        "description": "One connected channel, as the panel shows it.",
+        "properties": {
+          "connectedAt": {
+            "description": "When it was first established.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "What the provider calls it. Display only, and expected to change.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "externalAccountId": {
+            "description": "The provider's immutable id for the account.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Ours.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastWebhookAt": {
+            "description": "The last time a delivery arrived. The one health signal that costs no provider call — an Active\r\nconnection with nothing received for a week is either a quiet studio or a broken subscription.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ChannelProvider",
+            "description": "Which provider."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ChannelConnectionStatus",
+            "description": "Where the connection stands.\r\nThe domain enum, not a string, and that is not a breach of ADR-0048. That decision keeps\r\nChannelConnectionStatus out of FitBase.Integrations.Contracts so a connector\r\ncannot name one — a connector reports what a provider said and never decides a status. Nothing\r\nabout it says this module may not publish its own lifecycle to its own callers. Rendering it as\r\nToString() only moved the coupling: the panel still had to know all eight names, and the\r\nOpenAPI document described them as string, so a renamed member reached the panel as an\r\nunlabelled badge at runtime instead of a compile error in a generated client."
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "externalAccountId",
+          "displayName",
+          "status",
+          "connectedAt",
+          "lastWebhookAt"
+        ],
+        "type": "object"
+      },
+      "ChannelProvider": {
+        "description": "Which provider a connection belongs to.",
+        "enum": [
+          "WhatsApp",
+          "Instagram",
+          "Facebook",
+          "Telegram",
+          "TikTok"
+        ]
       },
       "ClassBody": {
         "properties": {
@@ -1179,6 +1274,24 @@
           "startsOn",
           "endsOn",
           "reason"
+        ],
+        "type": "object"
+      },
+      "CompleteChannelConnectionBody": {
+        "description": "What the studio brought back from the provider.",
+        "properties": {
+          "accountReference": {
+            "description": "What the provider handed over. An authorization code on a direct transport, an already-connected\r\naccount id on a gateway one. The connector knows which; nothing here does.",
+            "type": "string"
+          },
+          "state": {
+            "description": "The single-use value the start call minted. Proves this is a flow we began; it does not, and must\r\nnot, prove who is finishing it — the bearer token does that.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "accountReference"
         ],
         "type": "object"
       },
@@ -6916,6 +7029,19 @@
           "Invited"
         ]
       },
+      "StartChannelConnectionBody": {
+        "description": "Which channel a studio wants to connect.",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/ChannelProvider",
+            "description": "The provider. Wire values are English (ADR-0012); the panel maps them to labels."
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "type": "object"
+      },
       "StatusBody": {
         "properties": {
           "status": {
@@ -9280,6 +9406,224 @@
         "summary": "What is pointing at an entry. Asked before offering a delete.",
         "tags": [
           "Catalogs"
+        ]
+      }
+    },
+    "/api/v1/channels": {
+      "get": {
+        "operationId": "ListChannelConnections",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelConnectionSummary"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every channel this studio has connected, newest first.",
+        "tags": [
+          "Channels"
+        ]
+      }
+    },
+    "/api/v1/channels/connect": {
+      "post": {
+        "operationId": "StartChannelConnection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartChannelConnectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelConnectStart"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Begins an authorization and returns where to send the studio. Creates no connection.",
+        "tags": [
+          "Channels"
+        ]
+      }
+    },
+    "/api/v1/channels/connect/complete": {
+      "post": {
+        "operationId": "CompleteChannelConnection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteChannelConnectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelConnectionSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Finishes an authorization the studio has returned from.",
+        "tags": [
+          "Channels"
+        ]
+      }
+    },
+    "/api/v1/channels/{connectionId}": {
+      "delete": {
+        "operationId": "DisconnectChannel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelConnectionSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Ends a connection and asks the provider to revoke its access.",
+        "tags": [
+          "Channels"
         ]
       }
     },
@@ -14796,6 +15140,9 @@
     },
     {
       "name": "Programs"
+    },
+    {
+      "name": "Channels"
     },
     {
       "name": "Conversations"

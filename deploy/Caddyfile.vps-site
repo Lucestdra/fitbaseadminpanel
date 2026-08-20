@@ -1,0 +1,49 @@
+# The panel's site block for the host's shared Caddy.
+#
+# Append this to the incumbent /root/shelif/Caddyfile, next to the api.fitbase.com.tr block the
+# backend repository supplies (backend/deploy/Caddyfile.vps-site). It is NOT a whole Caddyfile: no
+# global options block, because that file already has one and Caddy refuses a config with two.
+#
+# After appending:
+#
+#   docker exec shelif-caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+#   docker exec shelif-caddy caddy reload    --config /etc/caddy/Caddyfile --adapter caddyfile
+#
+# <b>Deliberately thinner than the API's block.</b> That one sets a Content-Security-Policy here at
+# the edge because the API is JSON and its policy never changes. The panel's policy names a hash of
+# its own bundle, which is only known once the bundle is built — so it is set by the panel's own
+# Caddy inside the container and passes through untouched. Adding a CSP header here would override
+# it and blank the panel, so the header block below carries everything EXCEPT that.
+#
+# DNS: admin.fitbase.com.tr must have an A record on this host before Caddy can obtain a
+# certificate. Until it does, this block makes the whole file fail to load — add the record first.
+
+admin.fitbase.com.tr {
+	# Compression is the container's job here: it already encodes, and encoding twice is wasted
+	# CPU on every request. Caddy passes the upstream's Content-Encoding through.
+
+	header {
+		# HSTS on the panel as on the API. Same registrable domain, and includeSubDomains on
+		# either is a statement about both — so they must agree, and they do.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+		# Removes the "Server: Caddy" advertisement. Not a control on its own; it removes one
+		# free hint about what to target.
+		-Server
+	}
+
+	# Not reachable from outside, but the panel has no such paths anyway — this exists so that a
+	# future misconfiguration cannot expose one through a host that already refuses them for the
+	# API next door.
+	@probes path /health/* /hangfire*
+	respond @probes 404
+
+	# By container name, not service name. Compose registers both as DNS aliases on web-net, so
+	# `panel` would resolve here too — right up until a neighbouring stack also has a service
+	# called `panel`, at which point this domain serves somebody else's application and both
+	# stacks look healthy. `fitbase-panel` is the container name and unique across the host.
+	reverse_proxy fitbase-panel:8080 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+}

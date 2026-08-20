@@ -1,19 +1,22 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import * as Linking from 'expo-linking';
 import { AppShell } from '@/components/layout/AppShell';
 import { Card } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
+import { ApiError, describeProblem } from '@/api/problem';
 import { ChannelConnectionCard } from '@/components/messaging/ChannelConnectionCard';
 import { ConnectedChannelIcon } from '@/components/messaging/ConnectedChannelIcon';
 import { ChannelDetailModal } from '@/components/messaging/ChannelDetailModal';
 import { AutomationInfoCard } from '@/components/messaging/AutomationInfoCard';
-import { ChannelConnectNotice } from '@/components/messaging/ChannelConnectNotice';
+import { ChannelConnectDialog } from '@/components/messaging/ChannelConnectDialog';
 import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatThread } from '@/components/messaging/ChatThread';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { colors, spacing, typography } from '@/theme';
-import { AVAILABLE_CHANNELS } from '@/config/channels';
+import { useChannels } from '@/hooks/useChannels';
+import { colors, radii, spacing, typography } from '@/theme';
 import { conversations as initialConversations, messagesByConversation as initialMessages } from '@/mock/inbox';
 import type { ChannelConnection } from '@/types/messaging';
 import type { ChatMessage } from '@/types/inbox';
@@ -23,13 +26,19 @@ const LIVE: ChannelConnection['status'][] = ['Active', 'Degraded'];
 
 export default function MessagesScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
+  const { permissions } = useAuth();
 
-  // The catalogue of channels the product offers, all `Disconnected` until authorization opens
-  // (ADR-0043 §5). `mergeChannelConnections` overlays the studio's real rows the moment
-  // `/api/v1/integrations/channels` exists; nothing else on this screen changes when it does.
-  const [channels, setChannels] = useState<ChannelConnection[]>(AVAILABLE_CHANNELS);
+  // Every channel the product supports, with the studio's real connections overlaid.
+  const { channels, status: channelsStatus, connect, disconnect, reload } = useChannels();
+
+  // Connecting binds a provider account to this organization and refuses it to every other one,
+  // which is not a decision a coach makes: `integrations.manage` is held only by
+  // OrganizationManager. Hiding the button is presentation — the endpoint refuses them anyway.
+  const canManageChannels = permissions['integrations.manage'] !== undefined;
+
   const [automationEnabled, setAutomationEnabled] = useState(true);
-  const [connectNoticeChannel, setConnectNoticeChannel] = useState<ChannelConnection | null>(null);
+  const [connectDialogChannel, setConnectDialogChannel] = useState<ChannelConnection | null>(null);
+  const [starting, setStarting] = useState(false);
   const [detailChannel, setDetailChannel] = useState<ChannelConnection | null>(null);
   const [conversations, setConversations] = useState(initialConversations);
   const [messagesByConversation, setMessagesByConversation] = useState(initialMessages);
@@ -41,24 +50,60 @@ export default function MessagesScreen() {
   const activeMessages = activeConversationId ? messagesByConversation[activeConversationId] ?? [] : [];
 
   const handleDisconnect = (channel: ChannelConnection) => {
-    setChannels((current) =>
-      current.map((item) =>
-        item.id === channel.id
-          ? { ...item, status: 'Disconnected', accountName: null, connectedSince: null }
-          : item,
-      ),
-    );
-    show(`${channel.label} bağlantısı kesildi.`);
+    setDetailChannel(null);
+
+    void (async () => {
+      try {
+        await disconnect(channel);
+        show(`${channel.label} bağlantısı kesildi.`);
+      } catch (thrown) {
+        show(
+          thrown instanceof ApiError
+            ? describeProblem(thrown.problem)
+            : `${channel.label} bağlantısı kesilemedi.`,
+        );
+      }
+    })();
   };
 
-  // Opens an explanation, not a connection. The previous version showed a QR code and a
-  // "Bağlantı Kuruldu" button that flipped a local boolean — a WhatsApp Web pairing flow the
-  // backend forbids (§11.1/§35) plus a connection the studio declared for itself. Connection
-  // status is server-computed; the real flow is Embedded Signup in Phase 3.2.
+  // Opens the explanation first. The version this replaces showed a QR code and a "Bağlantı Kuruldu"
+  // button that flipped a local boolean — a WhatsApp Web pairing flow the backend forbids
+  // (§11.1/§35) plus a connection the studio declared for itself. Connection status is
+  // server-computed, and the dialog's own button is what starts the real authorization.
   //
   // forbidden-integration-check: discusses the prohibition.
   const handleConnect = (channel: ChannelConnection) => {
-    setConnectNoticeChannel(channel);
+    setConnectDialogChannel(channel);
+  };
+
+  // Asks the server for an authorization URL and sends the browser to it.
+  //
+  // The dialog stays open behind the navigation rather than closing first: on web this replaces the
+  // document, so closing it would buy a frame of flicker, and when the call fails the studio is
+  // still looking at the thing they pressed.
+  const handleStartAuthorization = (channel: ChannelConnection) => {
+    if (starting) return;
+
+    setStarting(true);
+
+    void (async () => {
+      try {
+        const authorizationUrl = await connect(channel);
+
+        // Same tab on web — `expo-linking` assigns `window.location` — which is what an
+        // authorization flow wants: the provider returns to /kanallar/baglandi in the session the
+        // studio already has, rather than into a second tab they then have to find.
+        await Linking.openURL(authorizationUrl);
+      } catch (thrown) {
+        setStarting(false);
+        setConnectDialogChannel(null);
+        show(
+          thrown instanceof ApiError
+            ? describeProblem(thrown.problem)
+            : `${channel.label} yetkilendirmesi başlatılamadı.`,
+        );
+      }
+    })();
   };
 
   const handleSelectConversation = (id: string) => {
@@ -110,11 +155,39 @@ export default function MessagesScreen() {
         )}
       </View>
 
-      {disconnectedChannels.length > 0 && (
+      {/*
+        Nothing is drawn until the connections are known. The catalogue every card is built from
+        says `Disconnected`, which is a claim rather than a placeholder — rendering it while the
+        request is still out would tell a studio their live WhatsApp is not connected, and offer
+        them a button to connect it again.
+      */}
+      {channelsStatus === 'error' && (
+        <Card style={styles.channelsError}>
+          <Text style={styles.channelsErrorText}>
+            Kanal durumları alınamadı. Bağlı hesapların çalışmaya devam ediyor; bu ekran şu an
+            durumlarını gösteremiyor.
+          </Text>
+          <Pressable
+            onPress={reload}
+            accessibilityRole="button"
+            accessibilityLabel="Kanal durumlarını yeniden yükle"
+            style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+          >
+            <Text style={styles.retryLabel}>Tekrar Dene</Text>
+          </Pressable>
+        </Card>
+      )}
+
+      {channelsStatus === 'ready' && disconnectedChannels.length > 0 && (
         <View style={isMobile || isTablet ? styles.stack : styles.row}>
           {disconnectedChannels.map((channel) => (
             <View key={channel.id} style={styles.channelItem}>
-              <ChannelConnectionCard channel={channel} onDisconnect={handleDisconnect} onConnect={handleConnect} />
+              <ChannelConnectionCard
+                channel={channel}
+                canManage={canManageChannels}
+                onDisconnect={handleDisconnect}
+                onConnect={handleConnect}
+              />
             </View>
           ))}
         </View>
@@ -152,15 +225,18 @@ export default function MessagesScreen() {
         </View>
       </Card>
 
-      <ChannelConnectNotice
-        channel={connectNoticeChannel}
-        visible={connectNoticeChannel !== null}
-        onClose={() => setConnectNoticeChannel(null)}
+      <ChannelConnectDialog
+        channel={connectDialogChannel}
+        visible={connectDialogChannel !== null}
+        busy={starting}
+        onClose={() => setConnectDialogChannel(null)}
+        onConfirm={handleStartAuthorization}
       />
 
       <ChannelDetailModal
         channel={detailChannel}
         visible={detailChannel !== null}
+        canManage={canManageChannels}
         onClose={() => setDetailChannel(null)}
         onDisconnect={handleDisconnect}
       />
@@ -202,6 +278,30 @@ const styles = StyleSheet.create({
   },
   channelItem: {
     flex: 1,
+  },
+  channelsError: {
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
+  channelsErrorText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  retryButton: {
+    minHeight: 40,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonPressed: {
+    backgroundColor: colors.pageBackground,
+  },
+  retryLabel: {
+    ...typography.button,
+    color: colors.textSecondary,
   },
   inboxCard: {
     height: 600,

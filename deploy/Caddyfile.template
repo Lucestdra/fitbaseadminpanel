@@ -1,0 +1,81 @@
+# The panel's own edge, inside its container. Rendered at build time by scripts/render-caddyfile.mjs.
+#
+# <b>Two placeholders, and neither may be filled in by hand.</b> __INLINE_SCRIPT_HASHES__ is
+# computed from the HTML the build actually produced, and __API_ORIGIN__ from the same value the
+# bundle was compiled against. Both are things that change without anyone deciding to change them,
+# which is exactly why they are derived rather than written down. See the renderer for the failure
+# each one prevents.
+#
+# <b>Why the panel serves its own headers instead of the shared Caddy at the edge.</b> The site
+# block on the host (deploy/Caddyfile.vps-site) terminates TLS and proxies here; it does not set
+# this Content-Security-Policy. It cannot: the script hash below is only knowable after the bundle
+# is built, so a policy written into the host's Caddyfile would have to be updated by hand on every
+# Expo upgrade — and the failure mode is a blank white panel with one console line, on a file that
+# belongs to another stack. Keeping the policy with the artefact it describes means the two cannot
+# disagree.
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Cross-Origin-Opener-Policy "same-origin"
+
+		# Denied outright: nothing embeds the panel, and an admin surface in an iframe is the
+		# setup for clickjacking a "Bağlantıyı Kes" button.
+		X-Frame-Options "DENY"
+
+		# `default-src 'none'` and then only what the bundle genuinely uses.
+		#
+		#   script-src   'self' plus the hash of Expo Router's one-line hydration script. NOT
+		#                'unsafe-inline' — that is an admin panel handing script injection a
+		#                working delivery mechanism, to save computing a hash.
+		#   style-src    'unsafe-inline' is unavoidable: React Native Web generates its stylesheet
+		#                at runtime and injects it into a <style> element. There is no hash for
+		#                content that does not exist until the page runs.
+		#   connect-src  'self' and the API's origin, because they are different origins now
+		#                (admin.* and api.*). Listing it is what makes an exfiltration attempt to
+		#                a fourth host fail rather than succeed quietly.
+		#   font-src     the icon fonts under /assets, which are same-origin.
+		#   form-action  'none': every submission here is fetch(), never a form POST.
+		Content-Security-Policy "default-src 'none'; script-src 'self' __INLINE_SCRIPT_HASHES__; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' __API_ORIGIN__; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+		-Server
+	}
+
+	# <b>Caching, as two matchers that cannot both apply — deliberately not as a default plus an
+	# override.</b> Two earlier attempts were wrong in opposite directions and both looked fine
+	# until the headers were read back. Matching HTML on `path / *.html` never fired at all: a page
+	# lives at kanallar/baglandi.html but is requested as /kanallar/baglandi, which ends in
+	# neither. Putting `no-cache` in the header block above and overriding it here did not
+	# override: the block wins, and every hashed asset went out uncacheable. Mutually exclusive
+	# matchers have no order to get wrong.
+	#
+	# Everything under /_expo/static carries a content hash in its filename, so a given URL can
+	# never change meaning and may be cached forever. Everything else — every page — is what names
+	# the current bundle, and a browser holding yesterday's copy would keep loading the previous
+	# deploy's JavaScript.
+	@immutable path /_expo/static/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	@mutable not path /_expo/static/*
+	header @mutable Cache-Control "no-cache"
+
+	# `expo export` writes one HTML file per route — /kanallar/baglandi is kanallar/baglandi.html —
+	# so a bare request needs the .html tried before anything else.
+	#
+	# The final fallback to /index.html is load-bearing rather than defensive: /davet/{token} is a
+	# real route with a real visitor and the export cannot pre-render it, because the token is not
+	# known at build time. Falling back lets the client router resolve it. The cost is that a
+	# genuinely wrong URL answers 200 and renders the not-found screen from the client, which is
+	# the usual trade for a single-page app.
+	try_files {path} {path}.html {path}/index.html /index.html
+	file_server
+
+	log {
+		output stderr
+		format console
+	}
+}

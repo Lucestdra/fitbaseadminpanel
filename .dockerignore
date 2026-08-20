@@ -1,0 +1,21 @@
+# What must not reach the image, and one entry that is a correctness bug rather than a size one.
+#
+# `.env*.local` is the important line. Expo loads it during `expo export` — including in
+# production mode — and this repo's copy points EXPO_PUBLIC_API_BASE_URL at http://localhost:5000.
+# Copied into the build context it would beat the build argument, and the panel would ship to
+# production compiled against a URL that exists only on a developer's laptop. Every screen would
+# fail to load with a connection error, and the built bundle would look completely normal.
+.env*.local
+
+node_modules
+dist
+.expo
+.git
+.github
+web-build
+
+# Editor and OS noise.
+.vscode
+.idea
+.DS_Store
+Thumbs.db

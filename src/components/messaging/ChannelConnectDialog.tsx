@@ -1,10 +1,10 @@
-import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Modal, View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { colors, spacing, typography, radii } from '@/theme';
 import { CHANNEL_META, type ChannelConnection, type MessagingChannelId } from '@/types/messaging';
 
 /**
- * Explains how a channel is actually connected, and that authorization is not open yet.
+ * Explains how a channel is actually connected, and then starts it.
  *
  * <b>This replaces `QrConnectModal`, which was a compliance violation rather than an unfinished
  * feature.</b> That modal told the studio to open WhatsApp's device-pairing screen and scan a code —
@@ -19,16 +19,28 @@ import { CHANNEL_META, type ChannelConnection, type MessagingChannelId } from '@
  * and the same conversations appear here. It is Meta's screen, Meta's code, and available only where
  * Meta reports the capability — which is why this dialog describes it rather than drawing one.
  *
- * The door stays closed until the Meta gates clear (ADR-0045): Business Verification, App Review per
- * channel, and Tech Provider standing. An honest closed door beats a door that appears to open.
+ * <b>The door is open, which is what changed.</b> This dialog used to end in a padlock explaining
+ * that authorization was not available: ADR-0043 §5 holds that a connect flow which exists and
+ * returns a policy error is a support burden with no upside, and until a transport could actually
+ * carry the authorization, the honest screen was a closed one. ADR-0075 supplies that transport, so
+ * the same three steps now end in a button rather than in an apology.
+ *
+ * <b>It still explains before it acts.</b> Pressing "Bağla" hands somebody to a third party's login
+ * screen, and the step list is what makes that predictable — which account gets picked, what happens
+ * to the number they already use, and where they end up afterwards.
  *
  * forbidden-integration-check: discusses the prohibition. The words above name the flow this file
- * exists to refuse; naming it is how the next person understands why the door is closed.
+ * exists to refuse; naming it is how the next person understands why the QR in Meta's own dialog is
+ * not the QR another product means by the word.
  */
-interface ChannelConnectNoticeProps {
+interface ChannelConnectDialogProps {
   channel: ChannelConnection | null;
   visible: boolean;
+  /** True while the start call is in flight. The button must not be pressable twice. */
+  busy: boolean;
   onClose: () => void;
+  /** Starts the authorization. The screen owns the call and the navigation that follows it. */
+  onConfirm: (channel: ChannelConnection) => void;
 }
 
 interface FlowStep {
@@ -49,7 +61,7 @@ const FLOWS: Record<MessagingChannelId, FlowStep[]> = {
     },
     {
       title: 'Sunucu bağlantıyı kurar',
-      detail: 'Yetki kodu sunucuya gelir, sunucu bildirim aboneliğini açar ve durum burada görünür.',
+      detail: 'Yetkilendirme bilgisi sunucuya gelir, sunucu bildirim aboneliğini açar ve durum burada görünür.',
     },
   ],
   instagram: [
@@ -63,7 +75,7 @@ const FLOWS: Record<MessagingChannelId, FlowStep[]> = {
     },
     {
       title: 'Sunucu bağlantıyı kurar',
-      detail: 'DM aboneliği açılır; gelen mesajlar bu ekrandaki konuşma listesine düşer.',
+      detail: 'DM aboneliği açılır; gelen mesajlar bu ekrandaki konuşma listesine düşer. Bağlantıdan önceki konuşmalar da kısa süre içinde gelir.',
     },
   ],
   facebook: [
@@ -77,12 +89,18 @@ const FLOWS: Record<MessagingChannelId, FlowStep[]> = {
     },
     {
       title: 'Sunucu bağlantıyı kurar',
-      detail: 'Sayfa erişimi sunucuda şifreli saklanır ve bildirim aboneliği açılır.',
+      detail: 'Sayfa erişimi sunucuda saklanır ve bildirim aboneliği açılır.',
     },
   ],
 };
 
-export function ChannelConnectNotice({ channel, visible, onClose }: ChannelConnectNoticeProps) {
+export function ChannelConnectDialog({
+  channel,
+  visible,
+  busy,
+  onClose,
+  onConfirm,
+}: ChannelConnectDialogProps) {
   if (!channel) return null;
 
   const meta = CHANNEL_META[channel.id];
@@ -132,13 +150,13 @@ export function ChannelConnectNotice({ channel, visible, onClose }: ChannelConne
             ))}
 
             <View style={styles.gate}>
-              <AppIcon name="lock-closed-outline" size={16} color={colors.textSecondary} />
+              <AppIcon name="open-outline" size={16} color={colors.textSecondary} />
               <View style={styles.gateText}>
-                <Text style={styles.gateTitle}>Yetkilendirme henüz açık değil</Text>
+                <Text style={styles.gateTitle}>Sağlayıcının kendi ekranına gideceksin</Text>
                 <Text style={styles.gateDetail}>
-                  Bu akış Meta’nın işletme doğrulaması ve uygulama incelemesinden geçtikten sonra
-                  açılır. Süreç tamamlandığında bu ekrandan bağlayabileceksin — ayrıca bir şey
-                  yapman gerekmiyor.
+                  Devam ettiğinde bu sekme sağlayıcının yetkilendirme sayfasına gider. İşlem
+                  bitince buraya geri dönersin ve bağlantı burada görünür. Yarıda bırakırsan
+                  hiçbir şey değişmez.
                 </Text>
               </View>
             </View>
@@ -152,6 +170,28 @@ export function ChannelConnectNotice({ channel, visible, onClose }: ChannelConne
               onaylanmaz ve numaranın kapanmasına yol açabilir.
             </Text>
           </ScrollView>
+
+          <Pressable
+            onPress={() => onConfirm(channel)}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy, busy }}
+            accessibilityLabel={`${channel.label} yetkilendirmesini başlat`}
+            style={({ pressed }) => [
+              styles.confirmButton,
+              pressed && !busy && styles.confirmButtonPressed,
+              busy && styles.confirmButtonBusy,
+            ]}
+          >
+            {busy ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <AppIcon name="open-outline" size={16} color={colors.white} />
+            )}
+            <Text style={styles.confirmLabel}>
+              {busy ? 'Yönlendiriliyor…' : 'Devam Et'}
+            </Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -271,5 +311,25 @@ const styles = StyleSheet.create({
   footnote: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    minHeight: 44,
+    marginTop: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary,
+  },
+  confirmButtonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+  confirmButtonBusy: {
+    backgroundColor: colors.primaryDark,
+  },
+  confirmLabel: {
+    ...typography.button,
+    color: colors.white,
   },
 });

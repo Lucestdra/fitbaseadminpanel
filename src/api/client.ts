@@ -13,9 +13,14 @@ import {
 /**
  * Where the API is.
  *
- * `EXPO_PUBLIC_` because it has to be readable in the bundle — it is a URL, not a secret. Empty by
- * default, which makes every request relative and is what production wants: the panel and the API
- * are one origin behind Caddy (ADR-0019), which is what lets the refresh cookie work at all.
+ * `EXPO_PUBLIC_` because it has to be readable in the bundle — it is a URL, not a secret.
+ *
+ * <b>The empty default is a development convenience, not the production value.</b> It was the
+ * production value while the panel and the API shared one origin behind Caddy; the deployment now
+ * splits them across sibling subdomains, so a bundle built without this set aims every request at
+ * the panel's own host. The refresh cookie is unaffected — sibling subdomains are different origins
+ * but the same site, and `SameSite=Lax` is a site-level rule — so what the split costs is a base URL
+ * here and a CORS policy on the API, not ADR-0019's cookie design.
  */
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
 
@@ -55,9 +60,10 @@ const authMiddleware: Middleware = {
 const client = createClient<paths>({
   baseUrl: BASE_URL,
 
-  // So the refresh cookie is sent on web. Same-origin in production; in development the Expo dev
-  // server and the API are different ports on localhost, which is still the same *site*, so a
-  // SameSite=Lax cookie travels — given the Development CORS policy that permits credentials.
+  // So the refresh cookie is sent on web. Cross-origin in both environments now — the panel and the
+  // API are sibling subdomains in production and different localhost ports in development — and in
+  // both cases still the same *site*, so the SameSite=Lax cookie travels. What makes it actually
+  // arrive is the API's CORS policy allowing credentials for this origin.
   credentials: 'include',
 });
 

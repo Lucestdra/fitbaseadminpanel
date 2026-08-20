@@ -80,6 +80,22 @@ const MESSAGES: Record<string, string> = {
   'scheduling.calendar.invalid_range': 'Seçilen tarih aralığı geçersiz.',
   'members.session_credits.insufficient': 'Bu üyenin kalan seans hakkı yok.',
   'members.membership.inactive': 'Bu üyenin aktif bir üyeliği yok.',
+
+  // Channels. Every one of these is reached from `/kanallar/baglandi`, where the studio has just
+  // come back from a provider and the generic sentence would be the worst possible answer — they
+  // cannot tell whether to press the button again, wait, or call somebody.
+  'integrations.connection.not_found': 'Bu bağlantı bulunamadı. Sayfayı yenileyip tekrar dene.',
+  'integrations.connection.already_claimed':
+    'Bu hesap başka bir stüdyoya bağlı. Bir hesap aynı anda tek bir stüdyodan yönetilebilir — '
+    + 'önce diğer stüdyodan bağlantıyı kes.',
+  'integrations.connection.reauthorization_required':
+    'Bu bağlantının erişim izni sona ermiş. Yeniden yetkilendirmen gerekiyor.',
+  'integrations.signup.session_expired':
+    'Bağlanma işlemi zaman aşımına uğradı. Kanal kartından yeniden başlat.',
+  'integrations.scopes.insufficient':
+    'Yetkilendirme sırasında gerekli izinlerin tamamı verilmedi. Tekrar dene ve istenen izinleri onayla.',
+  'integrations.provider.unavailable':
+    'Bu kanal şu anda bağlanamıyor. Sorun bizde — biraz sonra tekrar dene.',
 };
 
 const FALLBACK = 'Beklenmeyen bir hata oluştu. Lütfen tekrar dene.';

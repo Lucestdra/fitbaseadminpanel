@@ -1206,6 +1206,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every channel this studio has connected, newest first. */
+        get: operations["ListChannelConnections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begins an authorization and returns where to send the studio. Creates no connection. */
+        post: operations["StartChannelConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/connect/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finishes an authorization the studio has returned from. */
+        post: operations["CompleteChannelConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/{connectionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Ends a connection and asks the provider to revoke its access. */
+        delete: operations["DisconnectChannel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contacts/merges/{mergeId}": {
         parameters: {
             query?: never;
@@ -3012,6 +3080,7 @@ export interface components {
         CatalogSnapshot: {
             /** @description How classes are grouped. */
             classCategories: components["schemas"]["LabelledEntry"][];
+            /** @description The movement library a programme is built from. */
             exercises: components["schemas"]["ExerciseEntry"][];
             /** @description What a studio gives away, with structured effects. */
             giftTemplates: components["schemas"]["GiftTemplateEntry"][];
@@ -3030,6 +3099,65 @@ export interface components {
             /** @description The replacement. Checked against the policy. */
             newPassword: string;
         };
+        /** @description Where to send the studio, and the session that will recognise them coming back. */
+        ChannelConnectStart: {
+            /**
+             * Format: uri
+             * @description The provider's own surface. Opened by the panel, never fetched by it.
+             */
+            authorizationUrl: string;
+            /**
+             * @description Ours, single-use and short-lived (§34, ADR-0044). The panel carries it to the callback so the
+             *     server can prove the person returning is the person who left.
+             */
+            state: string;
+        };
+        /**
+         * @description Where a connection is in its life.
+         * @enum {unknown}
+         */
+        ChannelConnectionStatus: "PendingAuthorization" | "PendingConfiguration" | "Active" | "Degraded" | "ReauthorizationRequired" | "Suspended" | "Disconnected" | "Failed";
+        /** @description One connected channel, as the panel shows it. */
+        ChannelConnectionSummary: {
+            /**
+             * Format: date-time
+             * @description When it was first established.
+             */
+            connectedAt: string;
+            /** @description What the provider calls it. Display only, and expected to change. */
+            displayName: null | string;
+            /** @description The provider's immutable id for the account. */
+            externalAccountId: string;
+            /**
+             * Format: uuid
+             * @description Ours.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description The last time a delivery arrived. The one health signal that costs no provider call — an Active
+             *     connection with nothing received for a week is either a quiet studio or a broken subscription.
+             */
+            lastWebhookAt: null | string;
+            /** @description Which provider. */
+            provider: components["schemas"]["ChannelProvider"];
+            /**
+             * @description Where the connection stands.
+             *     The domain enum, not a string, and that is not a breach of ADR-0048. That decision keeps
+             *     ChannelConnectionStatus out of FitBase.Integrations.Contracts so a connector
+             *     cannot name one — a connector reports what a provider said and never decides a status. Nothing
+             *     about it says this module may not publish its own lifecycle to its own callers. Rendering it as
+             *     ToString() only moved the coupling: the panel still had to know all eight names, and the
+             *     OpenAPI document described them as string, so a renamed member reached the panel as an
+             *     unlabelled badge at runtime instead of a compile error in a generated client.
+             */
+            status: components["schemas"]["ChannelConnectionStatus"];
+        };
+        /**
+         * @description Which provider a connection belongs to.
+         * @enum {unknown}
+         */
+        ChannelProvider: "WhatsApp" | "Instagram" | "Facebook" | "Telegram" | "TikTok";
         ClassBody: {
             /**
              * Format: uuid
@@ -3178,6 +3306,19 @@ export interface components {
              * @description Inclusive.
              */
             startsOn: string;
+        };
+        /** @description What the studio brought back from the provider. */
+        CompleteChannelConnectionBody: {
+            /**
+             * @description What the provider handed over. An authorization code on a direct transport, an already-connected
+             *     account id on a gateway one. The connector knows which; nothing here does.
+             */
+            accountReference: string;
+            /**
+             * @description The single-use value the start call minted. Proves this is a flow we began; it does not, and must
+             *     not, prove who is finishing it — the bearer token does that.
+             */
+            state: string;
         };
         /** @description One contact, with everything the studio knows about who they are. */
         ContactDetail: {
@@ -6154,6 +6295,11 @@ export interface components {
          * @enum {unknown}
          */
         StaffStatus: "Active" | "OnLeave" | "Inactive" | "Invited";
+        /** @description Which channel a studio wants to connect. */
+        StartChannelConnectionBody: {
+            /** @description The provider. Wire values are English (ADR-0012); the panel maps them to labels. */
+            provider: components["schemas"]["ChannelProvider"];
+        };
         StatusBody: {
             /** @description Active or Inactive. */
             status: components["schemas"]["LifecycleStatus"];
@@ -7182,6 +7328,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogEntryUsage"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListChannelConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelConnectionSummary"][];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StartChannelConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartChannelConnectionBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelConnectStart"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CompleteChannelConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteChannelConnectionBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelConnectionSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DisconnectChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelConnectionSummary"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */
