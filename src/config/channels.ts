@@ -36,6 +36,21 @@ const CHANNEL_BY_PROVIDER = new Map<string, MessagingChannelId>(
 );
 
 /**
+ * The presentation id for a wire provider, or null for one this panel does not render.
+ *
+ * <b>Exported because the inbox needs the same answer</b> — a conversation carries `provider` as a
+ * bare string and has to reach the same icon, label and badge a channel card does. A second map
+ * built from the same constants would agree today and drift the first time a channel is added.
+ *
+ * Null rather than a throw: `ChannelProvider` carries `Telegram` and `TikTok`, which are registered
+ * in the vocabulary and unimplemented here, so a row naming one is an ordinary state the caller
+ * decides about — a channel card drops it, and the inbox drops the conversation with it.
+ */
+export function channelIdForProvider(provider: string): MessagingChannelId | null {
+  return CHANNEL_BY_PROVIDER.get(provider) ?? null;
+}
+
+/**
  * One server row, in the shape the cards read.
  *
  * <b>The instants are formatted here rather than in the components.</b> Both are rendered in two
@@ -49,7 +64,7 @@ export function toChannelConnection(
   summary: ChannelConnectionSummary,
   timeZoneId: string,
 ): ChannelConnection | null {
-  const id = CHANNEL_BY_PROVIDER.get(summary.provider);
+  const id = channelIdForProvider(summary.provider);
 
   // `ChannelProvider` carries `Telegram` and `TikTok`, which are registered and unimplemented
   // (vocabulary §ChannelProvider). A row for one of them has no card, no icon and no label, so it

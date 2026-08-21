@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { AvatarWithBadge } from './AvatarWithBadge';
 import { MessageBubble } from './MessageBubble';
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -10,6 +10,20 @@ import type { Conversation, ChatMessage } from '@/types/inbox';
 interface ChatThreadProps {
   conversation: Conversation;
   messages: ChatMessage[];
+  /** Where the thread's own load got to. The header renders from the list row meanwhile. */
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  /**
+   * Whether an ordinary reply may be sent right now.
+   *
+   * <b>The server's answer, not a guess.</b> `ConversationDetail.canSendFreeForm` is false outside
+   * the provider's window, and a composer that stays live there collects a reply, sends it, and
+   * shows a 422 the studio cannot act on — after they have already written it.
+   */
+  canSend: boolean;
+  /** Why not, in a sentence. Null while {@link canSend} is true. */
+  sendBlockedReason: string | null;
+  /** A send is in flight. The button waits rather than queueing a second one. */
+  sending: boolean;
   onBack?: () => void;
   onCloseConversation: () => void;
   onMarkReplied: () => void;
@@ -19,6 +33,10 @@ interface ChatThreadProps {
 export function ChatThread({
   conversation,
   messages,
+  status,
+  canSend,
+  sendBlockedReason,
+  sending,
   onBack,
   onCloseConversation,
   onMarkReplied,
@@ -26,8 +44,10 @@ export function ChatThread({
 }: ChatThreadProps) {
   const [draft, setDraft] = useState('');
 
+  const composerEnabled = canSend && !sending;
+
   const handleSend = () => {
-    if (!draft.trim()) return;
+    if (!composerEnabled || !draft.trim()) return;
     onSendMessage(draft.trim());
     setDraft('');
   };
@@ -53,10 +73,35 @@ export function ChatThread({
         </View>
       </View>
 
+      {/*
+        No date divider. The version this replaces drew a fixed "Bugün" above every thread, which
+        was a caption on data it had not read — a message from last week sat under it unchallenged.
+        Each bubble now carries its own date when it is not from today, which is the same fact
+        without a heading that can be wrong.
+      */}
       <ScrollView style={styles.messages} contentContainerStyle={styles.messagesContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.dateDivider}>
-          <Text style={styles.dateDividerText}>Bugün</Text>
-        </View>
+        {status === 'loading' && (
+          <View style={styles.threadNotice}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.threadNoticeText}>Mesajlar yükleniyor…</Text>
+          </View>
+        )}
+
+        {status === 'error' && (
+          <View style={styles.threadNotice}>
+            <AppIcon name="alert-circle-outline" size={20} color={colors.critical} />
+            <Text style={styles.threadNoticeText}>
+              Bu konuşma açılamadı. Listeden tekrar seç ya da sayfayı yenile.
+            </Text>
+          </View>
+        )}
+
+        {status === 'ready' && messages.length === 0 && (
+          <View style={styles.threadNotice}>
+            <Text style={styles.threadNoticeText}>Bu konuşmada henüz mesaj yok.</Text>
+          </View>
+        )}
+
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
@@ -79,26 +124,47 @@ export function ChatThread({
         >
           <Text style={styles.actionChipText}>Cevaplandı Olarak İşaretle</Text>
         </Pressable>
-        <Text style={styles.conversationRef}>Konuşma No: {conversation.tagId ?? conversation.id.toUpperCase()}</Text>
+        {/* The first segment of the id. Enough to quote in a support message, short enough to read. */}
+        <Text style={styles.conversationRef}>
+          Konuşma No: {conversation.tagId ?? conversation.id.slice(0, 8).toLocaleUpperCase('tr')}
+        </Text>
       </View>
+
+      {!canSend && sendBlockedReason !== null && (
+        <View style={styles.blockedNotice}>
+          <AppIcon name="information-circle-outline" size={16} color={colors.textSecondary} />
+          <Text style={styles.blockedNoticeText}>{sendBlockedReason}</Text>
+        </View>
+      )}
 
       <View style={styles.inputRow}>
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Mesaj yaz..."
+          placeholder={canSend ? 'Mesaj yaz...' : 'Şu an yanıt gönderilemiyor'}
           placeholderTextColor={colors.textSecondary}
-          style={styles.input}
+          style={[styles.input, !canSend && styles.inputDisabled]}
           accessibilityLabel="Mesaj yaz"
+          editable={canSend}
           onSubmitEditing={handleSend}
         />
         <Pressable
           onPress={handleSend}
+          disabled={!composerEnabled}
           accessibilityRole="button"
           accessibilityLabel="Gönder"
-          style={({ pressed }) => [styles.sendButton, pressed && styles.sendButtonPressed]}
+          accessibilityState={{ disabled: !composerEnabled }}
+          style={({ pressed }) => [
+            styles.sendButton,
+            !composerEnabled && styles.sendButtonDisabled,
+            pressed && composerEnabled && styles.sendButtonPressed,
+          ]}
         >
-          <AppIcon name="send-outline" size={16} color={colors.white} />
+          {sending ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <AppIcon name="send-outline" size={16} color={colors.white} />
+          )}
         </Pressable>
       </View>
     </View>
@@ -146,17 +212,30 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.md,
   },
-  dateDivider: {
+  threadNotice: {
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
   },
-  dateDividerText: {
+  threadNoticeText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  blockedNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: colors.pageBackground,
+  },
+  blockedNoticeText: {
     ...typography.caption,
     color: colors.textSecondary,
-    backgroundColor: colors.pageBackground,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-    borderRadius: radii.pill,
+    flex: 1,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -206,6 +285,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     outlineStyle: 'none' as never,
   },
+  inputDisabled: {
+    color: colors.textSecondary,
+  },
   sendButton: {
     width: 44,
     height: 44,
@@ -213,6 +295,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: colors.border,
   },
   sendButtonPressed: {
     backgroundColor: colors.primaryDark,

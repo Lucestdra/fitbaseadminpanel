@@ -16,13 +16,26 @@ import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatThread } from '@/components/messaging/ChatThread';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useChannels } from '@/hooks/useChannels';
+import { useInbox } from '@/hooks/useInbox';
 import { colors, radii, spacing, typography } from '@/theme';
-import { conversations as initialConversations, messagesByConversation as initialMessages } from '@/mock/inbox';
 import type { ChannelConnection } from '@/types/messaging';
-import type { ChatMessage } from '@/types/inbox';
 
 /** The statuses that mean the channel is carrying traffic. */
 const LIVE: ChannelConnection['status'][] = ['Active', 'Degraded'];
+
+/**
+ * Why the composer is locked, in terms the studio can act on.
+ *
+ * <b>Said before the send, not after it.</b> Both refusals come back from the server as a 422 with
+ * a registered code, and both are knowable from the conversation header — so letting somebody write
+ * a reply and then refusing it is a choice, not a limitation.
+ */
+const ARCHIVED_NOTICE =
+  'Bu görüşme arşivlendi. Yanıt vermek için önce görüşmeyi yeniden açman gerekiyor.';
+
+const WINDOW_CLOSED_NOTICE =
+  'Sağlayıcının ücretsiz yanıt penceresi kapandı. Bu noktadan sonra yanıt vermek onaylı bir '
+  + 'şablon gerektiriyor; şablon gönderimi henüz açık değil.';
 
 export default function MessagesScreen() {
   const { isMobile, isTablet } = useResponsiveLayout();
@@ -36,18 +49,42 @@ export default function MessagesScreen() {
   // OrganizationManager. Hiding the button is presentation — the endpoint refuses them anyway.
   const canManageChannels = permissions['integrations.manage'] !== undefined;
 
+  // The studio's real inbox. Every conversation, message and status on this screen is the
+  // server's — the version this replaces held eight fixtures in `useState`, which meant the panel
+  // showed a working inbox on a deployment where no channel had ever been connected.
+  const {
+    conversations,
+    counters,
+    status: inboxStatus,
+    thread,
+    activeConversationId,
+    activeConversation,
+    sending,
+    select,
+    send,
+    setStatus,
+  } = useInbox();
+
   const [automationEnabled, setAutomationEnabled] = useState(true);
   const [connectDialogChannel, setConnectDialogChannel] = useState<ChannelConnection | null>(null);
   const [starting, setStarting] = useState(false);
   const [detailChannel, setDetailChannel] = useState<ChannelConnection | null>(null);
-  const [conversations, setConversations] = useState(initialConversations);
-  const [messagesByConversation, setMessagesByConversation] = useState(initialMessages);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(initialConversations[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
   const { show } = useToast();
 
-  const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null;
-  const activeMessages = activeConversationId ? messagesByConversation[activeConversationId] ?? [] : [];
+  const archived = thread.detail?.status === 'Closed' || thread.detail?.status === 'Spam';
+
+  // Both halves come from the header the server just sent. `canSendFreeForm` is false outside the
+  // provider's window; an archived thread is refused by `messaging.conversation.closed` before the
+  // window is even consulted, so it is named first.
+  const canSend = thread.detail !== null && !archived && thread.detail.canSendFreeForm;
+  const sendBlockedReason = thread.detail === null
+    ? null
+    : archived
+      ? ARCHIVED_NOTICE
+      : thread.detail.canSendFreeForm
+        ? null
+        : WINDOW_CLOSED_NOTICE;
 
   const handleDisconnect = (channel: ChannelConnection) => {
     setDetailChannel(null);
@@ -107,29 +144,43 @@ export default function MessagesScreen() {
   };
 
   const handleSelectConversation = (id: string) => {
-    setActiveConversationId(id);
-    setConversations((current) => current.map((c) => (c.id === id ? { ...c, unread: false } : c)));
+    select(id);
     setMobileView('thread');
   };
 
+  // <b>The reply is queued, not sent, and the bubble says so.</b> The server persists it as
+  // `Pending` and the outbound dispatcher carries it (backend ADR-0075, M4) — so nothing here
+  // reports a delivery, and a failure is shown rather than swallowed into a bubble that looks sent.
   const handleSendMessage = (text: string) => {
-    if (!activeConversationId) return;
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      conversationId: activeConversationId,
-      sender: 'studio',
-      senderName: 'Sen',
-      text,
-      time: 'Şimdi',
-      read: false,
-    };
-    setMessagesByConversation((current) => ({
-      ...current,
-      [activeConversationId]: [...(current[activeConversationId] ?? []), newMessage],
-    }));
-    setConversations((current) =>
-      current.map((c) => (c.id === activeConversationId ? { ...c, lastMessage: text, lastMessageTime: 'Şimdi' } : c))
-    );
+    void (async () => {
+      try {
+        await send(text);
+      } catch (thrown) {
+        show(
+          thrown instanceof ApiError
+            ? describeProblem(thrown.problem)
+            : 'Mesaj gönderilemedi. Bağlantını kontrol edip tekrar dene.',
+        );
+      }
+    })();
+  };
+
+  // "Görüşmeyi Kapat" and "Cevaplandı Olarak İşaretle" are the two registered states behind those
+  // words — `Closed` archives the thread, `Resolved` says the studio is done with it and leaves it
+  // reopenable. The version this replaces showed a toast and changed nothing.
+  const handleSetStatus = (status: 'Closed' | 'Resolved', done: string) => {
+    void (async () => {
+      try {
+        await setStatus(status);
+        show(done);
+      } catch (thrown) {
+        show(
+          thrown instanceof ApiError
+            ? describeProblem(thrown.problem)
+            : 'Görüşme durumu güncellenemedi.',
+        );
+      }
+    })();
   };
 
   const showInboxList = !isMobile || mobileView === 'list';
@@ -204,6 +255,8 @@ export default function MessagesScreen() {
             <View style={[styles.listPane, isMobile && styles.listPaneMobile]}>
               <ConversationList
                 conversations={conversations}
+                openCount={counters?.open ?? null}
+                status={inboxStatus}
                 activeConversationId={activeConversationId}
                 onSelect={handleSelectConversation}
               />
@@ -214,10 +267,16 @@ export default function MessagesScreen() {
             <View style={styles.threadPane}>
               <ChatThread
                 conversation={activeConversation}
-                messages={activeMessages}
+                messages={thread.messages}
+                status={thread.status}
+                canSend={canSend}
+                sendBlockedReason={sendBlockedReason}
+                sending={sending}
                 onBack={isMobile ? () => setMobileView('list') : undefined}
-                onCloseConversation={() => show('Görüşme kapatıldı.')}
-                onMarkReplied={() => show('Konuşma cevaplandı olarak işaretlendi.')}
+                onCloseConversation={() => handleSetStatus('Closed', 'Görüşme kapatıldı.')}
+                onMarkReplied={() =>
+                  handleSetStatus('Resolved', 'Konuşma cevaplandı olarak işaretlendi.')
+                }
                 onSendMessage={handleSendMessage}
               />
             </View>

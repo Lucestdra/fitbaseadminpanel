@@ -24,11 +24,6 @@ const ALLOWED = new Map([
     'Subscription and invoices are stubbed behind contracts by backend ADR-0042; billing has no '
       + 'endpoint to call. Retired when the billing module ships a real one.',
   ],
-  [
-    'app/mesajlar.tsx',
-    'Phase 3. The screen is hidden from the sidebar until WhatsApp lands, and its mock inbox is '
-      + 'what makes the layout reviewable in the meantime.',
-  ],
 ]);
 
 const SEARCH_ROOTS = ['src', 'app'];
