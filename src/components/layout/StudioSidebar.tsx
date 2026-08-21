@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { Avatar } from '@/components/ui/Avatar';
@@ -114,7 +114,24 @@ export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggl
         )}
       </View>
 
-      <View style={styles.nav}>
+      {/*
+        <b>A ScrollView, and it is what stops the menu from printing itself over the footer.</b>
+        This was a plain View with `flex: 1`, which resolves to whatever height is left after the
+        logo and the footer — but its children carry `minHeight: 44` and do not shrink, and a View
+        on React Native Web overflows visibly. So on a short window (a laptop with the browser
+        chrome open, or a tablet in landscape) the last few items were drawn *on top of* the studio
+        card and the user card rather than being clipped or scrolled.
+
+        Scrolling rather than clipping, because the items that overflow are real destinations —
+        "Ayarlar" is the last one in the list and hiding it is not better than overlapping it. The
+        footer stays pinned: signing out and switching studio must not require scrolling past ten
+        menu entries to reach.
+      */}
+      <ScrollView
+        style={styles.nav}
+        contentContainerStyle={[styles.navContent, collapsed && styles.navContentCollapsed]}
+        showsVerticalScrollIndicator={false}
+      >
         {visibleNavItems.map((item) => (
           <SidebarNavItem
             key={item.id}
@@ -127,7 +144,7 @@ export function StudioSidebar({ activeId, collapsed = false, onNavigate, onToggl
             }}
           />
         ))}
-      </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <View style={styles.footerCard}>
@@ -200,6 +217,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
     height: '100%',
+
+    // The backstop. The nav scrolls, so nothing should reach this — but a View that overflows its
+    // parent on web paints outside it silently, and one sentence here is cheaper than finding out
+    // from a screenshot which child grew.
+    overflow: 'hidden',
   },
   containerCollapsed: {
     width: SIDEBAR_WIDTH_COLLAPSED,
@@ -239,7 +261,19 @@ const styles = StyleSheet.create({
   },
   nav: {
     flex: 1,
+
+    // On the ScrollView itself, not its content: `flex: 1` here is what makes the list take the
+    // space between the logo and the footer and stop there.
+    flexBasis: 0,
+  },
+  navContent: {
     gap: spacing.xs,
+
+    // So a list shorter than the space available still sits at the top rather than stretching.
+    flexGrow: 0,
+  },
+  navContentCollapsed: {
+    alignItems: 'center',
   },
   navItem: {
     flexDirection: 'row',
@@ -275,6 +309,17 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: spacing.sm,
+
+    // Never squeezed. Without this the footer is the flex child that gives way when the window is
+    // short, and the studio card, the user card and "Çıkış" collapse into each other — which is
+    // the same overlap the nav had, moved one box down.
+    flexShrink: 0,
+
+    // Separates the pinned footer from a nav list that may be scrolled right up against it. No
+    // rule: the two cards already carry their own borders, and a divider drawn here would have to
+    // stretch in the expanded sidebar and centre in the collapsed one — two behaviours for a line
+    // that the cards make unnecessary.
+    marginTop: spacing.md,
   },
   footerCard: {
     flexDirection: 'row',
