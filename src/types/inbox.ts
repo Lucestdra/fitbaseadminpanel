@@ -8,6 +8,13 @@ export interface Conversation {
   contactId: string;
   contactName: string;
   avatarInitials: string;
+  /**
+   * Where the provider serves their picture, or null.
+   *
+   * Signed and short-lived on Meta's channels, and refreshed by the server on every inbound
+   * message — so an active thread renders and a dormant one falls back to {@link avatarInitials}.
+   */
+  avatarUrl: string | null;
   channel: MessagingChannelId;
   /** The newest message's text, or what it was when it carried none. */
   lastMessage: string;

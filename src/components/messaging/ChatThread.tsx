@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { AvatarWithBadge } from './AvatarWithBadge';
 import { MessageBubble } from './MessageBubble';
@@ -44,6 +44,27 @@ export function ChatThread({
 }: ChatThreadProps) {
   const [draft, setDraft] = useState('');
 
+  /*
+    The thread opens on its newest message, not its oldest.
+
+    Messages render oldest-first — useInbox reverses the newest-first page the server pages on —
+    and a ScrollView starts at offset zero, so without this a full thread opens on the first thing
+    the contact ever said. Every chat surface a studio has ever used opens on the last line, and
+    landing anywhere else reads as the order being wrong rather than the scroll position being
+    unset.
+
+    Driven by onContentSizeChange rather than by a messages effect, because the jump has to happen
+    once the bubbles have been laid out and their height is known — an effect on the array runs
+    before that and scrolls to an end that is still the old one. It covers both the first paint and
+    a reply arriving while the thread is open, which is the same event as far as the scroll is
+    concerned.
+
+    Unanimated: a thread opening with a visible scroll animation looks like a bug, and there is no
+    history paging above to be yanked away from yet. Give this a "was the studio already at the
+    bottom" guard when older pages start loading on scroll-up.
+  */
+  const scrollRef = useRef<ScrollView>(null);
+
   const composerEnabled = canSend && !sending;
 
   const handleSend = () => {
@@ -66,7 +87,12 @@ export function ChatThread({
             <AppIcon name="chevron-back" size={18} color={colors.textPrimary} />
           </Pressable>
         )}
-        <AvatarWithBadge initials={conversation.avatarInitials} channel={conversation.channel} size={36} />
+        <AvatarWithBadge
+          initials={conversation.avatarInitials}
+          channel={conversation.channel}
+          imageUrl={conversation.avatarUrl}
+          size={36}
+        />
         <View style={styles.headerTextGroup}>
           <Text style={styles.headerName} numberOfLines={1}>{conversation.contactName}</Text>
           <Text style={styles.headerChannel}>{CHANNEL_LABELS[conversation.channel]}</Text>
@@ -79,7 +105,13 @@ export function ChatThread({
         Each bubble now carries its own date when it is not from today, which is the same fact
         without a heading that can be wrong.
       */}
-      <ScrollView style={styles.messages} contentContainerStyle={styles.messagesContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+        style={styles.messages}
+        contentContainerStyle={styles.messagesContent}
+        showsVerticalScrollIndicator={false}
+      >
         {status === 'loading' && (
           <View style={styles.threadNotice}>
             <ActivityIndicator size="small" color={colors.primary} />

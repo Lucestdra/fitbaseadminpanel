@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as messagingApi from '@/api/messaging';
 import type { ConversationCounters, ConversationDetail, ConversationStatus } from '@/api/messaging';
+import type { ContactDetail } from '@/api/contacts';
 import { getContact } from '@/api/contacts';
 import { useAuth } from '@/context/AuthContext';
 import { contactLabel, SELF_LABEL, toChatMessage, toConversation } from '@/config/inbox';
@@ -54,8 +55,32 @@ type ThreadLoad =
  */
 const contactNames = new Map<string, string>();
 
+/**
+ * The picture that goes with the name, cached on the same key.
+ *
+ * Separate from {@link contactNames} rather than a `{name, avatarUrl}` value, because a contact
+ * legitimately has a name and no picture — WhatsApp gives none — and a map whose miss and whose
+ * "no picture" are the same `undefined` would re-request the second one for ever.
+ */
+const contactAvatars = new Map<string, string | null>();
+
 /** Lookups in flight, so a page of ten threads with one customer makes one request. */
 const contactRequests = new Map<string, Promise<string | null>>();
+
+/**
+ * The provider picture to show for a contact.
+ *
+ * <b>The identity's, not the contact's</b>: a picture belongs to an Instagram handle rather than to
+ * the person a studio merged two handles into, and the contact record deliberately holds none. The
+ * most recently seen identity wins, which is the one the thread in front of the studio came in on.
+ */
+function avatarOf(contact: ContactDetail): string | null {
+  const withPicture = [...contact.identities]
+    .filter((identity) => Boolean(identity.avatarUrl))
+    .sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+
+  return withPicture[0]?.avatarUrl ?? null;
+}
 
 async function resolveContactName(contactId: string): Promise<string | null> {
   const cached = contactNames.get(contactId);
@@ -75,6 +100,7 @@ async function resolveContactName(contactId: string): Promise<string | null> {
         const name = contactLabel(contact.displayName);
 
         contactNames.set(contactId, name);
+        contactAvatars.set(contactId, avatarOf(contact));
 
         return name;
       } catch {
@@ -161,7 +187,14 @@ export function useInbox(): InboxState & {
         if (listGeneration.current !== current) return;
 
         const conversations = list.page.items
-          .map((item) => toConversation(item, contactNames.get(item.contactId) ?? null, timeZoneId))
+          .map((item) =>
+            toConversation(
+              item,
+              contactNames.get(item.contactId) ?? null,
+              timeZoneId,
+              contactAvatars.get(item.contactId) ?? null,
+            ),
+          )
           .filter((row): row is Conversation => row !== null);
 
         setState({ conversations, counters: list.counters, status: 'ready' });

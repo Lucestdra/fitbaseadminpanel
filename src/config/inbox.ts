@@ -94,6 +94,7 @@ export function toConversation(
   item: ConversationListItem,
   contactName: string | null,
   timeZoneId: string,
+  avatarUrl: string | null = null,
 ): Conversation | null {
   const channel = channelIdForProvider(item.provider);
 
@@ -108,6 +109,7 @@ export function toConversation(
     contactId: item.contactId,
     contactName: name,
     avatarInitials: initialsOf(name),
+    avatarUrl,
     channel,
     lastMessage: previewOf(item),
     lastMessageTime: formatInboxTime(item.lastMessageAt, timeZoneId),

@@ -22,7 +22,12 @@ export function ConversationListItem({ conversation, isActive, onPress }: Conver
         pressed && styles.rowPressed,
       ]}
     >
-      <AvatarWithBadge initials={conversation.avatarInitials} channel={conversation.channel} size={44} />
+      <AvatarWithBadge
+        initials={conversation.avatarInitials}
+        channel={conversation.channel}
+        imageUrl={conversation.avatarUrl}
+        size={44}
+      />
       <View style={styles.body}>
         <View style={styles.headerRow}>
           <Text style={[styles.name, conversation.unread && styles.nameUnread]} numberOfLines={1}>

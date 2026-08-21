@@ -3347,6 +3347,8 @@ export interface components {
         };
         /** @description One account on one channel, as the drawer renders it. */
         ContactIdentityView: {
+            /** @description Where the provider serves their picture, as it was last seen. Signed and short-lived; refreshed on every message. */
+            avatarUrl: null | string;
             /** @description What the provider calls them. */
             displayName: null | string;
             /** @description As the provider gave it. */
