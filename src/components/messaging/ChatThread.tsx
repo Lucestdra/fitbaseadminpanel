@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { AvatarWithBadge } from './AvatarWithBadge';
 import { MessageBubble } from './MessageBubble';
@@ -27,7 +27,14 @@ interface ChatThreadProps {
   onBack?: () => void;
   onCloseConversation: () => void;
   onMarkReplied: () => void;
-  onSendMessage: (text: string) => void;
+  /**
+   * Sends the text, resolving to whether it was accepted.
+   *
+   * <b>The answer is what decides whether the composer clears.</b> Clearing on press and reporting
+   * the failure in a toast loses what somebody wrote — and a studio whose connection dropped
+   * mid-sentence retypes it, or does not notice and never sends it at all.
+   */
+  onSendMessage: (text: string) => Promise<boolean>;
 }
 
 export function ChatThread({
@@ -47,11 +54,11 @@ export function ChatThread({
   /*
     The thread opens on its newest message, not its oldest.
 
-    Messages render oldest-first — useInbox reverses the newest-first page the server pages on —
-    and a ScrollView starts at offset zero, so without this a full thread opens on the first thing
-    the contact ever said. Every chat surface a studio has ever used opens on the last line, and
-    landing anywhere else reads as the order being wrong rather than the scroll position being
-    unset.
+    Messages render oldest-first — the server sorts them that way in SQL and useInbox keeps that
+    order — and a ScrollView starts at offset zero, so without this a full thread opens on the
+    first thing the contact ever said. Every chat surface a studio has ever used opens on the last
+    line, and landing anywhere else reads as the order being wrong rather than the scroll position
+    being unset.
 
     Driven by onContentSizeChange rather than by a messages effect, because the jump has to happen
     once the bubbles have been laid out and their height is known — an effect on the array runs
@@ -65,12 +72,45 @@ export function ChatThread({
   */
   const scrollRef = useRef<ScrollView>(null);
 
+  /*
+    The second half of the same rule, and it covers what onContentSizeChange cannot.
+
+    Switching to a conversation whose thread happens to render at the same height as the last one
+    fires no content-size change at all, so the ScrollView keeps the offset it already had and the
+    new customer's thread opens halfway up. Keying on the conversation and on the newest message
+    makes "a different thread" and "a new message" both re-run it.
+
+    Deliberately after layout rather than instead of it: onContentSizeChange still does the work on
+    first paint, when this effect runs before the bubbles have a height. The two together are what
+    make "the newest message is on screen" true in every case rather than in the common one.
+  */
+  const newestId = messages.length > 0 ? messages[messages.length - 1].id : null;
+
+  useEffect(() => {
+    if (newestId === null) return;
+
+    scrollRef.current?.scrollToEnd({ animated: false });
+  }, [conversation.id, newestId]);
+
   const composerEnabled = canSend && !sending;
 
+  // Empty is never sent. `trim` rather than a length check, so a message of spaces is refused for
+  // the same reason as an empty one — the server refuses both, and letting the button fire means
+  // showing somebody a 422 for pressing send on nothing.
+  const draftIsSendable = draft.trim().length > 0;
+
   const handleSend = () => {
-    if (!composerEnabled || !draft.trim()) return;
-    onSendMessage(draft.trim());
-    setDraft('');
+    if (!composerEnabled || !draftIsSendable) return;
+
+    const text = draft.trim();
+
+    void (async () => {
+      // Cleared only once the server has it. The screen above reports the failure; what this keeps
+      // is the sentence somebody wrote, still in the box, ready to send again.
+      if (await onSendMessage(text)) {
+        setDraft('');
+      }
+    })();
   };
 
   return (
@@ -182,14 +222,14 @@ export function ChatThread({
         />
         <Pressable
           onPress={handleSend}
-          disabled={!composerEnabled}
+          disabled={!composerEnabled || !draftIsSendable}
           accessibilityRole="button"
           accessibilityLabel="Gönder"
-          accessibilityState={{ disabled: !composerEnabled }}
+          accessibilityState={{ disabled: !composerEnabled || !draftIsSendable }}
           style={({ pressed }) => [
             styles.sendButton,
-            !composerEnabled && styles.sendButtonDisabled,
-            pressed && composerEnabled && styles.sendButtonPressed,
+            (!composerEnabled || !draftIsSendable) && styles.sendButtonDisabled,
+            pressed && composerEnabled && draftIsSendable && styles.sendButtonPressed,
           ]}
         >
           {sending ? (

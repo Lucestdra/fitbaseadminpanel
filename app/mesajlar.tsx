@@ -149,20 +149,29 @@ export default function MessagesScreen() {
   };
 
   // <b>The reply is queued, not sent, and the bubble says so.</b> The server persists it as
-  // `Pending` and the outbound dispatcher carries it (backend ADR-0075, M4) — so nothing here
-  // reports a delivery, and a failure is shown rather than swallowed into a bubble that looks sent.
-  const handleSendMessage = (text: string) => {
-    void (async () => {
-      try {
-        await send(text);
-      } catch (thrown) {
-        show(
-          thrown instanceof ApiError
-            ? describeProblem(thrown.problem)
-            : 'Mesaj gönderilemedi. Bağlantını kontrol edip tekrar dene.',
-        );
-      }
-    })();
+  // `Pending` and the outbound dispatcher carries it — so nothing here reports a delivery, and a
+  // failure is shown rather than swallowed into a bubble that looks sent.
+  //
+  // <b>Returns whether it was accepted, and the composer reads the answer.</b> A screen that
+  // reported the failure in a toast and cleared the box anyway lost what somebody had written; the
+  // toast says what went wrong and the text stays where they can press send again.
+  const handleSendMessage = async (text: string): Promise<boolean> => {
+    try {
+      await send(text);
+
+      return true;
+    } catch (thrown) {
+      // `describeProblem` turns the server's registered code into a sentence — an archived thread,
+      // a closed messaging window, a message the provider cannot carry. Anything else is a
+      // connection that did not reach us at all, which is a different instruction to the reader.
+      show(
+        thrown instanceof ApiError
+          ? describeProblem(thrown.problem)
+          : 'Mesaj gönderilemedi. Bağlantını kontrol edip tekrar dene.',
+      );
+
+      return false;
+    }
   };
 
   // "Görüşmeyi Kapat" and "Cevaplandı Olarak İşaretle" are the two registered states behind those

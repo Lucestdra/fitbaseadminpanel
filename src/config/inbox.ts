@@ -149,6 +149,8 @@ export function toChatMessage(
   return {
     id: item.id,
     conversationId,
+    sequence: item.sequence,
+    occurredAt: item.occurredAt,
     sender: outbound ? 'studio' : 'contact',
     senderName: outbound ? outboundSenderName(item, names) : names.contact,
     text: item.body ?? TYPE_LABELS[item.type] ?? TYPE_LABELS.Unsupported,
@@ -183,6 +185,23 @@ function outboundSenderName(
 /** The name to show for a contact, given whatever the contacts module holds. */
 export function contactLabel(displayName: string | null | undefined): string {
   return displayName && displayName.trim().length > 0 ? displayName : UNNAMED_CONTACT;
+}
+
+/**
+ * The thread in reading order: oldest at the top, newest at the bottom.
+ *
+ * <b>The server already answers in this order</b> — `/conversations/{id}/messages` sorts ascending
+ * in SQL — so this is not where the ordering is decided. It is what keeps it true after the client
+ * has touched the list: a reply appended on send, and a page of older messages prepended on
+ * scroll-up, both have to land somewhere, and "wherever the code that added them put them" is not
+ * an ordering.
+ *
+ * Sorted on the server's own sequence, which is unique within a thread and a total order by
+ * construction (backend ADR-0050) — never on the timestamp, because provider clocks disagree with
+ * ours and a late webhook carries an earlier time than a message already stored.
+ */
+export function inReadingOrder(messages: ChatMessage[]): ChatMessage[] {
+  return [...messages].sort((left, right) => left.sequence - right.sequence);
 }
 
 export { SELF_LABEL, UNRESOLVED_CONTACT };

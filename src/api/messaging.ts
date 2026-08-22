@@ -67,11 +67,17 @@ export async function getConversation(conversationId: string): Promise<Conversat
 }
 
 /**
- * A page of one thread's messages, newest first.
+ * A page of one thread's messages, in chronological order — oldest first.
  *
- * <b>Paged on the thread's own sequence, never on a timestamp</b> (backend ADR-0050). The client
- * reverses the page for display and asks for the next one when the reader scrolls up; the cursor is
- * opaque and parsing it is how a client breaks when the sort changes.
+ * <b>Sorted by the database, not by the caller.</b> The page arrives in reading order and is
+ * rendered as it arrives; a client that had to reverse it would be the one place the ordering
+ * lived, and the client that forgot would show a conversation running backwards with no error
+ * anywhere.
+ *
+ * <b>Paging still walks backwards</b>, and it is paged on the thread's own sequence rather than on
+ * a timestamp (backend ADR-0050). A thread opens on its newest messages and asks for older ones as
+ * the reader scrolls up, so the cursor names the oldest message on the page. It is opaque, and
+ * parsing it is how a client breaks when the sort changes.
  */
 export async function listMessages(
   conversationId: string,
@@ -145,6 +151,53 @@ export async function markConversationRead(conversationId: string): Promise<Conv
   return withAuth(() =>
     client.POST('/api/v1/conversations/{conversationId}/read', {
       params: { path: { conversationId } },
+    }),
+  );
+}
+
+// ---- The studio's WhatsApp welcome message --------------------------------------------------
+
+export type WelcomeTemplateView = components['schemas']['WelcomeTemplateView'];
+export type WelcomeTemplateVariable = components['schemas']['WelcomeTemplateVariable'];
+export type WelcomeDeliveryItem = components['schemas']['WelcomeDeliveryItem'];
+export type WelcomeTemplateAudience = components['schemas']['WelcomeTemplateAudience'];
+export type WelcomeDeliveryStatus = components['schemas']['WelcomeDeliveryStatus'];
+export type WelcomeRecipientKind = components['schemas']['WelcomeRecipientKind'];
+
+/**
+ * The studio's welcome message, its automatic-send setting, and what it has sent.
+ *
+ * <b>Answers even when nothing has been saved</b> — `configured` is false and `body` is empty —
+ * so the editor's empty state is a value rather than a caught 404.
+ *
+ * `messaging.templates.manage`, which is narrower than the rest of the settings screen: what comes
+ * back includes the names of people the studio has messaged automatically and why some of them
+ * failed.
+ */
+export async function getWelcomeTemplate(): Promise<WelcomeTemplateView> {
+  return withAuth(() => client.GET('/api/v1/organization/whatsapp-template'));
+}
+
+/**
+ * Saves the welcome message and whether it sends itself.
+ *
+ * <b>Placeholders are validated, never silently dropped.</b> A body using a token the server
+ * cannot fill in is refused with `messaging.template.variable_unknown` and the offending ones are
+ * named — the studio is looking at the editor when they can still fix it, and the customer who
+ * would otherwise receive literal braces is not.
+ */
+export async function saveWelcomeTemplate(draft: {
+  body: string;
+  autoSendEnabled: boolean;
+  audience: NonNullable<WelcomeTemplateAudience>;
+}): Promise<WelcomeTemplateView> {
+  return withAuth(() =>
+    client.PUT('/api/v1/organization/whatsapp-template', {
+      body: {
+        body: draft.body,
+        autoSendEnabled: draft.autoSendEnabled,
+        audience: draft.audience,
+      },
     }),
   );
 }

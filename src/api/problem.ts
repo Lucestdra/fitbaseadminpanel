@@ -96,6 +96,30 @@ const MESSAGES: Record<string, string> = {
     'Yetkilendirme sırasında gerekli izinlerin tamamı verilmedi. Tekrar dene ve istenen izinleri onayla.',
   'integrations.provider.unavailable':
     'Bu kanal şu anda bağlanamıyor. Sorun bizde — biraz sonra tekrar dene.',
+
+  // Sending. Every one of these is reached with a message still in the composer, and the generic
+  // sentence is the worst possible answer there: a studio cannot tell whether to press send again,
+  // reopen the conversation, or wait for the customer to write first. Each of these says which.
+  'messaging.conversation.not_found':
+    'Bu görüşme bulunamadı. Gelen kutusunu yenileyip tekrar dene.',
+  'messaging.conversation.closed':
+    'Bu görüşme arşivlenmiş. Yanıt vermek için önce görüşmeyi yeniden aç.',
+  'messaging.send.session_window_closed':
+    'Sağlayıcının ücretsiz yanıt penceresi kapandı. Müşteri yeniden yazana kadar bu görüşmeye '
+    + 'serbest mesaj gönderilemiyor.',
+  'messaging.send.consent_missing':
+    'Bu kişi pazarlama mesajlarına izin vermemiş.',
+  'messaging.capability.unsupported':
+    'Bu kanal bu mesaj türünü gönderemiyor. Şimdilik yalnızca metin gönderilebiliyor.',
+  'messaging.connection.unavailable':
+    'Bağlı bir WhatsApp kanalı yok. Mesaj gönderebilmek için önce Kanallar bölümünden bir hesap bağla.',
+  'messaging.cursor.invalid': 'Görüşme yeniden yüklenmeli. Listeden tekrar seç.',
+
+  // The welcome-template editor. Both are things the studio can fix in the box they are looking at.
+  'messaging.template.body_required':
+    'Karşılama mesajı boş olamaz.',
+  'messaging.template.variable_unknown':
+    'Mesajda tanınmayan bir değişken var. Yalnızca listelenen değişkenleri kullanabilirsin.',
 };
 
 const FALLBACK = 'Beklenmeyen bir hata oluştu. Lütfen tekrar dene.';

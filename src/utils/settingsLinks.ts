@@ -20,6 +20,7 @@ export const SETTINGS_SECTION_IDS = [
   'interests',
   'categories',
   'notifications',
+  'whatsapp',
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];

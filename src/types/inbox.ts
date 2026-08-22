@@ -29,6 +29,18 @@ export type MessageSender = 'contact' | 'studio';
 export interface ChatMessage {
   id: string;
   conversationId: string;
+  /**
+   * Position in the thread, assigned by the server (backend ADR-0050).
+   *
+   * <b>Carried so the client can order bubbles by a fact rather than by array position.</b> The
+   * page arrives in chronological order and a sent message is appended to the end, which is
+   * correct — but "correct because nobody has inserted in the wrong place yet" is not a property,
+   * and the moment a message arrives from anywhere but the bottom of the list there is nothing to
+   * sort on. The sequence is unique within the thread and is a total order by construction.
+   */
+  sequence: number;
+  /** When it happened, as an instant. Rendered through {@link time}; kept for a stable tie-break. */
+  occurredAt: string;
   sender: MessageSender;
   senderName: string;
   text: string;

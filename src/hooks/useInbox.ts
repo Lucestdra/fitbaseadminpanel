@@ -4,13 +4,24 @@ import type { ConversationCounters, ConversationDetail, ConversationStatus } fro
 import type { ContactDetail } from '@/api/contacts';
 import { getContact } from '@/api/contacts';
 import { useAuth } from '@/context/AuthContext';
-import { contactLabel, SELF_LABEL, toChatMessage, toConversation } from '@/config/inbox';
+import {
+  contactLabel,
+  inReadingOrder,
+  SELF_LABEL,
+  toChatMessage,
+  toConversation,
+} from '@/config/inbox';
 import type { ChatMessage, Conversation } from '@/types/inbox';
 
 /** How many threads the list asks for. One page; the inbox does not paginate yet. */
 const PAGE_SIZE = 30;
 
-/** How many of a thread's messages are loaded. Newest first, reversed for display. */
+/**
+ * How many of a thread's messages are loaded.
+ *
+ * The server returns the newest {@link THREAD_SIZE} of them, in chronological order — the page
+ * walks backwards through the thread and reads forwards, which is what a chat surface does.
+ */
 const THREAD_SIZE = 50;
 
 export interface InboxState {
@@ -246,19 +257,24 @@ export function useInbox(): InboxState & {
           status: 'ready',
           detail,
 
-          // The server returns newest first — that is what a thread opens on and what paging is
-          // built for. Display runs the other way.
-          messages: [...page.items].reverse().map((item) =>
-            toChatMessage(
-              item,
-              conversationId,
-              {
-                contact: contact ?? '',
-                self: SELF_LABEL,
-                studio: studioName,
-                selfStaffMemberId: user?.id ?? null,
-              },
-              timeZoneId,
+          // <b>Rendered in the order it arrives.</b> The server sorts ascending in SQL, so the
+          // page is already oldest-first — the version this replaces reversed a newest-first page
+          // here, which put the whole ordering in one line of one client and made "the newest
+          // message is at the bottom" a property of this file rather than of the API. The sort is
+          // belt and braces over a contract that now guarantees it.
+          messages: inReadingOrder(
+            page.items.map((item) =>
+              toChatMessage(
+                item,
+                conversationId,
+                {
+                  contact: contact ?? '',
+                  self: SELF_LABEL,
+                  studio: studioName,
+                  selfStaffMemberId: user?.id ?? null,
+                },
+                timeZoneId,
+              ),
             ),
           ),
         });
@@ -314,8 +330,12 @@ export function useInbox(): InboxState & {
           current?.conversationId === conversationId && current.status === 'ready'
             ? {
                 ...current,
-                messages: [
-                  ...current.messages,
+
+                // Sorted rather than pushed. The server assigns the sequence, and appending
+                // blindly would put the reply after a message that is newer than it the moment
+                // anything else lands in the thread while the send is in flight.
+                messages: inReadingOrder([
+                  ...current.messages.filter((existing) => existing.id !== message.id),
                   toChatMessage(
                     message,
                     conversationId,
@@ -327,7 +347,7 @@ export function useInbox(): InboxState & {
                     },
                     timeZoneId,
                   ),
-                ],
+                ]),
               }
             : current,
         );

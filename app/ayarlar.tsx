@@ -20,20 +20,30 @@ import { ClosuresCard } from '@/components/settings/ClosuresCard';
 import { LocalizationCard } from '@/components/settings/LocalizationCard';
 import { ReceivablesPolicyCard } from '@/components/settings/ReceivablesPolicyCard';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
+import { WhatsAppTemplateCard } from '@/components/settings/WhatsAppTemplateCard';
 import { SettingsTile } from '@/components/settings/SettingsTile';
 import { SettingsSectionModal } from '@/components/settings/SettingsSectionModal';
 import { useToast } from '@/context/ToastContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useCatalogs } from '@/context/CatalogsContext';
+import { useAuth } from '@/context/AuthContext';
 import { colors, spacing, typography } from '@/theme';
 import { subscriptionInfo, invoices } from '@/mock/settings';
 import * as catalogsApi from '@/api/catalogs';
 import * as settingsApi from '@/api/settings';
+import * as messagingApi from '@/api/messaging';
 import { ApiError, describeProblem } from '@/api/problem';
 import { toSettingsSection, type SettingsSectionId } from '@/utils/settingsLinks';
 import type { IconName } from '@/types/dashboard';
 
 type SectionId = SettingsSectionId;
+
+/** The welcome template's audience, as the tile summary says it. */
+const AUDIENCE_LABELS: Record<NonNullable<messagingApi.WelcomeTemplateAudience>, string> = {
+  Leads: 'Müşteri adayları',
+  Customers: 'Müşteriler',
+  Both: 'Herkes',
+};
 
 /** The settings screen's two reads, which always arrive and fail together. */
 interface LoadedSettings {
@@ -86,10 +96,26 @@ export default function SettingsScreen() {
   const { stages, leadSources, interests, classCategories, packages, gifts, status, refresh } =
     useCatalogs();
   const { show } = useToast();
+  const { permissions, timeZoneId } = useAuth();
+
+  // Manager-only, and hiding the tile is presentation — the endpoint refuses everyone else anyway.
+  // What it prevents is a Sales user opening a section whose every request 403s.
+  const canManageTemplates = permissions['messaging.templates.manage'] !== undefined;
 
   const [settings, setSettings] = useState<settingsApi.OrganizationSettings | null>(null);
   const [summary, setSummary] = useState<settingsApi.OrganizationSettingsSummary | null>(null);
   const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  /**
+   * The WhatsApp welcome message, loaded on its own.
+   *
+   * <b>Separate from the settings read, and not part of the screen's loading gate.</b> It sits
+   * behind `messaging.templates.manage`, which only a manager holds — so for a Sales user the call
+   * is a 403, and folding it into `fetchSettings` would make the whole settings screen render its
+   * "could not load" state for a permission they were never expected to have. Null covers both
+   * "not loaded yet" and "not yours"; the tile is hidden either way.
+   */
+  const [welcome, setWelcome] = useState<messagingApi.WelcomeTemplateView | null>(null);
 
   // `?bolum=packages` opens that section straight away, so an empty state elsewhere in the app can
   // send somebody to the thing they are missing rather than to the settings index to hunt for it.
@@ -129,6 +155,7 @@ export default function SettingsScreen() {
     applySettings(await fetchSettings());
   }, [applySettings]);
 
+
   useEffect(() => {
     let cancelled = false;
 
@@ -143,6 +170,27 @@ export default function SettingsScreen() {
       cancelled = true;
     };
   }, [applySettings]);
+
+  useEffect(() => {
+    if (!canManageTemplates) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const loaded = await messagingApi.getWelcomeTemplate();
+        if (!cancelled) setWelcome(loaded);
+      } catch {
+        // Left null, which hides the tile. A settings screen that reported a failure on a section
+        // nobody had opened would be an error message about something the reader was not doing.
+        if (!cancelled) setWelcome(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canManageTemplates]);
 
   /**
    * Runs a mutation, refreshes, and reports.
@@ -346,6 +394,24 @@ export default function SettingsScreen() {
           summary: `${count(summary?.enabledNotifications)}/${count(summary?.availableNotifications)} bildirim açık`,
           icon: 'notifications-outline',
         },
+
+        // Present only for a manager, and only once the template has loaded. The summary is the
+        // fact the studio is deciding about — whether anything is being sent — rather than a
+        // count, because there is only ever one of these.
+        ...(welcome !== null
+          ? [
+              {
+                id: 'whatsapp' as const,
+                title: 'WhatsApp Karşılama',
+                summary: welcome.autoSendEnabled
+                  ? `Açık · ${AUDIENCE_LABELS[welcome.audience ?? 'Both']}`
+                  : welcome.configured
+                    ? 'Kapalı'
+                    : 'Tanımlı değil',
+                icon: 'chatbubble-ellipses-outline' as IconName,
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -650,6 +716,27 @@ export default function SettingsScreen() {
           }
         />
       </SettingsSectionModal>
+
+      {welcome !== null && (
+        <SettingsSectionModal
+          visible={openSection === 'whatsapp'}
+          onClose={() => setOpenSection(null)}
+        >
+          <WhatsAppTemplateCard
+            template={welcome}
+            timeZoneId={timeZoneId}
+            busy={busy}
+            onSave={(draft) =>
+              run(async () => {
+                // The response is the saved state plus the delivery list, so the card reseeds from
+                // the server rather than from what was typed — which is what makes "settings
+                // persist after refreshing the page" true of the screen and not only of the table.
+                setWelcome(await messagingApi.saveWelcomeTemplate(draft));
+              }, 'WhatsApp karşılama mesajı kaydedildi.')
+            }
+          />
+        </SettingsSectionModal>
+      )}
 
       {/*
         Mounted only while open and keyed by the entry. That is what lets the modal seed its fields

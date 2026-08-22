@@ -1400,7 +1400,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A page of one thread's messages, newest first, paged on the thread sequence. */
+        /** A page of one thread's messages in chronological order, paged backwards on the thread sequence. */
         get: operations["ListConversationMessages"];
         put?: never;
         /** Queues an outbound message. Does not call the provider inline. */
@@ -2225,6 +2225,24 @@ export interface paths {
         get?: never;
         /** Tax and billing details. The identifier is encrypted and never read back. */
         put: operations["UpdateOrganizationTaxProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/whatsapp-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The studio's WhatsApp welcome message, its automatic-send setting, and what it has sent. */
+        get: operations["GetWhatsAppWelcomeTemplate"];
+        /** Saves the welcome message and whether new leads or customers receive it automatically. */
+        put: operations["SaveWhatsAppWelcomeTemplate"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3347,7 +3365,11 @@ export interface components {
         };
         /** @description One account on one channel, as the drawer renders it. */
         ContactIdentityView: {
-            /** @description Where the provider serves their picture, as it was last seen. Signed and short-lived; refreshed on every message. */
+            /**
+             * @description Where the provider serves their picture, as it was last seen. Signed and short-lived on Meta's
+             *     channels, and refreshed on every message — so a dormant identity's link expires and the panel
+             *     falls back to initials.
+             */
             avatarUrl: null | string;
             /** @description What the provider calls them. */
             displayName: null | string;
@@ -6456,6 +6478,111 @@ export interface components {
          * @enum {unknown}
          */
         WeightUnit: "Kilograms" | "Pounds" | "BodyWeight" | "Band";
+        /** @description One automatic welcome, as the settings screen lists it. */
+        WelcomeDeliveryItem: {
+            /**
+             * Format: date-time
+             * @description When it was settled either way.
+             */
+            completedAt: null | string;
+            /**
+             * Format: uuid
+             * @description The thread it went into, for a link to the inbox.
+             */
+            conversationId: null | string;
+            deliveryStatus: null | components["schemas"]["MessageStatus"];
+            /** @description Why not, when one was not. */
+            failureCode: null | string;
+            /**
+             * Format: uuid
+             * @description The ledger row.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description The message.
+             */
+            messageId: null | string;
+            /**
+             * Format: uuid
+             * @description The lead id or member id, so the panel can link to them.
+             */
+            recipientId: string;
+            /** @description Lead or customer. */
+            recipientKind: components["schemas"]["WelcomeRecipientKind"];
+            /** @description What they were called when the message was rendered. */
+            recipientName: string;
+            /**
+             * Format: date-time
+             * @description When the lead or customer was created.
+             */
+            requestedAt: string;
+            /** @description Whether a message was created at all. */
+            status: components["schemas"]["WelcomeDeliveryStatus"];
+        };
+        /**
+         * @description What became of one automatic welcome.
+         * @enum {unknown}
+         */
+        WelcomeDeliveryStatus: "Queued" | "Failed";
+        /**
+         * @description Which side of the studio a welcome message was triggered by.
+         * @enum {unknown}
+         */
+        WelcomeRecipientKind: "Lead" | "Customer";
+        /**
+         * @description Which newly created people a studio's welcome template is sent to.
+         * @enum {unknown}
+         */
+        WelcomeTemplateAudience: "Leads" | "Customers" | "Both";
+        /** @description A placeholder a studio may put in its welcome message. */
+        WelcomeTemplateVariable: {
+            /** @description What it renders as, so the hint is concrete rather than abstract. */
+            example: string;
+            /** @description What it is called in the editor, in the studio's language. */
+            label: string;
+            /** @description What is typed, without the braces — `name` for `{{name}}`. */
+            token: string;
+        };
+        /** @description The studio's welcome message and what automatic sending has done with it. */
+        WelcomeTemplateView: {
+            /** @description Who it goes to. */
+            audience: components["schemas"]["WelcomeTemplateAudience"];
+            /** @description Whether a new lead or customer gets it without anybody pressing anything. */
+            autoSendEnabled: boolean;
+            /** @description The text with its placeholders unresolved. Empty when nothing is saved. */
+            body: string;
+            /** @description Whether a template has ever been saved. */
+            configured: boolean;
+            /**
+             * Format: date-time
+             * @description When it was first saved, or null.
+             */
+            createdAt: null | string;
+            /** @description The most recent automatic sends, newest first. */
+            recentDeliveries: components["schemas"]["WelcomeDeliveryItem"][];
+            /**
+             * Format: date-time
+             * @description When it was last saved, or null.
+             */
+            updatedAt: null | string;
+            /**
+             * @description Every placeholder this product fills in. Sent rather than hard-coded in the panel, because the
+             *     server is what refuses an unknown one and the two lists must be the same list.
+             */
+            variables: components["schemas"]["WelcomeTemplateVariable"][];
+        };
+        /** @description The request body for a save. */
+        WhatsAppTemplateBody: {
+            audience: null | components["schemas"]["WelcomeTemplateAudience"];
+            /** @description Whether a new lead or customer receives it without anybody pressing anything. */
+            autoSendEnabled: boolean;
+            /**
+             * @description The message, with `{{name}}`-style placeholders left in. Rendered per recipient at send
+             *     time, so editing this never rewrites a message somebody has already received.
+             */
+            body: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -10088,6 +10215,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaxProfileSummary"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWhatsAppWelcomeTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelcomeTemplateView"];
+                };
+            };
+            /** @description No token, an expired one, a revoked session, or a stale permission version. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An RFC 9457 problem document. `code` is stable and is what clients branch on. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SaveWhatsAppWelcomeTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsAppTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelcomeTemplateView"];
                 };
             };
             /** @description No token, an expired one, a revoked session, or a stale permission version. */

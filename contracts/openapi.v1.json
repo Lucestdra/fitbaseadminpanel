@@ -1370,7 +1370,7 @@
         "description": "One account on one channel, as the drawer renders it.",
         "properties": {
           "avatarUrl": {
-            "description": "Where the provider serves their picture, as it was last seen. Signed and short-lived; refreshed on every message.",
+            "description": "Where the provider serves their picture, as it was last seen. Signed and short-lived on Meta's\r\nchannels, and refreshed on every message — so a dormant identity's link expires and the panel\r\nfalls back to initials.",
             "type": [
               "null",
               "string"
@@ -1433,17 +1433,17 @@
           }
         },
         "required": [
-          "avatarUrl",
+          "id",
+          "provider",
           "displayName",
+          "username",
+          "avatarUrl",
+          "phoneNumber",
+          "phoneVerified",
           "email",
           "emailVerified",
           "firstSeenAt",
-          "id",
-          "lastSeenAt",
-          "phoneNumber",
-          "phoneVerified",
-          "provider",
-          "username"
+          "lastSeenAt"
         ],
         "type": "object"
       },
@@ -7427,6 +7427,231 @@
           "BodyWeight",
           "Band"
         ]
+      },
+      "WelcomeDeliveryItem": {
+        "description": "One automatic welcome, as the settings screen lists it.",
+        "properties": {
+          "completedAt": {
+            "description": "When it was settled either way.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conversationId": {
+            "description": "The thread it went into, for a link to the inbox.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "deliveryStatus": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MessageStatus",
+                "description": "Where that message got to, or null when there is no message — or when there was one and a\r\ncompliance erasure has since removed it."
+              }
+            ]
+          },
+          "failureCode": {
+            "description": "Why not, when one was not.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "description": "The ledger row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "messageId": {
+            "description": "The message.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "recipientId": {
+            "description": "The lead id or member id, so the panel can link to them.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "recipientKind": {
+            "$ref": "#/components/schemas/WelcomeRecipientKind",
+            "description": "Lead or customer."
+          },
+          "recipientName": {
+            "description": "What they were called when the message was rendered.",
+            "type": "string"
+          },
+          "requestedAt": {
+            "description": "When the lead or customer was created.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WelcomeDeliveryStatus",
+            "description": "Whether a message was created at all."
+          }
+        },
+        "required": [
+          "id",
+          "recipientKind",
+          "recipientId",
+          "recipientName",
+          "status",
+          "failureCode",
+          "conversationId",
+          "messageId",
+          "deliveryStatus",
+          "requestedAt",
+          "completedAt"
+        ],
+        "type": "object"
+      },
+      "WelcomeDeliveryStatus": {
+        "description": "What became of one automatic welcome.",
+        "enum": [
+          "Queued",
+          "Failed"
+        ]
+      },
+      "WelcomeRecipientKind": {
+        "description": "Which side of the studio a welcome message was triggered by.",
+        "enum": [
+          "Lead",
+          "Customer"
+        ]
+      },
+      "WelcomeTemplateAudience": {
+        "description": "Which newly created people a studio's welcome template is sent to.",
+        "enum": [
+          "Leads",
+          "Customers",
+          "Both"
+        ]
+      },
+      "WelcomeTemplateVariable": {
+        "description": "A placeholder a studio may put in its welcome message.",
+        "properties": {
+          "example": {
+            "description": "What it renders as, so the hint is concrete rather than abstract.",
+            "type": "string"
+          },
+          "label": {
+            "description": "What it is called in the editor, in the studio's language.",
+            "type": "string"
+          },
+          "token": {
+            "description": "What is typed, without the braces — `name` for `{{name}}`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "label",
+          "example"
+        ],
+        "type": "object"
+      },
+      "WelcomeTemplateView": {
+        "description": "The studio's welcome message and what automatic sending has done with it.",
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/WelcomeTemplateAudience",
+            "description": "Who it goes to."
+          },
+          "autoSendEnabled": {
+            "description": "Whether a new lead or customer gets it without anybody pressing anything.",
+            "type": "boolean"
+          },
+          "body": {
+            "description": "The text with its placeholders unresolved. Empty when nothing is saved.",
+            "type": "string"
+          },
+          "configured": {
+            "description": "Whether a template has ever been saved.",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "description": "When it was first saved, or null.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "recentDeliveries": {
+            "description": "The most recent automatic sends, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/WelcomeDeliveryItem"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "description": "When it was last saved, or null.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "variables": {
+            "description": "Every placeholder this product fills in. Sent rather than hard-coded in the panel, because the\r\nserver is what refuses an unknown one and the two lists must be the same list.",
+            "items": {
+              "$ref": "#/components/schemas/WelcomeTemplateVariable"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "configured",
+          "body",
+          "autoSendEnabled",
+          "audience",
+          "createdAt",
+          "updatedAt",
+          "variables",
+          "recentDeliveries"
+        ],
+        "type": "object"
+      },
+      "WhatsAppTemplateBody": {
+        "description": "The request body for a save.",
+        "properties": {
+          "audience": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WelcomeTemplateAudience",
+                "description": "Who receives it. Absent means `Both`, which is what a studio switching automatic\r\nsending on without choosing means by it."
+              }
+            ]
+          },
+          "autoSendEnabled": {
+            "description": "Whether a new lead or customer receives it without anybody pressing anything.",
+            "type": "boolean"
+          },
+          "body": {
+            "description": "The message, with `{{name}}`-style placeholders left in. Rendered per recipient at send\r\ntime, so editing this never rewrites a message somebody has already received.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "autoSendEnabled",
+          "audience"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -10179,7 +10404,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "A page of one thread's messages, newest first, paged on the thread sequence.",
+        "summary": "A page of one thread's messages in chronological order, paged backwards on the thread sequence.",
         "tags": [
           "Conversations"
         ]
@@ -13563,6 +13788,106 @@
           }
         ],
         "summary": "Tax and billing details. The identifier is encrypted and never read back.",
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organization/whatsapp-template": {
+      "get": {
+        "operationId": "GetWhatsAppWelcomeTemplate",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WelcomeTemplateView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The studio's WhatsApp welcome message, its automatic-send setting, and what it has sent.",
+        "tags": [
+          "Organization"
+        ]
+      },
+      "put": {
+        "operationId": "SaveWhatsAppWelcomeTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WelcomeTemplateView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No token, an expired one, a revoked session, or a stale permission version."
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An RFC 9457 problem document. `code` is stable and is what clients branch on."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Saves the welcome message and whether new leads or customers receive it automatically.",
         "tags": [
           "Organization"
         ]
